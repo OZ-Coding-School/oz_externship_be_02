@@ -1,16 +1,16 @@
 from django.db import models
-from apps.lectures.models.crawled_lectures_model import LectureModel
-from apps.lectures.models.categories_model import CategoryModel
+from apps.lectures.models.crawled_lectures_model import Lecture
+from apps.lectures.models.categories_model import Category
 
 
-class LectureCategoryModel(models.Model):
+class LectureCategory(models.Model):
     lecture = models.ForeignKey(
         LectureModel,
         on_delete=models.CASCADE, # 동반 자살
         null=False
     )
     category = models.ForeignKey(
-        CategoryModel,
+        Category,
         on_delete=models.CASCADE,
         null=False
     )

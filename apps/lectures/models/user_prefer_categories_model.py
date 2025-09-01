@@ -1,15 +1,15 @@
 from django.db import models
-# IMPORT USERMODEL
-from apps.lectures.models.categories_model import CategoryModel
+from apps.users.models.user import User
+from apps.lectures.models.categories_model import Category
 
-class UserPreferCategoryModel(models.Model):
-    # user = models.ForeignKey(
-    #     User,
-    #     on_delete=models.CASCADE,
-    #     null=False,
-    # )
+class UserPreferCategory(models.Model):
+    user = models.ForeignKey(
+         User,
+         on_delete=models.CASCADE,
+         null=False,
+     )
     category = models.ForeignKey(
-        CategoryModel,
+        Category,
         on_delete=models.CASCADE,
         null=False,
     )
@@ -18,6 +18,6 @@ class UserPreferCategoryModel(models.Model):
 
     class Meta:
         db_table = 'user_prefer_categories'
-        # unique_together = ('user', 'category')
+        unique_together = ('user', 'category')
         verbose_name = '사용자 선호 카테고리'
         verbose_name_plural = '사용자 선호 카테고리 목록'

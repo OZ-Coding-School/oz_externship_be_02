@@ -1,6 +1,6 @@
 from django.db import models
 
-class CategoryModel(models.Model):
+class Category(models.Model):
     name = models.CharField(max_length=255, unique=True, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

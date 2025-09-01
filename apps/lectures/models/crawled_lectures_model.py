@@ -1,6 +1,6 @@
 from django.db import models
 from uuid import uuid4
-from apps.lectures.models.categories_model import CategoryModel
+from apps.lectures.models.categories_model import Category
 
 class DifficultyChoices(models.TextChoices):
     EASY = 'easy', '쉬움'
@@ -11,7 +11,7 @@ class PlatformChoices(models.TextChoices):
     UDEMY = 'udemy', '유데미'
     INFLEARN = 'inflearn', '인프런'
 
-class LectureModel(models.Model):
+class Lecture(models.Model):
     uuid = models.UUIDField(default=uuid4, editable=False, unique=True)
     title = models.CharField(max_length=255, null=False, blank=False)
     instructor = models.CharField(max_length=20, null=False, blank=False)
@@ -34,7 +34,7 @@ class LectureModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     categories = models.ManyToManyField(
-        CategoryModel, # 카텍올이 몯엘과 다대다
+        Category, # 카텍올이 몯엘과 다대다
         through='LectureCategoryModel', # 얘를 통해 ㅎㅎ
         related_name='lectures',
     )

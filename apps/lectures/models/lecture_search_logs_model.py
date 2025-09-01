@@ -1,7 +1,7 @@
 from django.db import models
 # IMPORT USERMODEL
 
-class LectureSearchLogModel(models.Model):
+class LectureSearchLog(models.Model):
     # user = models.ForeignKey(
     #     User,
     #     on_delete=models.CASCADE,

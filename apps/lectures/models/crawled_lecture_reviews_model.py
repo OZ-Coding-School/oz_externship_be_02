@@ -1,5 +1,5 @@
 from django.db import models
-from apps.lectures.models.crawled_lectures_model import LectureModel
+from apps.lectures.models.crawled_lectures_model import Lecture
 
 class RatingChoices(models.TextChoices):
     FIVE_STARS = '5_OUT_OF_5_STARS', '별점 5점'
@@ -8,9 +8,9 @@ class RatingChoices(models.TextChoices):
     TWO_STARS = '2_OUT_OF_5_STARS', '별점 2점'
     ONE_STAR = '1_OUT_OF_5_STARS', '별점 1점'
 
-class LectureReviewModel(models.Model):
+class LectureReview(models.Model):
     lecture = models.ForeignKey(
-        LectureModel,
+        Lecture,
         on_delete=models.CASCADE, # 동반 자살
         related_name='reviews', # 역참조 시 사용
         null=False,

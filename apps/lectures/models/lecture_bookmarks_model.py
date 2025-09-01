@@ -1,8 +1,8 @@
 from django.db import models
 # IMPORT USERMODEL
-from apps.lectures.models.lecture_categories_model import LectureModel
+from apps.lectures.models.lecture_categories_model import Lecture
 
-class LectureBookmarkModel(models.Model):
+class LectureBookmark(models.Model):
     # user = models.ForeignKey(
     #     User,
     #     on_delete=models.CASCADE,
@@ -10,7 +10,7 @@ class LectureBookmarkModel(models.Model):
     # )
     # 강의 모델과의 외래키 관계 설정
     lecture = models.ForeignKey(
-        LectureModel,
+        Lecture,
         on_delete=models.CASCADE,
         null=False
     )
