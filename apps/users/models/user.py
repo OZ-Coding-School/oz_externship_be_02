@@ -1,9 +1,9 @@
 import uuid
 
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 
-from apps.core.models.base import BaseModel
+from apps.core.models.base import UUIDBaseModel
 
 
 class UserManager(BaseUserManager):
@@ -29,9 +29,9 @@ class UserManager(BaseUserManager):
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
 
-        return self.create_user(email, password, **extra_fields)
+        return self.create_user(email, password=password, **extra_fields)
 
-class User(AbstractBaseUser):
+class User(UUIDBaseModel, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(
         verbose_name = 'email address',
         max_length=255,

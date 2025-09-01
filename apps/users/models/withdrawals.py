@@ -1,6 +1,6 @@
 from django.db import models
 
-from apps.core.models.base import BaseModel
+from apps.core.models.base import UUIDBaseModel
 
 from .user import User
 
@@ -16,7 +16,7 @@ class WithdrawalsReasonChoices(models.TextChoices):
         LACK_OF_CONTENT = 'LACK_OF_CONTENT', "원하는 콘텐츠나 기능의 부족"
         OTHER = 'OTHER', "기타"
 
-class Withdrwals(BaseModel):
+class Withdrwals(UUIDBaseModel):
         user = models.OneToOneField('users.User', on_delete=models.CASCADE, unique=True, verbose_name='유저')
         reason = models.CharField(max_length=30, choices=WithdrawalsReasonChoices.choices, null=False, blank=False, verbose_name='탈퇴 사유')
         reason_detail = models.DateField(null=False, blank=False, verbose_name='구체적인 탈퇴 사유')
