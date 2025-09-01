@@ -1,0 +1,7 @@
+from .lecture_categories_model import LectureCategoryModel
+from .categories_model import CategoryModel
+from .crawled_lecture_reviews_model import  LectureReviewModel
+from .crawled_lectures_model import LectureModel
+from .lecture_bookmarks_model import LectureBookmarkModel
+from .lecture_search_logs_model import  LectureSearchLogModel
+from .user_prefer_categories_model import  UserPreferCategoryModel
