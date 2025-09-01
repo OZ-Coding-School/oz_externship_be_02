@@ -20,5 +20,3 @@ class UserPreferCategory(BaseModel):
 
     class Meta:
         db_table = "user_prefer_categories"
-        verbose_name = "사용자 선호 카테고리"
-        verbose_name_plural = "사용자 선호 카테고리 목록"

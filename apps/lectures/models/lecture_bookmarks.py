@@ -12,5 +12,3 @@ class LectureBookmark(BaseModel):
 
     class Meta:
         db_table = "lecture_bookmarks"
-        verbose_name = "강의 북마크"
-        verbose_name_plural = "강의 북마크 목록"

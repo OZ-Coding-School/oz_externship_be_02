@@ -25,8 +25,8 @@ class Lecture(UUIDBaseModel):
     platform = models.CharField(max_length=10, choices=PlatformChoices.choices)
     original_price = models.BigIntegerField(default=0)
     discount_price = models.BigIntegerField(default=0)
-    url_link = models.CharField(max_length=255)
-    thumbnail_img_url = models.CharField(max_length=255, null=True, blank=True)
+    url_link = models.URLField(max_length=255)
+    thumbnail_img_url = models.URLField(max_length=255, null=True, blank=True)
 
     categories = models.ManyToManyField(
         Category,  # 카텍올이 몯엘과 다대다
@@ -36,9 +36,6 @@ class Lecture(UUIDBaseModel):
 
     class Meta:
         db_table = "crawled_lectures"
-        verbose_name = "크롤링 강의"
-        verbose_name_plural = "크롤링 강의 목록"
-        unique_together = ("platform", "title")  # 잉뎅싱
 
     def __str__(self) -> str:
         return self.title

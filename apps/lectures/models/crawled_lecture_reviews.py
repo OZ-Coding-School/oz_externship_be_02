@@ -24,8 +24,6 @@ class LectureReview(BaseModel):
 
     class Meta:
         db_table = "crawled_lecture_reviews"
-        verbose_name = "크롤링 강의 리뷰"
-        verbose_name_plural = "크롤링 강의 리뷰 목록"
 
     def __str__(self) -> str:
         return f"{self.lecture.title} 리뷰"

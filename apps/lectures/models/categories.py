@@ -8,8 +8,6 @@ class Category(BaseModel):
 
     class Meta:
         db_table = "categories"
-        verbose_name = "강의 카테고리"
-        verbose_name_plural = "강의 카테고리 목록"
 
     def __str__(self) -> str:
         return self.name

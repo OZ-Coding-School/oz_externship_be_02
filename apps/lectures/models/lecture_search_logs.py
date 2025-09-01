@@ -10,5 +10,3 @@ class LectureSearchLog(BaseModel):
 
     class Meta:
         db_table = "lecture_search_logs"
-        verbose_name = "강의 검색 기록"
-        verbose_name_plural = "강의 검색 기록 목록"
