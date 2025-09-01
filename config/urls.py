@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib import admin
 from django.urls import URLPattern, URLResolver, include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -8,9 +7,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
-urlpatterns: list[URLPattern | URLResolver] = [
-    path("admin/", admin.site.urls),
-]
+urlpatterns: list[URLPattern | URLResolver] = []
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
