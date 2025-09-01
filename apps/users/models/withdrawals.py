@@ -25,5 +25,5 @@ class Withdrwals(UUIDBaseModel):
     reason_detail = models.DateField(null=False, blank=False, verbose_name="구체적인 탈퇴 사유")
     due_date = models.DateField(null=False, blank=False, verbose_name="계정 삭제 예정일")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user.email} - {self.reason}"

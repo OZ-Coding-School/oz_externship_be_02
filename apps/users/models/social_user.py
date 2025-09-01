@@ -15,5 +15,5 @@ class SocialUser(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생설 일시")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="수정 일시")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.provider} - {self.user.email}"

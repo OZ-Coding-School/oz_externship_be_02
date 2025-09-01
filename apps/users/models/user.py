@@ -1,4 +1,4 @@
-import uuid
+from typing import Any
 
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -10,8 +10,8 @@ from django.db import models
 from apps.core.models.base import UUIDBaseModel
 
 
-class UserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
+class UserManager(BaseUserManager["User"]):
+    def create_user(self, email: str, password: str, **extra_fields: Any) -> "User":
         if not email:
             raise ValueError("Users must have an email address")
 
@@ -21,7 +21,7 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password, **extra_fields):
+    def create_superuser(self, email: str, password: str, **extra_fields: Any) -> "User":
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 
@@ -58,5 +58,5 @@ class User(UUIDBaseModel, AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.email

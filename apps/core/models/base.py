@@ -12,7 +12,7 @@ class BaseModel(models.Model):
 
 
 class UUIDBaseModel(BaseModel):
-    uuid = uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, verbose_name="UUID")
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, verbose_name="UUID")
 
     class Meta:
         abstract = True
