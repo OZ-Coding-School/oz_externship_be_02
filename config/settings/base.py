@@ -30,8 +30,10 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "drf_spectacular",
     "django_filters",
+    'apps.core',
+    'apps.users'
 ]
-
+AUTH_USER_MODEL = 'users.User'
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS
 
 MIDDLEWARE = [
