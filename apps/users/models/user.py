@@ -3,7 +3,6 @@ from typing import Any
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
-    PermissionsMixin,
 )
 from django.db import models
 
@@ -33,13 +32,12 @@ class UserManager(BaseUserManager["User"]):
         return self.create_user(email, password=password, **extra_fields)
 
 
-class User(UUIDBaseModel, AbstractBaseUser, PermissionsMixin):
+class User(UUIDBaseModel, AbstractBaseUser):
     email = models.EmailField(
         verbose_name="email address",
         max_length=255,
         unique=True,
     )
-    hashed_password = models.CharField(max_length=130, null=False, blank=False, verbose_name="해시된 비밀번호")
     name = models.CharField(max_length=30, null=False, blank=False, verbose_name="이름")
     nickname = models.CharField(max_length=10, unique=True, null=False, blank=False, verbose_name="닉네임")
     phone_number = models.CharField(max_length=20, unique=True, null=False, blank=False, verbose_name="휴대폰 번호")
