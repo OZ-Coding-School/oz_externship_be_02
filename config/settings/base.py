@@ -32,6 +32,7 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "apps.core",
     "apps.users",
+    "apps.lectures",
 ]
 AUTH_USER_MODEL = "users.User"
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS
