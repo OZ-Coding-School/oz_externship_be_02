@@ -36,6 +36,7 @@ class Lecture(UUIDBaseModel):
 
     class Meta:
         db_table = "crawled_lectures"
+        unique_together = ["platform", "title"] # 잉뎅싱
 
     def __str__(self) -> str:
         return self.title
