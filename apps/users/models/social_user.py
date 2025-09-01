@@ -1,5 +1,7 @@
 from django.db import models
+
 from .user import User
+
 
 class SocialUser(models.Model):
     class ProviderChoices(models.TextChoices):

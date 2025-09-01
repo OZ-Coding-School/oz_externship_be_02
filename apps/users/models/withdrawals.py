@@ -1,7 +1,9 @@
 from django.db import models
 
-from .user import User
 from apps.core.models.base import BaseModel
+
+from .user import User
+
 
 class WithdrawalsReasonChoices(models.TextChoices):
         NO_LONGER_NEEDED = 'NO_LONGER_NEEDED', "서비스 이용할 시간이 없음"
