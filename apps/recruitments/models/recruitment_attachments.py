@@ -6,7 +6,7 @@ from apps.recruitments.models.recruitments import Recruitment
 
 class RecruitmentAttachment(BaseModel):
     # Recruitment.attachments
-    recruitment_id = models.ForeignKey(
+    recruitment = models.ForeignKey(
         Recruitment,
         on_delete=models.CASCADE,
         related_name="attachments",

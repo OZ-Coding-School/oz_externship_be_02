@@ -14,7 +14,7 @@ class Application(BaseModel):
         REJECTED = "REJECTED", "거절됨"
 
     # Recruitment.applications 으로 사용 가능
-    recruitment_id = models.ForeignKey(
+    recruitment = models.ForeignKey(
         Recruitment,
         on_delete=models.SET_NULL,
         null=True,  # , or IntegrityError
@@ -23,7 +23,7 @@ class Application(BaseModel):
     )
 
     # User.applications
-    user_id = models.ForeignKey(
+    user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         null=False,
@@ -45,10 +45,8 @@ class Application(BaseModel):
 
     class Meta:
         db_table = "applications"
-        # unique_together = (('recruitment_id', 'user_id'),)  # DEPRECATED
-        constraints = [models.UniqueConstraint(fields=["recruitment_id", "user_id"], name="UQ_recruitments_users_IDX")]
+        # unique_together = (('recruitment', 'user'),)  # DEPRECATED
+        constraints = [models.UniqueConstraint(fields=["recruitment", "user"], name="UQ_recruitments_users_IDX")]
 
     def __str__(self) -> str:
-        return (
-            f"{self.user_id.nickname}'s application for {self.recruitment_id.title if self.recruitment_id else 'None'}"
-        )
+        return f"{self.user.nickname}'s application for {self.recruitment.title if self.recruitment else 'None'}"
