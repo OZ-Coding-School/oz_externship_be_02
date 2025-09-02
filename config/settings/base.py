@@ -30,12 +30,19 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "drf_spectacular",
     "django_filters",
+]
+
+CUSTOM_APPS = [
     "apps.core",
     "apps.users",
     "apps.lectures",
+    "apps.studies",
+    "apps.study_group_schedules",
+    "apps.study_notes",
 ]
+
 AUTH_USER_MODEL = "users.User"
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS
+INSTALLED_APPS = DJANGO_APPS + CUSTOM_APPS + THIRD_PARTY_APPS
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
