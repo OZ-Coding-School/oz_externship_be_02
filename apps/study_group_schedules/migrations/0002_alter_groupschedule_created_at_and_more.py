@@ -22,35 +22,14 @@ class Migration(migrations.Migration):
             name="updated_at",
             field=models.DateTimeField(auto_now=True, help_text="수정 일시", null=True),
         ),
-        migrations.CreateModel(
-            name="ScheduleParticipant",
-            fields=[
-                ("created_at", models.DateTimeField(auto_now_add=True, help_text="생성일시")),
-                ("updated_at", models.DateTimeField(auto_now=True, help_text="수정 일시", null=True)),
-                (
-                    "pk",
-                    models.CompositePrimaryKey(
-                        "schedule_id", "member_id", blank=True, editable=False, primary_key=True, serialize=False
-                    ),
-                ),
-                ("member", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="studies.groupmember")),
-                (
-                    "schedule",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, to="study_group_schedules.groupschedule"
-                    ),
-                ),
-            ],
-            options={
-                "db_table": "schedule_participants",
-            },
+        migrations.AlterField(
+            model_name="ScheduleParticipant",
+            name="created_at",
+            field=models.DateTimeField(auto_now_add=True, help_text="생성일시"),
         ),
         migrations.AlterField(
-            model_name="groupschedule",
-            name="participants",
-            field=models.ManyToManyField(through="study_group_schedules.ScheduleParticipant", to="studies.groupmember"),
-        ),
-        migrations.DeleteModel(
-            name="ScheduleParticipants",
+            model_name="ScheduleParticipant",
+            name="updated_at",
+            field=models.DateTimeField(auto_now=True, help_text="수정 일시", null=True),
         ),
     ]

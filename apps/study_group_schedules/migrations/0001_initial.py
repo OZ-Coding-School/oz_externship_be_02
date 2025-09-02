@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name="ScheduleParticipants",
+            name="ScheduleParticipant",
             fields=[
                 ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="생성일시")),
                 ("updated_at", models.DateTimeField(auto_now=True, null=True, verbose_name="수정 일시")),
@@ -59,8 +59,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="groupschedule",
             name="participants",
-            field=models.ManyToManyField(
-                through="study_group_schedules.ScheduleParticipants", to="studies.groupmember"
-            ),
+            field=models.ManyToManyField(through="study_group_schedules.ScheduleParticipant", to="studies.groupmember"),
         ),
     ]
