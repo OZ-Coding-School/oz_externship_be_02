@@ -203,3 +203,4 @@ SPECTACULAR_SETTINGS = {
         }
     ],
 }
+APPEND_SLASH = False
