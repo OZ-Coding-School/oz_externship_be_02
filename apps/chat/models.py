@@ -18,7 +18,7 @@ class ChatMessage(BaseModel):
         on_delete=models.CASCADE,
         related_name="chat_messages",
     )
-    content = models.TextField()
+    content = models.CharField(max_length=500)
 
     def __str__(self) -> str:
         # 발신자 닉네임이 없는 경우를 대비하여 표시
