@@ -1,6 +1,8 @@
 # oz_externship_be/apps/notifications/models.py
 from django.db import models
+
 from apps.core.models.base import BaseModel
+
 
 class Notification(BaseModel):
     class NotificationType(models.TextChoices):
@@ -17,20 +19,16 @@ class Notification(BaseModel):
         "users.User",
         # 사용자가 삭제 -> 해당 사용자의 알림도 함께 삭제
         on_delete=models.CASCADE,
-        related_name="notifications"
+        related_name="notifications",
     )
     content = models.CharField(max_length=300)
-    notification_type = models.CharField(
-        max_length=30,
-        choices=NotificationType.choices
-    )
+    notification_type = models.CharField(max_length=30, choices=NotificationType.choices)
     is_read = models.BooleanField(default=False)
-    back_url_link = models.CharField(max_length=2048) # URL은 길어질 수 있으므로
+    back_url_link = models.CharField(max_length=2048)  # URL은 길어질 수 있으므로
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Notification for {self.user.nickname}: {self.content[:30]}"
 
     class Meta:
         db_table = "notifications"
         ordering = ["-created_at"]
-
