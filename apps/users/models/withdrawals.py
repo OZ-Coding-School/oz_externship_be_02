@@ -22,7 +22,7 @@ class Withdrwals(BaseModel):
     reason = models.CharField(
         max_length=30, choices=WithdrawalsReasonChoices.choices, null=False, blank=False, verbose_name="탈퇴 사유"
     )
-    reason_detail = models.DateField(null=False, blank=False, verbose_name="구체적인 탈퇴 사유")
+    reason_detail = models.CharField(max_length=500, null=False, blank=False, verbose_name="구체적인 탈퇴 사유")
     due_date = models.DateField(null=False, blank=False, verbose_name="계정 삭제 예정일")
 
     def __str__(self) -> str:
