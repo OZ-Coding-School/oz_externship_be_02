@@ -15,7 +15,7 @@ class GroupSchedule(BaseModel):
     start_time = models.TimeField()  # 스터디 시작 시간
     end_time = models.TimeField()  # 스터디 종료 시간
 
-    participants = models.ManyToManyField(GroupMember, through="study_group_schedules.ScheduleParticipants")
+    participants = models.ManyToManyField(GroupMember, through="study_group_schedules.ScheduleParticipant")
 
     class Meta:
         db_table = "group_schedules"
