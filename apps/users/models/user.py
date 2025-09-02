@@ -43,9 +43,7 @@ class User(UUIDBaseModel, AbstractBaseUser):
     phone_number = models.CharField(max_length=20, unique=True, null=False, blank=False, help_text="휴대폰 번호")
     gender = models.CharField(max_length=6, null=False, blank=False, help_text="성별")
     birthday = models.DateField(null=False, blank=False, help_text="생일")
-    profile_img_url = models.URLField(
-        max_length=255, null=True, blank=True, help_text="프로필 이미지"
-    )
+    profile_img_url = models.URLField(max_length=255, null=True, blank=True, help_text="프로필 이미지")
 
     is_active = models.BooleanField(default=False, help_text="계정활성화 여부")
     is_staff = models.BooleanField(default=False, help_text="스태프 여부")
