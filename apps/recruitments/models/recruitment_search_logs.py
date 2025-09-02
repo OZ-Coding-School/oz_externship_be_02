@@ -1,0 +1,18 @@
+from django.db import models
+
+from apps.core.models.base import BaseModel
+from apps.users.models import User
+
+
+class RecruitmentSearchLog(BaseModel):
+    # User.recruitment_search_logs
+    user_id = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="recruitment_search_logs", null=False, help_text="유저 ID"
+    )
+    keyword = models.CharField(max_length=255, null=False, help_text="검색어")
+
+    class Meta:
+        db_table = "recruitment_search_logs"
+
+    def __str__(self):
+        return f"'{self.keyword}' by {self.user_id.nickname}"
