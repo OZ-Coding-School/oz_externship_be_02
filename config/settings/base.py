@@ -21,7 +21,6 @@ DJANGO_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "apps.applications.apps.ApplicationsConfig",
 ]
 
 THIRD_PARTY_APPS = [
@@ -43,6 +42,7 @@ CUSTOM_APPS = [
     "apps.notifications",
     "apps.chat",
     "apps.recruitments",
+    "apps.applications",
 ]
 
 AUTH_USER_MODEL = "users.User"

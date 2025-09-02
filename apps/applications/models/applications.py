@@ -1,7 +1,8 @@
 from django.db import models
 
 from apps.core.models import BaseModel
-from apps.users.models import User
+from apps.recruitments.models import Recruitment
+from apps.users.models.user import User
 
 
 # 스터디 지원 내역
@@ -48,5 +49,5 @@ class Application(BaseModel):
         # unique_together = (('recruitment_id', 'user_id'),)  # DEPRECATED
         constraints = [models.UniqueConstraint(fields=["recruitment_id", "user_id"], name="UQ_recruitments_users_IDX")]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user_id.nickname}'s application for {self.recruitment_id.title}"
