@@ -30,17 +30,16 @@ class Application(BaseModel):
         related_name="applications",
         help_text="지원한 사용자 ID",
     )
-    objective = models.CharField(max_length=300, null=False, help_text="목표")
-    motivation = models.TextField(null=False, help_text="지원동기")
-    self_introduction = models.TextField(null=False, help_text="자기소개")
-    available_time = models.CharField(max_length=255, null=False, help_text="가능한 시간대와 요일")
-    has_study_experience = models.BooleanField(default=False, null=False, help_text="과거 스터디 경험 여부")
-    study_experience = models.TextField(null=True, blank=True, help_text="스터디 경험")
+    objective = models.CharField(max_length=300, help_text="목표")
+    motivation = models.CharField(max_length=500, help_text="지원동기")
+    self_introduction = models.CharField(max_length=500, help_text="자기소개")
+    available_time = models.CharField(max_length=255, help_text="가능한 시간대와 요일")
+    has_study_experience = models.BooleanField(default=False, help_text="과거 스터디 경험 여부")
+    study_experience = models.CharField(max_length=1000, null=True, blank=True, help_text="스터디 경험")
     status = models.CharField(
         max_length=20,
         choices=ApplicationStatus.choices,
         default=ApplicationStatus.PENDING,
-        null=False,
         help_text="공고 지원 상태",
     )
 
