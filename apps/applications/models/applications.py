@@ -50,4 +50,6 @@ class Application(BaseModel):
         constraints = [models.UniqueConstraint(fields=["recruitment_id", "user_id"], name="UQ_recruitments_users_IDX")]
 
     def __str__(self) -> str:
-        return f"{self.user_id.nickname}'s application for {self.recruitment_id.title if self.recruitment_id else 'None'}"
+        return (
+            f"{self.user_id.nickname}'s application for {self.recruitment_id.title if self.recruitment_id else 'None'}"
+        )
