@@ -5,3 +5,13 @@ from .recruitment_search_logs import RecruitmentSearchLog
 from .recruitment_tags import RecruitmentTag
 from .recruitments import Recruitment
 from .tags import Tag
+
+__all__ = [
+    "RecruitmentAttachment",
+    "RecruitmentBookmark",
+    "RecruitmentImage",
+    "RecruitmentSearchLog",
+    "RecruitmentTag",
+    "Recruitment",
+    "Tag",
+]

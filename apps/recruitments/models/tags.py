@@ -12,5 +12,5 @@ class Tag(BaseModel):
     class Meta:
         db_table = "tags"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name

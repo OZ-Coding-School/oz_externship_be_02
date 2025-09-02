@@ -8,10 +8,12 @@ from django.utils import timezone
 from apps.core.models.base import UUIDBaseModel
 from apps.recruitments.models.tags import Tag
 from apps.studies.models import StudyGroup
-from apps.users.models import User
+from apps.users.models.user import User
 
-def get_default_close_at():
+
+def get_default_close_at() -> datetime:
     return timezone.now() + timedelta(days=14)
+
 
 # 스터디 구인 공고 정보
 class Recruitment(UUIDBaseModel):
@@ -38,11 +40,13 @@ class Recruitment(UUIDBaseModel):
     # Recruitment.tags.all()
     # Recruitment.tags.add( , )
     # 내부적으로 RecruitmentTag 자동생성  # 근데 through 빼야됨
-    tags = models.ManyToManyField(Tag, through="RecruitmentTag", related_name="recruitments")
+    tags = models.ManyToManyField(Tag, through="recruitments.RecruitmentTag", related_name="recruitments")
 
     # Recruitment.bookmarks.all()
     # User.bookmarked_recruitments
-    bookmarks = models.ManyToManyField(User, through="RecruitmentBookmark", related_name="bookmarked_recruitments")
+    bookmarks = models.ManyToManyField(
+        User, through="recruitments.RecruitmentBookmark", related_name="bookmarked_recruitments"
+    )
 
     class Meta:
         db_table = "recruitments"
@@ -53,5 +57,5 @@ class Recruitment(UUIDBaseModel):
             )
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title

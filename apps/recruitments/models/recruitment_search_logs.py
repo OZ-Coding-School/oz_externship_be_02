@@ -1,7 +1,7 @@
 from django.db import models
 
 from apps.core.models.base import BaseModel
-from apps.users.models import User
+from apps.users.models.user import User
 
 
 class RecruitmentSearchLog(BaseModel):
@@ -14,5 +14,5 @@ class RecruitmentSearchLog(BaseModel):
     class Meta:
         db_table = "recruitment_search_logs"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"'{self.keyword}' by {self.user_id.nickname}"

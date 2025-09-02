@@ -19,5 +19,5 @@ class RecruitmentTag(BaseModel):
         # Django가 id 자동 생성 안 하도록 기본 PK 설정
         # managed = True
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.recruitment_id.title} - {self.tag_id.name}"

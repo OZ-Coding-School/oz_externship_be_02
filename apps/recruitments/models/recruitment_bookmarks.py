@@ -2,7 +2,7 @@ from django.db import models
 
 from apps.core.models.base import BaseModel
 from apps.recruitments.models.recruitments import Recruitment
-from apps.users.models import User
+from apps.users.models.user import User
 
 
 # User - Recruitment 다대다 중간 테이블
@@ -15,5 +15,5 @@ class RecruitmentBookmark(BaseModel):
     class Meta:
         db_table = "recruitment_bookmarks"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user_id.nickname} bookmarks {self.recruitment_id.title}"
