@@ -39,6 +39,8 @@ CUSTOM_APPS = [
     "apps.studies",
     "apps.study_group_schedules",
     "apps.study_notes",
+    "apps.notifications",
+    "apps.chat",
 ]
 
 AUTH_USER_MODEL = "users.User"
