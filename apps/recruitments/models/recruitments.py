@@ -10,32 +10,29 @@ from apps.recruitments.models.tags import Tag
 from apps.studies.models import StudyGroup
 from apps.users.models import User
 
+def get_default_close_at():
+    return timezone.now() + timedelta(days=14)
 
 # 스터디 구인 공고 정보
 class Recruitment(UUIDBaseModel):
-    def get_default_close_at(self) -> datetime:
-        return timezone.now() + timedelta(days=14)
-
     # StudyGroup.recruitments
     study_group_id = models.ForeignKey(
-        StudyGroup, on_delete=models.CASCADE, related_name="recruitments", null=False, help_text="스터디 그룹 ID"
+        StudyGroup, on_delete=models.CASCADE, related_name="recruitments", help_text="스터디 그룹 ID"
     )
 
     # User.authored_recruitments
     author_id = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="authored_recruitments", null=False, help_text="공고 작성자 ID"
+        User, on_delete=models.CASCADE, related_name="authored_recruitments", help_text="공고 작성자 ID"
     )
 
-    title = models.CharField(max_length=50, null=False, help_text="공고 제목")
-    content = models.TextField(null=False, help_text="공고 내용")
-    estimated_fee = models.IntegerField(null=False, help_text="예상 강의 결제 비용")
+    title = models.CharField(max_length=50, help_text="공고 제목")
+    content = models.TextField(help_text="공고 내용")
+    estimated_fee = models.IntegerField(help_text="예상 강의 결제 비용")
     expected_headcount = models.SmallIntegerField(
-        help_text="예상 모집 인원",
-        validators=[MinValueValidator(1), MaxValueValidator(10)],
-        null=False,
+        help_text="예상 모집 인원", validators=[MinValueValidator(1), MaxValueValidator(10)]
     )
-    views_count = models.IntegerField(default=0, null=False, help_text="조회수")
-    close_at = models.DateTimeField(default=get_default_close_at, null=False, help_text="공고 마감일")
+    views_count = models.IntegerField(default=0, help_text="조회수")
+    close_at = models.DateTimeField(default=get_default_close_at, help_text="공고 마감일")
     is_closed = models.BooleanField(default=False, help_text="공고 마감 상태")
 
     # Recruitment.tags.all()

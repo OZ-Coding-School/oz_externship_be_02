@@ -13,8 +13,8 @@ class RecruitmentAttachment(BaseModel):
         null=False,
         help_text="스터디 공고 ID",
     )
-    file_url = models.CharField(max_length=255, unique=True, null=False, help_text="첨부파일 URL")
-    file_name = models.CharField(max_length=50, null=False, help_text="원본 파일명")
+    file_url = models.CharField(max_length=255, unique=True, help_text="첨부파일 URL")
+    file_name = models.CharField(max_length=50, help_text="원본 파일명")
 
     class Meta:
         db_table = "recruitment_attachments"

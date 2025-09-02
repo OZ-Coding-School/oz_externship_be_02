@@ -9,8 +9,8 @@ from apps.recruitments.models.tags import Tag
 class RecruitmentTag(BaseModel):
     pk = models.CompositePrimaryKey("recruitment_id", "tag_id")
 
-    recruitment_id = models.ForeignKey(Recruitment, on_delete=models.CASCADE, null=False, help_text="공고 ID")
-    tag_id = models.ForeignKey(Tag, on_delete=models.CASCADE, null=False, help_text="태그 ID")
+    recruitment_id = models.ForeignKey(Recruitment, on_delete=models.CASCADE, help_text="공고 ID")
+    tag_id = models.ForeignKey(Tag, on_delete=models.CASCADE, help_text="태그 ID")
 
     # id = None  # 자동 생성되는 PK 제거
 

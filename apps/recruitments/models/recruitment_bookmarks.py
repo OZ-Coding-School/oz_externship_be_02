@@ -9,8 +9,8 @@ from apps.users.models import User
 class RecruitmentBookmark(BaseModel):
     pk = models.CompositePrimaryKey("user_id", "recruitment_id")
 
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE, null=False, help_text="북마크한 유저 ID")
-    recruitment_id = models.ForeignKey(Recruitment, on_delete=models.CASCADE, null=False, help_text="공고 ID")
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, help_text="북마크한 유저 ID")
+    recruitment_id = models.ForeignKey(Recruitment, on_delete=models.CASCADE, help_text="공고 ID")
 
     class Meta:
         db_table = "recruitment_bookmarks"
