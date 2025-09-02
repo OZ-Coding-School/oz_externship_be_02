@@ -13,7 +13,7 @@ class Notification(BaseModel):
         APPLICATION_REJECT = "APPLICATION_REJECT", "지원 거절"
         ADD_APPLICATION = "ADD_APPLICATION", "신규 지원"
         TODAY_SCHEDULE = "TODAY_SCHEDULE", "오늘의 스케줄"
-        UPCOMMING_SCHEDULE = "UPCOMMING_SCHEDULE", "임박한 스케줄"
+        UPCOMING_SCHEDULE = "UPCOMING_SCHEDULE", "임박한 스케줄"
 
     user = models.ForeignKey(
         "users.User",
