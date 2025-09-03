@@ -55,24 +55,16 @@ class NotificationListView(APIView):
     summary="특정 알림 읽음 처리 API",
     description="특정 알림의 is_read 상태를 true로 변경",
     request=NotificationUpdateSerializer,
-    responses={200: NotificationSerializer},
+    responses={204: None},
 )
 class NotificationUpdateView(APIView):
     """
     특정 알림 읽음 처리
     """
 
-    def patch(self, request: Request, notification_id: int, *args: Any, **kwargs: Any) -> Response:
-        mock_updated_notification = {
-            "notification_id": notification_id,
-            "content": "'Python 기초 스터디' 공고에 새로운 지원자가 있습니다.",
-            "type": Notification.NotificationType.ADD_APPLICATION,
-            "is_read": True,
-            "back_url_link": "/recruitments/a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6/applications",
-            "created_at": datetime.datetime.now() - datetime.timedelta(hours=2),
-        }
-        # Mock API 단계에서는 Serializer를 통과시키지 않고 직접 반환
-        return Response(mock_updated_notification)
+    def patch(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(
