@@ -18,12 +18,12 @@ class WithdrawalsReasonChoices(models.TextChoices):
 
 
 class Withdrwals(BaseModel):
-    user = models.OneToOneField("users.User", on_delete=models.CASCADE, unique=True, verbose_name="유저")
+    user = models.OneToOneField("users.User", on_delete=models.CASCADE, unique=True, help_text="유저")
     reason = models.CharField(
-        max_length=30, choices=WithdrawalsReasonChoices.choices, null=False, blank=False, verbose_name="탈퇴 사유"
+        max_length=30, choices=WithdrawalsReasonChoices.choices, null=False, blank=False, help_text="탈퇴 사유"
     )
-    reason_detail = models.CharField(max_length=500, null=False, blank=False, verbose_name="구체적인 탈퇴 사유")
-    due_date = models.DateField(null=False, blank=False, verbose_name="계정 삭제 예정일")
+    reason_detail = models.CharField(max_length=500, null=False, blank=False, help_text="구체적인 탈퇴 사유")
+    due_date = models.DateField(null=False, blank=False, help_text="계정 삭제 예정일")
 
     def __str__(self) -> str:
         return f"{self.user.email} - {self.reason}"

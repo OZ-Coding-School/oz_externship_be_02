@@ -34,22 +34,20 @@ class UserManager(BaseUserManager["User"]):
 
 class User(UUIDBaseModel, AbstractBaseUser):
     email = models.EmailField(
-        verbose_name="email address",
+        help_text="email address",
         max_length=255,
         unique=True,
     )
-    name = models.CharField(max_length=30, null=False, blank=False, verbose_name="이름")
-    nickname = models.CharField(max_length=10, unique=True, null=False, blank=False, verbose_name="닉네임")
-    phone_number = models.CharField(max_length=20, unique=True, null=False, blank=False, verbose_name="휴대폰 번호")
-    gender = models.CharField(max_length=6, null=False, blank=False, verbose_name="성별")
-    birthday = models.DateField(null=False, blank=False, verbose_name="생일")
-    profile_img_url = models.URLField(
-        max_length=255, null=True, blank=True, verbose_name="프로필 이미지", help_text="유저 프로필 이미지"
-    )
+    name = models.CharField(max_length=30, null=False, blank=False, help_text="이름")
+    nickname = models.CharField(max_length=10, unique=True, null=False, blank=False, help_text="닉네임")
+    phone_number = models.CharField(max_length=20, unique=True, null=False, blank=False, help_text="휴대폰 번호")
+    gender = models.CharField(max_length=6, null=False, blank=False, help_text="성별")
+    birthday = models.DateField(null=False, blank=False, help_text="생일")
+    profile_img_url = models.URLField(max_length=255, null=True, blank=True, help_text="프로필 이미지")
 
-    is_active = models.BooleanField(default=False, verbose_name="계정활성화 여부")
-    is_staff = models.BooleanField(default=False, verbose_name="스태프 여부")
-    is_superuser = models.BooleanField(default=False, verbose_name="슈퍼 유저 여부")
+    is_active = models.BooleanField(default=False, help_text="계정활성화 여부")
+    is_staff = models.BooleanField(default=False, help_text="스태프 여부")
+    is_superuser = models.BooleanField(default=False, help_text="슈퍼 유저 여부")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["nickname", "name", "phone_number", "gender", "birthday"]
