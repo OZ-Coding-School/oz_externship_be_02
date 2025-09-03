@@ -24,22 +24,18 @@ jobs:
             fi
           done
 
-          # fallback: no mapping
-          if [[ -z "$mentions" ]]; then
-            mentions="@${{ github.event.requested_reviewer.login }}"
-          fi
-
           echo "mentions=$mentions" >> $GITHUB_OUTPUT
 
       - name: Send Discord Notification
+        if: ${{ steps.map.outputs.mentions != '' }}
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
                -d '{
                  "embeds": [
                    {
-                     "title": "🔔 PR Review Requested",
-                     "description": "'"${{ steps.map.outputs.mentions }}"' 👀 You have been requested to review a PR!",
+                     "title": "🔔 PR 리뷰 요청",
+                     "description": "새로운 리뷰 요청이 있습니다!",
                      "color": 5814783,
                      "fields": [
                        {
@@ -47,12 +43,12 @@ jobs:
                          "value": "'"${{ steps.map.outputs.mentions }}"'"
                        },
                        {
-                         "name": "PR",
-                         "value": "[#${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }})"
+                         "name": "PR Link",
+                         "value": "[#${{ github.event.pull_request.number }} ${{github.event.pull_request.title}}](${{ github.event.pull_request.html_url }})"
                        },
                        {
                          "name": "Repository",
-                         "value": "${{ github.repository }}"
+                         "value": "[${{ github.repository }}](https://github.com/${{ github.repository }})"
                        }
                      ],
                      "footer": {
