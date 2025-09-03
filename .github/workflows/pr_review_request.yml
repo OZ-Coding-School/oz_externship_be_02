@@ -2,7 +2,7 @@ name: Notify on PR review request
 
 on:
   pull_request:
-    types: [review_requested]
+    types: [opened, synchronize, reopened]
 
 jobs:
   notify-discord:
