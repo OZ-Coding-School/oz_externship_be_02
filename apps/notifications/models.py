@@ -1,4 +1,3 @@
-# oz_externship_be/apps/notifications/models.py
 from django.db import models
 
 from apps.core.models.base import BaseModel

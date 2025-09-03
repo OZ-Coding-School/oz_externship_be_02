@@ -1,6 +1,6 @@
 .python-version
 .env
-envs/
+.env/
 .DS_Store
 __pycache__/
 .idea/
