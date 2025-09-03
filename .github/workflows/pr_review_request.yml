@@ -1,0 +1,61 @@
+name: Notify on PR review request
+
+on:
+  pull_request:
+    types: [review_requested]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Map reviewers to Discord mentions
+        id: map
+        run: |
+          declare -A mapping=(
+            ["SimJunSik"]="<@1167695093055098883>"
+            ["Meoyoug"]="<@383265658705805313>"
+            ["Umdoong"]="<@1351555977282977833>"
+          )
+
+          mentions=""
+          for reviewer in $(jq -r '.pull_request.requested_reviewers[].login' <<< '${{ toJson(github.event) }}'); do
+            if [[ -n "${mapping[$reviewer]}" ]]; then
+              mentions+="${mapping[$reviewer]} "
+            fi
+          done
+
+          echo "mentions=$mentions" >> $GITHUB_OUTPUT
+
+      - name: Send Discord Notification
+        if: ${{ steps.map.outputs.mentions != '' }}
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d '{
+                 "embeds": [
+                   {
+                     "title": "🔔 PR 리뷰 요청",
+                     "description": "새로운 리뷰 요청이 있습니다!",
+                     "color": 5814783,
+                     "fields": [
+                       {
+                         "name": "Reviewers",
+                         "value": "'"${{ steps.map.outputs.mentions }}"'"
+                       },
+                       {
+                         "name": "PR Link",
+                         "value": "[#${{ github.event.pull_request.number }} ${{github.event.pull_request.title}}](${{ github.event.pull_request.html_url }})"
+                       },
+                       {
+                         "name": "Repository",
+                         "value": "[${{ github.repository }}](https://github.com/${{ github.repository }})"
+                       }
+                     ],
+                     "footer": {
+                       "text": "GitHub → Discord Notification"
+                     },
+                     "timestamp": "${{ github.event.pull_request.updated_at }}"
+                   }
+                 ]
+               }' \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
