@@ -1,3 +1,5 @@
+from typing import Any, Dict, List, Union
+
 from django.core import mail
 from django.core.cache import cache
 from django.core.mail import send_mail
@@ -5,8 +7,6 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APIClient, APITestCase
-from typing import Union, List, Dict, Any
-
 from sentry_sdk.utils import get_error_message
 
 from apps.users.models import User
@@ -104,4 +104,3 @@ class VerificationCodeTests(APITestCase):
         data = {"email": self.email, "verification_code": "wrong_code"}
         response = self.client.post(self.verification_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-

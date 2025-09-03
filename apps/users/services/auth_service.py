@@ -19,14 +19,14 @@ def verify_user_email(email: str, verification_code: str) -> User:
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
-        raise ValidationError({"email":["존재하지않는 이메일입니다"]})
+        raise ValidationError({"email": ["존재하지않는 이메일입니다"]})
 
     cached_verification_code = cache.get(email)
     if cached_verification_code is None:
-        raise ValidationError({"verification_code":["인증 코드가 만료되었거나 존재하지 않습니다"]})
+        raise ValidationError({"verification_code": ["인증 코드가 만료되었거나 존재하지 않습니다"]})
 
     if cached_verification_code != verification_code:
-        raise ValidationError({"verification_code":["인증코드가 일치하지않습니다"]})
+        raise ValidationError({"verification_code": ["인증코드가 일치하지않습니다"]})
 
     user.is_active = True
     user.save()
