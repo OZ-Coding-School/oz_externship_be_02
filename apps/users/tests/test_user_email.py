@@ -1,6 +1,6 @@
 from django.core import mail
 from django.core.mail import send_mail
-from django.test import TestCase
+from rest_framework.test import APITestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -9,7 +9,7 @@ from apps.users.services.auth_service import generate_verification_code, verify_
 from apps.users.models import User
 from django.core.cache import cache
 
-class EmailVerificationTests(TestCase):
+class EmailVerificationTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.email = "test@example.com"
@@ -68,7 +68,7 @@ class EmailVerificationTests(TestCase):
         )
         self.assertEqual(len(mail.outbox), send_mail_count_before + 1)
 
-class VerificationCodeTests(TestCase):
+class VerificationCodeTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.email = "test@example.com"
