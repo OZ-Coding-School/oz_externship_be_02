@@ -9,12 +9,12 @@ urlpatterns: List[URLPattern] = [
     path("", views.NotificationListView.as_view(), name="notification-list"),
     # PATCH /api/v1/notifications/<notification_id>
     path(
-        "<int:notification_id>",
+        "/<int:notification_id>",
         views.NotificationUpdateView.as_view(),
         name="notification-update",
     ),
     # POST /api/v1/notifications/read-all
-    path("read-all", views.NotificationReadAllView.as_view(), name="notification-read-all"),
+    path("/read-all", views.NotificationReadAllView.as_view(), name="notification-read-all"),
     # GET /api/v1/notifications/unread-count
-    path("unread-count", views.UnreadCountView.as_view(), name="notification-unread-count"),
+    path("/unread-count", views.UnreadCountView.as_view(), name="notification-unread-count"),
 ]
