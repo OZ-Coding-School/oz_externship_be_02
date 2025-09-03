@@ -1,5 +1,4 @@
 from django.db import models
-
 from apps.core.models.base import UUIDBaseModel
 from apps.lectures.models.categories import Category
 
