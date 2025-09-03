@@ -7,7 +7,9 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
-urlpatterns: list[URLPattern | URLResolver] = []
+urlpatterns: list[URLPattern | URLResolver] = [
+    path("lectures/", include("apps.lectures.urls.urls", namespace="lectures")),
+]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
