@@ -208,3 +208,11 @@ SPECTACULAR_SETTINGS = {
     ],
 }
 APPEND_SLASH = False
+
+# 미디어 파일(사용자가 업로드한 파일)을 위한 설정
+# URL이 /media/로 시작하면, MEDIA_ROOT폴더에 있는 파일을 찾아봐라.
+# 예 : file_url 필드에 recruitment_attachments/my_file,pdf가 저장되어있으면 이 파일에 접근하는 전체 URL은 아래와 같다.
+# http://127.0.0.1:8000/media/recruitment_attachments/my_file.pdf
+MEDIA_URL = "/media/"
+# manage.py 파일이 있는 프로젝트 루트 디렉토리 바로 아래에 media라는 폴더를 만들고, 그곳을 사용자가 올린 파일들의 최상위 저장소로 사용하겠다.
+MEDIA_ROOT = BASE_DIR / "media"

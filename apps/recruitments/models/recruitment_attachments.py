@@ -13,8 +13,10 @@ class RecruitmentAttachment(BaseModel):
         null=False,
         help_text="스터디 공고 ID",
     )
-    file_url = models.URLField(max_length=255, unique=True, help_text="첨부파일 URL")
-    file_name = models.CharField(max_length=50, help_text="원본 파일명")
+    # URLField -> FileField 로 변경, upload_to 경로 지정
+    # FileField를 사용하여 사용자가 업로드한 '파일 자체'를 서버의 지정된 위치에 물리적으로 젖아하는 역할. 파일이 저장될 '지정된 위치'는 setting에서 지정한다.
+    file_url = models.FileField(upload_to="recruitment_attachments/%Y/%m/%d/", help_text="첨부파일")
+    file_name = models.CharField(max_length=100, help_text="원본 파일명")  # 파일명은 별도 저장
 
     class Meta:
         db_table = "recruitment_attachments"
