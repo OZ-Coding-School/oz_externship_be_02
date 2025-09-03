@@ -25,7 +25,7 @@ class RecruitmentDetailView(APIView):
                 }
             ], #첨부파일 이름/이미지url
             "expected_headcount": 4, #예상 모집인원
-            "estimated_fee": 316000, #추정 수수료
+            "estimated_fee": 20000, #추정 수수료
             "lectures": [
                 {
                     "thumbnail_image_url": "http://example.com/lecture_thumbnail.jpg",
