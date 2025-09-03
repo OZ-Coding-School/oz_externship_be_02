@@ -18,12 +18,12 @@ def get_default_close_at() -> datetime:
 # 스터디 구인 공고 정보
 class Recruitment(UUIDBaseModel):
     # StudyGroup.recruitments
-    study_group_id = models.ForeignKey(
+    study_group = models.ForeignKey(
         StudyGroup, on_delete=models.CASCADE, related_name="recruitments", help_text="스터디 그룹 ID"
     )
 
     # User.authored_recruitments
-    author_id = models.ForeignKey(
+    author = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="authored_recruitments", help_text="공고 작성자 ID"
     )
 
@@ -39,12 +39,12 @@ class Recruitment(UUIDBaseModel):
 
     # Recruitment.tags.all()
     # Recruitment.tags.add( , )
-    # 내부적으로 RecruitmentTag 자동생성  # 근데 through 빼야됨
+    # 내부적으로 RecruitmentTag 자동생성하려면, through 빼야됨
     tags = models.ManyToManyField(Tag, through="recruitments.RecruitmentTag", related_name="recruitments")
 
-    # Recruitment.bookmarks.all()
+    # Recruitment.bookmark_users.all()
     # User.bookmarked_recruitments
-    bookmarks = models.ManyToManyField(
+    bookmark_users = models.ManyToManyField(
         User, through="recruitments.RecruitmentBookmark", related_name="bookmarked_recruitments"
     )
 

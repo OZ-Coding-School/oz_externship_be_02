@@ -42,6 +42,7 @@ CUSTOM_APPS = [
     "apps.notifications",
     "apps.chat",
     "apps.recruitments",
+    "apps.applications",
 ]
 
 AUTH_USER_MODEL = "users.User"

@@ -7,10 +7,10 @@ from apps.recruitments.models.tags import Tag
 
 # Recruitment - Tag 다대다 중간 테이블
 class RecruitmentTag(BaseModel):
-    pk = models.CompositePrimaryKey("recruitment_id", "tag_id")
+    pk = models.CompositePrimaryKey("recruitment", "tag")
 
-    recruitment_id = models.ForeignKey(Recruitment, on_delete=models.CASCADE, help_text="공고 ID")
-    tag_id = models.ForeignKey(Tag, on_delete=models.CASCADE, help_text="태그 ID")
+    recruitment = models.ForeignKey(Recruitment, on_delete=models.CASCADE, help_text="공고 ID")
+    tag = models.ForeignKey(Tag, on_delete=models.CASCADE, help_text="태그 ID")
 
     # id = None  # 자동 생성되는 PK 제거
 
@@ -20,4 +20,4 @@ class RecruitmentTag(BaseModel):
         # managed = True
 
     def __str__(self) -> str:
-        return f"{self.recruitment_id.title} - {self.tag_id.name}"
+        return f"{self.recruitment.title} - {self.tag.name}"
