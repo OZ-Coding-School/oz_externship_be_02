@@ -1,5 +1,6 @@
-from django.contrib import path, include
+from django.urls import path
+from apps.recruitments.views.recruitments_views import RecruitmentDetailView
 
 urlpatterns = [
-    path("api/v1/recruitments/", include("apps.recruitments.urls")),
+    path('<int:recruitmentId>/', RecruitmentDetailView.as_view(), name='recruitment-detail'),
 ]
