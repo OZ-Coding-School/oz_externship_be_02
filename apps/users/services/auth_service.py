@@ -33,7 +33,9 @@ class EmailVerificationService:
             return Response({"detail": "입력하신 이메일로 인증번호가 발송되었습니다."}, status=status.HTTP_200_OK)
         except SMTPException:
             cache.delete(email)
-            return Response({"error": "이메일 발송 중 예외가 발생하였습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "이메일 발송 중 예외가 발생하였습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def generate_verification_code(self) -> str:
         return Base62.uuid_encode(u=uuid.uuid4())

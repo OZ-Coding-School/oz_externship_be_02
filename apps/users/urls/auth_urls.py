@@ -1,6 +1,9 @@
 from django.urls import path
 
-from apps.users.views.auth_view import EmailVerifyCodeAPIView, EmailVerificationSendAPIView
+from apps.users.views.auth_view import (
+    EmailVerificationSendAPIView,
+    EmailVerifyCodeAPIView,
+)
 
 urlpatterns = [
     path("auth/email/send-code", EmailVerificationSendAPIView.as_view(), name="send_code_email"),
