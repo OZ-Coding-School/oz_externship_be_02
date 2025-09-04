@@ -1,5 +1,3 @@
-from rest_framework import status
-from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -9,23 +7,22 @@ from apps.users.serializers.email_verification_serializers import (
     EmailVerifyCodeSerializer,
     EmailVerificationRequestSerializer,
 )
-from apps.users.services.auth_service import (
-    verify_user_email,
-)
+from apps.users.services.auth_service import EmailVerificationService
 
 
-class VerificationView(APIView):
+class EmailVerificationSendAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request) -> Response:
+        serializer = EmailVerificationRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return EmailVerificationService().send_verification_email(serializer.validated_data["email"])
+
+
+class EmailVerifyCodeAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
-        serializer = VerificationSerializer(data=request.data)
-        if serializer.is_valid():
-            try:
-                verify_user_email(
-                    serializer.validated_data["email"],
-                    serializer.validated_data["verification_code"],
-                )
-                return Response({"message": "이메일 인증 성공"}, status=status.HTTP_200_OK)
-            except ValidationError as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = EmailVerifyCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return EmailVerificationService().verify_code(**serializer.validated_data)
