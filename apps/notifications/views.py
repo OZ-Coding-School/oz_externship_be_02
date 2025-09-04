@@ -62,8 +62,7 @@ class NotificationUpdateView(APIView):
     특정 알림 읽음 처리
     """
 
-    def patch(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-
+    def post(self, request: Request, notification_id: int, *args: Any, **kwargs: Any) -> Response:
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

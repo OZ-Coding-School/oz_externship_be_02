@@ -7,9 +7,9 @@ from apps.notifications import views
 urlpatterns: List[URLPattern] = [
     # GET /api/v1/notifications
     path("", views.NotificationListView.as_view(), name="notification-list"),
-    # PATCH /api/v1/notifications/<notification_id>
+    # POST /api/v1/notifications/<notification_id>/read
     path(
-        "/<int:notification_id>",
+        "/<int:notification_id>/read",
         views.NotificationUpdateView.as_view(),
         name="notification-update",
     ),
