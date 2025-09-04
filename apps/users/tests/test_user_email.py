@@ -15,22 +15,21 @@ from apps.users.services.auth_service import (
     verify_user_email,
 )
 
+class BaseUserTestCase(APITestCase):
+    def _create_test_user(self, email: str = "test@example.com") -> User:
+        return User.objects.create_user(
+            email=email,
+            password="testpassword",
+            name="테스트유저",
+            nickname="tester",
+            phone_number="01012345678",
+            gender="M",
+            birthday="2000-01-01",
+        )
 
-class EmailVerificationTests(APITestCase):
+class EmailVerificationTests(BaseUserTestCase):
     def setUp(self) -> None:
         self.email = "test@example.com"
-
-    def _create_test_user(self) -> User:
-        return User.objects.create_user(
-                email=self.email,
-                password="testpassword",
-                name="테스트유저",
-                nickname="tester",
-                phone_number="01012345678",
-                gender="M",
-                birthday="2000-01-01",
-            )
-
 
     def test_generate_verification_code(self) -> None:
         verification_code = generate_verification_code(self.email)
@@ -41,7 +40,7 @@ class EmailVerificationTests(APITestCase):
 
     def test_verify_user_email_success(self) -> None:
         verification_code = generate_verification_code(self.email)
-        user =self._create_test_user()
+        user = self._create_test_user()
         verified_user = verify_user_email(self.email, verification_code)
         cache.clear()
         self.assertTrue(verified_user.is_active)
@@ -71,7 +70,7 @@ class EmailVerificationTests(APITestCase):
         self.assertEqual(len(mail.outbox), send_mail_count_before + 1)
 
 
-class VerificationCodeTests(APITestCase):
+class VerificationCodeTests(BaseUserTestCase):
     def setUp(self) -> None:
         self.email = "test@example.com"
         self.verification_code = generate_verification_code(self.email)
