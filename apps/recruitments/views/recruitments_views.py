@@ -10,10 +10,10 @@ from rest_framework.views import APIView
 class RecruitmentDetailView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request: Request, recruitmentId: int) -> Response:
+    def get(self, request: Request, recruitment_id: int) -> Response:
 
         mock_data = {
-            "id": recruitmentId,
+            "id": recruitment_id,
             "uuid": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
             "author": {"id": 1, "nickname": "해파리볶음밥"},
             "title": "Mock API: Mock 깜빡하고 뒤늦게 만든 최재현, 그는 바보인가!?",
