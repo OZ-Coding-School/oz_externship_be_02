@@ -18,6 +18,7 @@ class LectureListView(APIView):
     page_size = 10
 
     @extend_schema(
+        tags=["Lectures"],
         parameters=[
             OpenApiParameter(name="page", description="페이지 번호", required=False, type=OpenApiTypes.INT),
             OpenApiParameter(
