@@ -19,5 +19,5 @@ class LectureSerializer(ModelSerializer[Lecture]):
             "platform",
             "url_link",
             "thumbnail_img_url",
-            "created_at"
+            "created_at",
         )

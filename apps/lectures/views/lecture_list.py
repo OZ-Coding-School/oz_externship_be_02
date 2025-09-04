@@ -1,6 +1,6 @@
 import json
-import redis
 
+import redis
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.serializers.crawled_lecture import LectureSerializer
+
 
 class LectureListView(APIView):
 
@@ -55,44 +56,42 @@ class LectureListView(APIView):
             redis_client.set("lectures:list", json.dumps(lectures))
 
         # Filtering & Sorting
-        lectures = self.filter_lectures(lectures, request)
-        lectures = self.sort_lectures(lectures, request.query_params.get("ordering"))
+        lectures = self.filter_lectures(lectures, request)  # type: ignore
+        lectures = self.sort_lectures(lectures, request.query_params.get("ordering"))  # type: ignore
 
         # Pagination
         page_number = request.query_params.get("page", 1)
-        page_obj, paginator = self.paginate(lectures, self.page_size, page_number)
+        page_obj, paginator = self.paginate(lectures, self.page_size, page_number)  # type: ignore
 
         if not page_obj:
             return Response({"results": [], "next": None, "previous": None})
 
-        return Response({
-            "count": paginator.count,
-            "next": page_obj.next_page_number() if page_obj.has_next() else None,
-            "previous": page_obj.previous_page_number() if page_obj.has_previous() else None,
-            "results": list(page_obj)
-        })
+        return Response(
+            {
+                "count": paginator.count,
+                "next": page_obj.next_page_number() if page_obj.has_next() else None,
+                "previous": page_obj.previous_page_number() if page_obj.has_previous() else None,
+                "results": list(page_obj),
+            }
+        )
 
-###########################
-#### Functionalization ####
-###########################
+    ###########################
+    #### Functionalization ####
+    ###########################
 
-    def filter_lectures(self, lectures, request):
+    def filter_lectures(self, lectures, request):  # type: ignore
         search = request.query_params.get("search")
         if search:
             search = search.lower()
             lectures = [
-                lec for lec in lectures
-                if search in lec["title"].lower() or search in lec["instructor"].lower()
+                lec for lec in lectures if search in lec["title"].lower() or search in lec["instructor"].lower()
             ]
         category = request.query_params.get("category")
         if category:
-            lectures = [
-                lec for lec in lectures
-                if category in lec.get("categories", [])
-            ]
+            lectures = [lec for lec in lectures if category in lec.get("categories", [])]
         return lectures
 
-    def sort_lectures(self, lectures, ordering):
+    def sort_lectures(self, lectures, ordering):  # type: ignore
         if ordering == "price_asc":
             return sorted(lectures, key=lambda lec: lec.get("original_price") or 0)
         elif ordering == "price_desc":
@@ -106,7 +105,7 @@ class LectureListView(APIView):
         else:
             return sorted(lectures, key=lambda lec: lec.get("updated_at") or lec.get("created_at"), reverse=True)
 
-    def paginate(self, queryset, page_size, page_number):
+    def paginate(self, queryset, page_size, page_number):  # type: ignore
         paginator = Paginator(queryset, page_size)
         try:
             page_obj = paginator.page(page_number)
