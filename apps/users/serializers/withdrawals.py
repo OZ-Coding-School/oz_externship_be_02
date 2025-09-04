@@ -6,7 +6,11 @@ from rest_framework import serializers
 
 from apps.users.models.withdrawals import WithdrawalsReasonChoices, Withdrwals
 
+# 사용자 본인 인증 부분(비밀번호 검증)
+class WithdrawalRequestSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
 
+# DB에 기록되는 부분
 class WithdrawalSerializer(serializers.ModelSerializer):
     # 사용자가 탈퇴 이유를 선택할 때, 이미 정의된 값만 고를 수 있도록 제한함(ChoiceField)
     reason = serializers.ChoiceField(choices=WithdrawalsReasonChoices.choices)
