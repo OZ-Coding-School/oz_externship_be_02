@@ -54,3 +54,11 @@ class NotificationViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")  # 204 노컨텐츠이기에 빈 문자열
+
+    def test_all_read(self) -> None:
+        url = reverse("notifications:notification-read-all")
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b"")
+
