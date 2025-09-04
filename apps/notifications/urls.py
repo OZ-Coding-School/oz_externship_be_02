@@ -13,7 +13,7 @@ urlpatterns: List[URLPattern] = [
     path(
         "/<int:notification_id>/read",
         views.NotificationUpdateView.as_view(),
-        name="notification-update",
+        name="notification-read",
     ),
     # POST /api/v1/notifications/read-all
     path("/read-all", views.NotificationReadAllView.as_view(), name="notification-read-all"),

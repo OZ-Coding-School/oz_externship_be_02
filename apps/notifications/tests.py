@@ -49,7 +49,7 @@ class NotificationViewsTests(APITestCase):
             self.assertNotEqual(item["created_at"], "")  # 생성시간이 비어있지는 않는지 확인
 
     def test_one_read(self) -> None:
-        url = reverse("notifications:notification-update", kwargs={"notification_id": 1})
+        url = reverse("notifications:notification-read", kwargs={"notification_id": 1})
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
