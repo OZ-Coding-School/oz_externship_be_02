@@ -1,8 +1,8 @@
 from django.urls import path
 
-from apps.users.views import auth_view
-from apps.users.views.auth_view import VerificationView
+from apps.users.views.auth_view import EmailVerifyCodeAPIView, EmailVerificationSendAPIView
 
 urlpatterns = [
-    path("verify-email", VerificationView.as_view(), name="verify_email"),
+    path("auth/email/send-code", EmailVerificationSendAPIView.as_view(), name="send_code_email"),
+    path("auth/email/verify", EmailVerifyCodeAPIView.as_view(), name="email_verify_code"),
 ]
