@@ -24,7 +24,7 @@ class Base62:
         return "".join(result)
 
     @classmethod
-    def uuid_encode(cls, u: uuid.UUID, length: int =6) -> str:
+    def uuid_encode(cls, u: uuid.UUID, length: int = 6) -> str:
         """
         UUID 객체를 Base62 문자열로 변환
 

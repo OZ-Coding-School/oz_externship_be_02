@@ -5,7 +5,7 @@ from typing import Any
 
 from rest_framework import serializers
 
-from apps.users.models.withdrawals import WithdrawalsReasonChoices, Withdrawals
+from apps.users.models.withdrawals import Withdrawals, WithdrawalsReasonChoices
 
 
 # 사용자 본인 인증 부분(비밀번호 검증)
