@@ -1,7 +1,10 @@
+from typing import cast
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.response import Response
 from rest_framework.test import APIClient
 
 from apps.study_notes.models.study_notes import StudyNote
@@ -12,7 +15,7 @@ User = get_user_model()
 
 
 class TestCode(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.client = APIClient()
         data = create_all_mock_data()
         self.users = data["users"]
@@ -23,7 +26,7 @@ class TestCode(TestCase):
         self.client.force_authenticate(user=self.user)
         self.url = reverse("create-study-note", kwargs={"group_uuid": self.group.uuid})
 
-    def test_create_study_note_success(self):
+    def test_create_study_note_success(self) -> None:
         """
         스터디 노트 생성 성공 테스트
         """
@@ -33,7 +36,7 @@ class TestCode(TestCase):
             "images": ["https://example.com/image1.png"],
             "attachments": [{"file_url": "https://example.com/file1.pdf", "file_name": "file1.pdf"}],
         }
-        response = self.client.post(self.url, payload, format="json")
+        response = cast(Response, self.client.post(self.url, payload, format="json"))
         print("status:", response.status_code)
         print("request.data 전달된 값:", payload)
         print("response.data:", response.data)

@@ -1,6 +1,10 @@
+from uuid import UUID
+
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -10,6 +14,7 @@ from apps.study_notes.services.study_notes_services import StudyNoteService
 
 
 class StudyNoteCreateView(APIView):
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         tags=["StudyNotes"],
@@ -18,7 +23,8 @@ class StudyNoteCreateView(APIView):
         request=StudyNoteSerializer,
         responses=StudyNoteSerializer,
     )
-    def post(self, request, group_uuid):
+    def post(self, request: Request, group_uuid: UUID) -> Response:
+        assert request.user.is_authenticated
         group = get_object_or_404(StudyGroup, uuid=group_uuid)
         serializer = StudyNoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

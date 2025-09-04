@@ -1,3 +1,5 @@
+from typing import Dict
+
 from apps.studies.models import StudyGroup
 from apps.study_notes.models.study_notes import (
     StudyNote,
@@ -9,7 +11,13 @@ from apps.users.models.user import User
 
 class StudyNoteService:
     def create_study_note(
-        self, author: User, study_group: StudyGroup, title: str, content: str, images=None, attachments=None
+        self,
+        author: User,
+        study_group: StudyGroup,
+        title: str,
+        content: str,
+        images: list[str] | None = None,
+        attachments: list[Dict[str, str]] | None = None,
     ) -> StudyNote:
         """
         스터디 노트 생성을 위한 비즈니스 로직을 처리하고, DB에 직접 저장합니다.

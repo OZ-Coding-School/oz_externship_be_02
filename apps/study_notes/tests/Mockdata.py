@@ -1,16 +1,16 @@
 from datetime import date, datetime
+from typing import Any, Dict, List
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from apps.studies.models import GroupMember, StudyGroup
 from apps.study_notes.models import StudyNote, StudyNoteAttachment, StudyNoteImage
-
-User = get_user_model()
+from apps.users.models.user import User
 
 
 # 유저 생성
-def create_mock_users(count=10):
+def create_mock_users(count: int = 10) -> List[User]:
     users = []
     for i in range(count):
         user = User.objects.create_user(
@@ -27,7 +27,7 @@ def create_mock_users(count=10):
 
 
 # 스터디 그룹 생성
-def create_mock_study_groups():
+def create_mock_study_groups() -> List[StudyGroup]:
     group1 = StudyGroup.objects.create(
         name="스터디그룹1",
         introduction="테스트 그룹 1",
@@ -51,7 +51,7 @@ def create_mock_study_groups():
 
 
 # 그룹 맴버 추가
-def add_users_to_groups(users, groups):
+def add_users_to_groups(users: List[User], groups: List[StudyGroup]) -> None:
     for user in users[0:5]:
         GroupMember.objects.create(user=user, study_group=groups[0])
     for user in users[6:9]:
@@ -59,7 +59,7 @@ def add_users_to_groups(users, groups):
 
 
 # 스터디 노트 생성
-def create_mock_notes(users, groups):
+def create_mock_notes(users: List[User], groups: List[StudyGroup]) -> List[StudyNote]:
     notes = []
 
     note1 = StudyNote.objects.create(
@@ -92,7 +92,7 @@ def create_mock_notes(users, groups):
 
 
 # 모든 데이터 생성
-def create_all_mock_data():
+def create_all_mock_data() -> Dict[str, Any]:
     users = create_mock_users()
     groups = create_mock_study_groups()
     add_users_to_groups(users, groups)
