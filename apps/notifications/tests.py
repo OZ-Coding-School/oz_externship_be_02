@@ -1,3 +1,33 @@
-from django.test import TestCase
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
 
-# Create your tests here.
+
+class NotificationViewsTests(APITestCase):
+    def test_list_notifications(self) -> None:
+        url = reverse("notifications:notification-list")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)  # 응답 상태가 200인지
+        self.assertIsInstance(response.data, list)  # 응답 본문이 리스트인지
+        self.assertEqual(len(response.data), 2)  # views 모킹데이터가 2개여서 그 응답이 2개인지 확인
+
+        # 각 모킹응답(dict)에 반드시 있어야 하는 키값들
+        mock_keys = {
+            "notification_id",
+            "content",
+            "type",
+            "is_read",
+            "back_url_link",
+            "created_at",
+        }
+        for item in response.data:
+            # 각 값들의 타입 확인
+            self.assertTrue(mock_keys.issubset(item.keys()))
+            self.assertIsInstance(item["notification_id"], int)
+            self.assertIsInstance(item["content"], str)
+            self.assertIsInstance(item["type"], str)
+            self.assertIsInstance(item["is_read"], bool)
+            self.assertIsInstance(item["back_url_link"], str)
+            self.assertIsInstance(item["created_at"], str)
+            self.assertNotEqual(item["created_at"], "")  # 생성시간이 비어있지는 않는지 확인
