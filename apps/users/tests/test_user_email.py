@@ -1,93 +1,103 @@
-from typing import Any, Dict, List, Union
-
 from django.core import mail
 from django.core.cache import cache
-from django.core.mail import send_mail
 from django.urls import reverse
+from django.test import TestCase
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
-from rest_framework.test import APIClient, APITestCase
-from sentry_sdk.utils import get_error_message
 
-from apps.users.models import User
-from apps.users.services.auth_service import (
-    generate_verification_code,
-    verify_user_email,
-)
+from apps.core.tests.mixins.test_user_mixins import TestUserMixin
+from apps.core.utils.test_clients import RedisTestClient
+from apps.users.services.auth_service import EmailVerificationService
 
 
-class BaseUserTestCase(APITestCase):
-    def _create_test_user(self, email: str = "test@example.com") -> User:
-        return User.objects.create_user(
-            email=email,
-            password="testpassword",
-            name="테스트유저",
-            nickname="tester",
-            phone_number="01012345678",
-            gender="M",
-            birthday="2000-01-01",
-        )
-
-
-class EmailVerificationTests(BaseUserTestCase):
+class EmailVerificationServiceUnitTests(TestCase):
     def setUp(self) -> None:
-        self.email = "test@example.com"
+        self.service = EmailVerificationService()
 
-    def test_generate_verification_code(self) -> None:
-        verification_code = generate_verification_code(self.email)
+    def test_generate_verification_code_func(self) -> None:
+        verification_code = self.service.generate_verification_code()
         self.assertIsNotNone(verification_code)
-        self.assertEqual(len(verification_code), 12)
-        cached_code = cache.get(self.email)
-        self.assertEqual(cached_code, verification_code)
+        self.assertEqual(len(verification_code), 6)
 
-    def test_verify_user_email_success(self) -> None:
-        verification_code = generate_verification_code(self.email)
-        user = self._create_test_user()
-        verified_user = verify_user_email(self.email, verification_code)
-        cache.clear()
-        self.assertTrue(verified_user.is_active)
-        self.assertIsNone(cache.get(self.email))
-
-    def test_verify_user_email_invalid_email(self) -> None:
-        with self.assertRaises(ValidationError) as context:
-            verify_user_email(self.email, "testcode")
-        self.assertEqual(str(context.exception.detail["email"][0]), "존재하지않는 이메일입니다")  # type: ignore
-
-    def test_verify_user_email_invalid_verification_code(self) -> None:
-        verification_code = generate_verification_code(self.email)
-        user = self._create_test_user()
-        with self.assertRaises(ValidationError) as context:
-            verify_user_email(self.email, "testcode")
-        self.assertEqual(str(context.exception.detail["verification_code"][0]), "인증코드가 일치하지않습니다")  # type: ignore
-
-    def test_send_verification_email(self) -> None:
+    def test_send_verification_email_func(self) -> None:
         send_mail_count_before = len(mail.outbox)
-        send_mail(
-            "Subject here",
-            "메세지 발송",
-            "from@example.com",
-            ["to@example.com"],
-            fail_silently=False,
-        )
+        self.service.send_verification_email("test@example.com")
         self.assertEqual(len(mail.outbox), send_mail_count_before + 1)
 
+    def test_verify_code_success_func(self) -> None:\
+        # given
+        email = "test@example.com"
+        verification_code = self.service.generate_verification_code()
+        cache.set(email,verification_code)
 
-class VerificationCodeTests(BaseUserTestCase):
+        # when
+        result = self.service.verify_code(email,verification_code)
+
+        # then
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertEqual(result.data, {"detail": "이메일 인증 성공"})
+        self.assertIsNone(cache.get(email))
+
+    def test_verify_code_failed_func_when_code_is_wrong(self) -> None:\
+        # given
+        email = "test@example.com"
+        verification_code = self.service.generate_verification_code()
+        cache.set(email,verification_code)
+
+        # when
+        result = self.service.verify_code(email, "wrong")
+
+        # then
+        self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(result.data, {"error": "인증번호가 일치하지 않습니다."})
+
+
+class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
     def setUp(self) -> None:
         self.email = "test@example.com"
-        self.verification_code = generate_verification_code(self.email)
-        self.user = self._create_test_user()
-        self.verification_url = reverse("verify_email")
+        self.send_url = reverse('send_code_email')
+        self.verify_url = reverse('email_verify_code')
 
-    def test_verification_view_success(self) -> None:
-        data = {"email": self.email, "verification_code": self.verification_code}
-        response = self.client.post(self.verification_url, data)
+    def test_send_verification_email(self) -> None:
+        # 이메일 인증요청에 사용할 이메일
+        data = {"email": (email := self.email)}
+
+        # 이메일 인증 요청 전송
+        response = self.client.post(self.send_url, data)
+
+        # 응답 상태코드 검증
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["message"], "이메일 인증 성공")
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.is_active)
+        # mail.outbox에서 보낸 이메일의 제목이 전송된 이메일 제목과 같은지 검증
+        self.assertEqual(mail.outbox[0].subject, "회원가입 이메일 인증")
 
-    def test_verification_view_invalid_data(self) -> None:
-        data = {"email": self.email, "verification_code": "wrong_code"}
-        response = self.client.post(self.verification_url, data)
+        # 이메일 발송 시 사용한 인증번호를 캐시로 부터 가져오기
+        verification_code = cache.get(email)
+
+        # 인증번호가 캐시에 올바르게 저장되어 있었는지 검증
+        self.assertIsNotNone(verification_code)
+        # 인증번호가 메일에 올바르게 포함되어 전송되었는지 검증
+        self.assertIn(verification_code, mail.outbox[0].body)
+
+    def test_email_verify_code_sucess(self) -> None:
+        # given
+        # 이메일 인증요청에 사용할 이메일
+        data = {"email": (email := self.email)}
+
+        # 이메일 인증 이메일 전송 요청
+        self.client.post(self.send_url, data)
+        # 이메일 발송 시 사용한 인증번호를 캐시로 부터 가져오기
+        verification_code = cache.get(email)
+
+        response = self.client.post(self.verify_url,{"email": self.email, "code": verification_code})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(cache.get(email))
+
+    def test_email_verify_code_failed(self) -> None:
+        # given
+        # 이메일 인증요청에 사용할 이메일
+        data = {"email": self.email}
+
+        # 이메일 인증 이메일 전송 요청
+        self.client.post(self.send_url, data)
+
+        response = self.client.post(self.verify_url,{"email": self.email, "verification_code": "wrong code"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
