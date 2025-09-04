@@ -28,14 +28,15 @@ class TestCode(TestCase):
         스터디 노트 생성 성공 테스트
         """
         payload = {
-            "title": "테스트입니다",
-            "content": "내용 테스트입니다",
+            "title": "9월 04일 스터디 노트",
+            "content": "오늘은 Django 테스트 케이스 작성법에 대해 공부했습니다.",
+            "images": ["https://example.com/image1.png"],
+            "attachments": [{"file_url": "https://example.com/file1.pdf", "file_name": "file1.pdf"}],
         }
-
         response = self.client.post(self.url, payload, format="json")
         print("status:", response.status_code)
-        print("response.data:", response.data)
         print("request.data 전달된 값:", payload)
+        print("response.data:", response.data)
         # 상태 코드 검증
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
