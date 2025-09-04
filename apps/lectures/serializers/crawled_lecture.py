@@ -1,8 +1,9 @@
-from rest_framework import serializers
+from rest_framework.serializers import ModelSerializer
+
 from apps.lectures.models.crawled_lectures import Lecture
 
 
-class LectureSerializer(serializers.ModelSerializer):
+class LectureSerializer(ModelSerializer[Lecture]):
     class Meta:
         model = Lecture
         fields = (

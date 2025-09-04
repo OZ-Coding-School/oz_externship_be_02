@@ -1,4 +1,5 @@
 from django.db import models
+
 from apps.core.models import BaseModel
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.users.models.user import User
