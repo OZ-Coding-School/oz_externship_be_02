@@ -5,7 +5,7 @@ from typing import Any
 
 from rest_framework import serializers
 
-from apps.users.models.withdrawals import WithdrawalsReasonChoices, Withdrwals
+from apps.users.models.withdrawals import Withdrawals, WithdrawalsReasonChoices
 
 
 # 사용자 본인 인증 부분(비밀번호 검증)
@@ -14,7 +14,7 @@ class WithdrawalRequestSerializer(serializers.Serializer[dict[str, Any]]):
 
 
 # DB에 기록되는 부분
-class WithdrawalSerializer(serializers.ModelSerializer[Withdrwals]):
+class WithdrawalSerializer(serializers.ModelSerializer[Withdrawals]):
     # 사용자가 탈퇴 이유를 선택할 때, 이미 정의된 값만 고를 수 있도록 제한함(ChoiceField)
     reason = serializers.ChoiceField(choices=WithdrawalsReasonChoices.choices)
     # 사용자가 읽기 편하도록 한글 레이블을 제공(get_reason_display)
@@ -22,7 +22,7 @@ class WithdrawalSerializer(serializers.ModelSerializer[Withdrwals]):
 
     # class Meta: 설정 정보를 담는 내부 클래스
     class Meta:
-        model = Withdrwals
+        model = Withdrawals
         fields = ["user", "reason", "reason_display", "reason_detail", "due_date"]
         # 아래는 사용자가 직접 선택하지 않는 부분
         #     user: 현재 로그인한 사용자만 해당
@@ -31,7 +31,7 @@ class WithdrawalSerializer(serializers.ModelSerializer[Withdrwals]):
         read_only_fields = ["user", "reason_display", "due_date"]
 
     # 로그인된 사용자만 탈퇴할 수 있도록 user를 자동으로 할당 - create()를 오버라이드
-    def create(self, validated_data: dict[str, Any]) -> Withdrwals:
+    def create(self, validated_data: dict[str, Any]) -> Withdrawals:
         request = self.context.get("request")
         if request and hasattr(request, "user"):
             validated_data["user"] = request.user
