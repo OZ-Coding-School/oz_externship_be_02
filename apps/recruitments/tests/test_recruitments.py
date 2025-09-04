@@ -3,7 +3,7 @@ from rest_framework.test import APITestCase
 
 
 class RecruitmentDetailViewMockTest(APITestCase):
-    def test_get_recruitment_detail_mock_success(self):
+    def test_get_recruitment_detail_mock_success(self) -> None:
         # GIVEN: 테스트용 recruitmentId와 요청 URL 기초설정
         recruitment_id = 1
         url = f"/api/v1/recruitments/{recruitment_id}/"
