@@ -28,7 +28,6 @@ class StudyNoteCreateView(APIView):
         group = get_object_or_404(StudyGroup, uuid=group_uuid)
         serializer = StudyNoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        print(serializer.errors)  # 테스트 결과에 오류가 있을 경우 출력
 
         # service에서 생성
         study_note = StudyNoteService().create_study_note(

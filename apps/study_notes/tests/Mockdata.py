@@ -1,7 +1,6 @@
 from datetime import date, datetime
 from typing import Any, Dict, List
 
-from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from apps.studies.models import GroupMember, StudyGroup
