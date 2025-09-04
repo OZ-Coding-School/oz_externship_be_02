@@ -67,6 +67,5 @@ class NotificationViewsTests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("unread_count", response.data) # unread_count 키값이 있는지 확인
-        self.assertIsInstance(response.data["unread_count"], int) # unread_count가 int면 통과
-
+        self.assertIn("unread_count", response.data)  # unread_count 키값이 있는지 확인
+        self.assertIsInstance(response.data["unread_count"], int)  # unread_count가 int면 통과
