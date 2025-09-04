@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from rest_framework.relations import StringRelatedField
+
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.models.tags import Tag
+
 
 # 비직관적인 이름 변경과 다대다 관계 처리
 class LectureSerializer(serializers.ModelSerializer[Lecture]):
@@ -41,7 +43,7 @@ class RecruitmentSerializer(serializers.ModelSerializer[Recruitment]):
             "bookmarks_count",
         )
 
-    def get_lectures(self, obj: Recruitment)-> list[object]:
-        lectures=obj.study_group.lectures.all()
+    def get_lectures(self, obj: Recruitment) -> list[object]:
+        lectures = obj.study_group.lectures.all()
         serializer = LectureSerializer(lectures, many=True)
         return list(serializer.data)
