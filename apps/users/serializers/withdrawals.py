@@ -31,7 +31,7 @@ class WithdrawalSerializer(serializers.ModelSerializer[Withdrwals]):
         read_only_fields = ["user", "reason_display", "due_date"]
 
     # 로그인된 사용자만 탈퇴할 수 있도록 user를 자동으로 할당 - create()를 오버라이드
-    def create(self, validated_data: dict[str, Any])  -> Withdrwals:
+    def create(self, validated_data: dict[str, Any]) -> Withdrwals:
         request = self.context.get("request")
         if request and hasattr(request, "user"):
             validated_data["user"] = request.user
