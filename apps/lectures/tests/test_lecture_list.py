@@ -6,20 +6,25 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from apps.lectures.models.crawled_lectures import Lecture
-
+from apps.lectures.models.lecture_categories import LectureCategory
+from apps.lectures.models.categories import Category
+from apps.users.models.user import User
 
 class LectureTestCase(TestCase):
     def setUp(self) -> None:
-        Lecture.objects.all().delete()
 
         # Given
+        self.category_ai = Category.objects.create(name="AI")
+        self.category_web = Category.objects.create(name="웹 개발")
+        self.category_ds = Category.objects.create(name="데이터 사이언스")
+
         self.client = Client()
         self.list_url = reverse("lectures:lecture_list")
         self.lecture1 = Lecture.objects.create(
             id=1,
             uuid=uuid.uuid4(),
-            title="테스트 강의",
-            instructor="코딩 파트너",
+            title="PyTorch를 활용한 AI 모델 학습",
+            instructor="이코딩",
             average_rating=5.00,
             duration=100,
             difficulty="초급",
@@ -34,7 +39,7 @@ class LectureTestCase(TestCase):
         self.lecture2 = Lecture.objects.create(
             id=2,
             uuid=uuid.uuid4(),
-            title="테스s트 강의2",
+            title="Django로 웹 서비스 만들기",
             instructor="코딩 파트너2",
             average_rating=4.00,
             duration=80,
@@ -47,6 +52,11 @@ class LectureTestCase(TestCase):
             thumbnail_img_url="http://example.com/img2.jpg",
             updated_at="2025-09-04T14:27:49.615546+09:00",
         )
+
+        LectureCategory.objects.create(lecture=self.lecture1, category=self.category_ai)
+        LectureCategory.objects.create(lecture=self.lecture1, category=self.category_ds)
+        LectureCategory.objects.create(lecture=self.lecture2, category=self.category_ds)
+        LectureCategory.objects.create(lecture=self.lecture2, category=self.category_web)
 
     def test_lecture_list_api(self) -> None:
         # When
@@ -65,22 +75,22 @@ class LectureTestCase(TestCase):
         lecture1_data = next((item for item in results if item["title"] == self.lecture1.title), None)
         self.assertIsNotNone(lecture1_data)
         if lecture1_data is not None:
-            self.assertEqual(lecture1_data["instructor"], self.lecture2.instructor)
+            self.assertEqual(lecture1_data["instructor"], self.lecture1.instructor)
         lecture2_data = next((item for item in results if item["title"] == self.lecture2.title), None)
         self.assertIsNotNone(lecture2_data)
         if lecture2_data is not None:
             self.assertEqual(lecture2_data["instructor"], self.lecture2.instructor)
 
-    def test_search_by_title(self) -> None:
+    def test_search_by_instructor(self) -> None:
         # When
-        response = self.client.get(self.list_url, {"search": "테스트"})
+        response = self.client.get(self.list_url, {"search": "이코딩"})
 
         # Then
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
 
         self.assertEqual(len(response_data["results"]), 1)  # 길이 대조
-        self.assertEqual(response_data["results"][0]["title"], "테스트 강의")  # 제목 대조
+        self.assertEqual(response_data["results"][0]["title"], "PyTorch를 활용한 AI 모델 학습")  # 제목 대조
 
     def test_lecture_list_ordering_by_updated_at(self) -> None:
         # When
@@ -117,3 +127,26 @@ class LectureTestCase(TestCase):
 
         self.assertEqual(results[0]["title"], self.lecture1.title)
         self.assertEqual(results[1]["title"], self.lecture2.title)
+
+    def test_lecture_to_categories(self):
+        expected_mapping = {
+            self.lecture1.title: {"AI", "데이터 사이언스"},
+            self.lecture2.title: {"웹 개발", "데이터 사이언스"},
+        }
+        for lecture in [self.lecture1, self.lecture2]:
+            category_names = set(lecture.lecturecategory_set.all().values_list("category__name", flat=True))
+            self.assertSetEqual(category_names, expected_mapping[lecture.title])
+
+    def test_category_to_lectures(self):
+        expected_mapping = {
+            "AI": {"PyTorch를 활용한 AI 모델 학습"},
+            "데이터 사이언스": {"PyTorch를 활용한 AI 모델 학습", "Django로 웹 서비스 만들기"},
+            "웹 개발": {"Django로 웹 서비스 만들기"},
+        }
+        for category in [self.category_ai, self.category_ds, self.category_web]:
+            lecture_titles = set(category.lecturecategory_set.all().values_list("lecture__title", flat=True))
+            self.assertSetEqual(lecture_titles, expected_mapping[category.name])
+
+    def test_lecture2_no_wrong_categories(self):
+        category_names = self.lecture2.lecturecategory_set.all().values_list("category__name", flat=True)
+        self.assertNotIn("AI", category_names)
