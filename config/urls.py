@@ -8,8 +8,12 @@ from drf_spectacular.views import (
 )
 
 urlpatterns: list[URLPattern | URLResolver] = [
+<<<<<<< HEAD
     path("api/v1/studies/", include("apps.study_notes.urls.study_notes_url")),
     path("api/v1/notifications", include("apps.notifications.urls")),
+=======
+    path("api/v1/studies/", include("apps.study_notes.urls")),
+>>>>>>> 1122e0a (♻️ refactor : 리팩터링 (스터디 기록 작성 url 파일 추적 설정 변경))
 ]
 
 if settings.DEBUG:
