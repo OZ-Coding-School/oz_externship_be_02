@@ -130,6 +130,11 @@ class LectureTestCase(TestCase):
         self.assertEqual(results[1]["title"], self.lecture2.title)
 
     def test_lecture_to_categories(self) -> None:
+        # When
+        response = self.client.get(self.list_url)
+
+        # Then
+        self.assertEqual(response.status_code, 200)
         expected_mapping = {
             self.lecture1.title: {"AI", "데이터 사이언스"},
             self.lecture2.title: {"웹 개발", "데이터 사이언스"},
@@ -139,6 +144,11 @@ class LectureTestCase(TestCase):
             self.assertSetEqual(category_names, expected_mapping[lecture.title])
 
     def test_category_to_lectures(self) -> None:
+        # When
+        response = self.client.get(self.list_url)
+
+        # Then
+        self.assertEqual(response.status_code, 200)
         expected_mapping = {
             "AI": {"PyTorch를 활용한 AI 모델 학습"},
             "데이터 사이언스": {"PyTorch를 활용한 AI 모델 학습", "Django로 웹 서비스 만들기"},
@@ -149,5 +159,10 @@ class LectureTestCase(TestCase):
             self.assertSetEqual(lecture_titles, expected_mapping[category.name])
 
     def test_lecture2_no_wrong_categories(self) -> None:
+        # When
+        response = self.client.get(self.list_url)
+
+        # Then
+        self.assertEqual(response.status_code, 200)
         category_names = self.lecture2.lecturecategory_set.all().values_list("category__name", flat=True)
         self.assertNotIn("AI", category_names)
