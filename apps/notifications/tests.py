@@ -1,9 +1,25 @@
+from datetime import date
+
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 
 class NotificationViewsTests(APITestCase):
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email="umdong@oz.com",
+            password="1q2w3e4r!",
+            nickname="umdong",
+            name="meoyong",
+            phone_number="0123456789",
+            gender="male",
+            birthday=date(1996, 6, 23),
+        )
+        self.client.force_authenticate(user=self.user)
+
     def test_list_notifications(self) -> None:
         url = reverse("notifications:notification-list")
         response = self.client.get(url)
@@ -31,3 +47,10 @@ class NotificationViewsTests(APITestCase):
             self.assertIsInstance(item["back_url_link"], str)
             self.assertIsInstance(item["created_at"], str)
             self.assertNotEqual(item["created_at"], "")  # 생성시간이 비어있지는 않는지 확인
+
+    def test_one_read(self) -> None:
+        url = reverse("notifications:notification-update", kwargs={"notification_id": 1})
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.content, b"")  # 204 노컨텐츠이기에 빈 문자열
