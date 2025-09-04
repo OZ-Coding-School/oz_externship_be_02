@@ -5,10 +5,11 @@ from unittest.mock import patch
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from apps.lectures.models.categories import Category
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.models.lecture_categories import LectureCategory
-from apps.lectures.models.categories import Category
 from apps.users.models.user import User
+
 
 class LectureTestCase(TestCase):
     def setUp(self) -> None:
@@ -128,7 +129,7 @@ class LectureTestCase(TestCase):
         self.assertEqual(results[0]["title"], self.lecture1.title)
         self.assertEqual(results[1]["title"], self.lecture2.title)
 
-    def test_lecture_to_categories(self):
+    def test_lecture_to_categories(self) -> None:
         expected_mapping = {
             self.lecture1.title: {"AI", "데이터 사이언스"},
             self.lecture2.title: {"웹 개발", "데이터 사이언스"},
@@ -137,7 +138,7 @@ class LectureTestCase(TestCase):
             category_names = set(lecture.lecturecategory_set.all().values_list("category__name", flat=True))
             self.assertSetEqual(category_names, expected_mapping[lecture.title])
 
-    def test_category_to_lectures(self):
+    def test_category_to_lectures(self) -> None:
         expected_mapping = {
             "AI": {"PyTorch를 활용한 AI 모델 학습"},
             "데이터 사이언스": {"PyTorch를 활용한 AI 모델 학습", "Django로 웹 서비스 만들기"},
@@ -147,6 +148,6 @@ class LectureTestCase(TestCase):
             lecture_titles = set(category.lecturecategory_set.all().values_list("lecture__title", flat=True))
             self.assertSetEqual(lecture_titles, expected_mapping[category.name])
 
-    def test_lecture2_no_wrong_categories(self):
+    def test_lecture2_no_wrong_categories(self) -> None:
         category_names = self.lecture2.lecturecategory_set.all().values_list("category__name", flat=True)
         self.assertNotIn("AI", category_names)
