@@ -30,6 +30,7 @@ class WithdrawalSerializer(serializers.ModelSerializer[Withdrawals]):
         #     due_date: 서버에서 자동 계산
         read_only_fields = ["user", "reason_display", "due_date"]
 
+    # 여기 나중에 수정해야 함
     # 로그인된 사용자만 탈퇴할 수 있도록 user를 자동으로 할당 - create()를 오버라이드
     def create(self, validated_data: dict[str, Any]) -> Withdrawals:
         request = self.context.get("request")
