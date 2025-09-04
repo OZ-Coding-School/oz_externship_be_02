@@ -18,8 +18,19 @@ from apps.users.services.auth_service import (
 
 class EmailVerificationTests(APITestCase):
     def setUp(self) -> None:
-        self.client = APIClient()
         self.email = "test@example.com"
+
+    def _create_test_user(self) -> User:
+        return User.objects.create_user(
+                email=self.email,
+                password="testpassword",
+                name="테스트유저",
+                nickname="tester",
+                phone_number="01012345678",
+                gender="M",
+                birthday="2000-01-01",
+            )
+
 
     def test_generate_verification_code(self) -> None:
         verification_code = generate_verification_code(self.email)
@@ -30,15 +41,7 @@ class EmailVerificationTests(APITestCase):
 
     def test_verify_user_email_success(self) -> None:
         verification_code = generate_verification_code(self.email)
-        user = User.objects.create_user(
-            email=self.email,
-            password="testpassword",
-            name="테스트유저",
-            nickname="tester",
-            phone_number="01012345678",
-            gender="M",
-            birthday="2000-01-01",
-        )
+        user =self._create_test_user()
         verified_user = verify_user_email(self.email, verification_code)
         cache.clear()
         self.assertTrue(verified_user.is_active)
@@ -51,15 +54,7 @@ class EmailVerificationTests(APITestCase):
 
     def test_verify_user_email_invalid_verification_code(self) -> None:
         verification_code = generate_verification_code(self.email)
-        user = User.objects.create_user(
-            email=self.email,
-            password="testpassword",
-            name="테스트유저",
-            nickname="tester",
-            phone_number="01012345678",
-            gender="M",
-            birthday="2000-01-01",
-        )
+        user = self._create_test_user()
         with self.assertRaises(ValidationError) as context:
             verify_user_email(self.email, "testcode")
         self.assertEqual(str(context.exception.detail["verification_code"][0]), "인증코드가 일치하지않습니다")  # type: ignore
@@ -78,18 +73,9 @@ class EmailVerificationTests(APITestCase):
 
 class VerificationCodeTests(APITestCase):
     def setUp(self) -> None:
-        self.client = APIClient()
         self.email = "test@example.com"
         self.verification_code = generate_verification_code(self.email)
-        self.user = User.objects.create_user(
-            email=self.email,
-            password="testpassword",
-            name="테스트유저",
-            nickname="tester",
-            phone_number="01012345678",
-            gender="M",
-            birthday="2000-01-01",
-        )
+        self.user = self._create_test_user()
         self.verification_url = reverse("verify_email")
 
     def test_verification_view_success(self) -> None:
