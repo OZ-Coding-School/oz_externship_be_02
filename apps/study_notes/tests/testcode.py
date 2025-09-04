@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.study_notes.models.study_notes import StudyNote
+
 from .Mockdata import create_all_mock_data
 
 User = get_user_model()
