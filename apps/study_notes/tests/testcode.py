@@ -38,18 +38,16 @@ class TestCode(TestCase):
         }
         response = cast(Response, self.client.post(self.url, payload, format="json"))
         print("status:", response.status_code)
-        print("request.data 전달된 값:", payload)
         print("response.data:", response.data)
         # 상태 코드 검증
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # 응답 데이터 검증
-        self.assertEqual(response.data["title"], payload["title"])
-        self.assertEqual(response.data["content"], payload["content"])
-        self.assertEqual(response.data["ai_summary"], "AI 요약은 추후 자동 생성됩니다.")
+        # 응답 데이터 검증 - title 관련 에러 메시지 존재
+        self.assertIn("title", response.data)
+        self.assertEqual(response.data["title"][0].code, "blank")
 
         # DB 데이터 검증
-        self.assertTrue(StudyNote.objects.filter(title=payload["title"]).exists())
+        self.assertFalse(StudyNote.objects.filter(content=payload["content"]).exists())
 
     def test_create_study_note_success(self) -> None:
         """
