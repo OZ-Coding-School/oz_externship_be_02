@@ -9,10 +9,10 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
     """
 
     # 여러 이미지가 들어올 수 있기 떄문에 ListField로 받음
-    images = serializers.ListField(child=serializers.URLField(), write_only=True, required=False)
+    images = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False)
     # 여러 첨부파일은 파일 이름도 같이 들어오기 때문에 DictField로 받음
     attachments = serializers.ListField(
-        child=serializers.DictField(child=serializers.CharField()), write_only=True, required=False
+        child=serializers.ListField(child=serializers.FileField()), write_only=True, required=False
     )
 
     class Meta:
