@@ -4,6 +4,8 @@ from django.urls import URLPattern, path
 
 from apps.notifications import views
 
+app_name = "notifications"
+
 urlpatterns: List[URLPattern] = [
     # GET /api/v1/notifications
     path("", views.NotificationListView.as_view(), name="notification-list"),

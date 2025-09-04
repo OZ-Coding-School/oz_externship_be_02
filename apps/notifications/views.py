@@ -46,6 +46,10 @@ class NotificationListView(APIView):
                 "created_at": datetime.datetime.now() - datetime.timedelta(days=2),
             },
         ]
+        # 직렬화 없이 반환하므로 수동 변환
+        for n in mock_notifications:
+            if isinstance(n["created_at"], datetime.datetime):  # datetime 타입검사
+                n["created_at"] = n["created_at"].isoformat()
         # Mock API 단계에서는 Serializer를 통과시키지 않고 직접 반환
         return Response(mock_notifications)
 
