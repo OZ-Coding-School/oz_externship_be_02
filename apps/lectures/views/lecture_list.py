@@ -1,5 +1,7 @@
+import json
+import redis
+
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.db.models import Q
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.request import Request
@@ -9,15 +11,11 @@ from rest_framework.views import APIView
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.serializers.crawled_lecture import LectureSerializer
 
-
 class LectureListView(APIView):
-    # 레디스 있는지 없는지 부터 검사
-    # 있으면 레디스에서 없으면 디비에서
+
     serializer_class = LectureSerializer
-    pagination_class = Paginator
     page_size = 10
 
-    # Parameter In SwaggerUI
     @extend_schema(
         parameters=[
             OpenApiParameter(name="page", description="페이지 번호", required=False, type=OpenApiTypes.INT),
@@ -38,47 +36,82 @@ class LectureListView(APIView):
         description="무한 스크롤, 검색, 필터링, 정렬 기능을 지원하는 강의 목록 API",
     )
     def get(self, request: Request) -> Response:
+        try:
+            redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
+            cached_lectures = redis_client.get("lectures:list")
+        except redis.exceptions.ConnectionError:
+            return Response({"detail": "Redis connection error"}, status=500)
 
-        # Sorting
-        lectures = Lecture.objects.all().order_by("-created_at")  # Default
+        if cached_lectures:
+            try:
+                lectures = json.loads(cached_lectures)
+            except json.JSONDecodeError:
+                return Response({"detail": "Invalid cached data"}, status=500)
+        else:
+            # 🔥 캐시 없을 경우 DB에서 불러오기
+            queryset = Lecture.objects.all()
+            serializer = self.serializer_class(queryset, many=True)
+            lectures = serializer.data
+            redis_client.set("lectures:list", json.dumps(lectures))
 
-        search_query = request.query_params.get("search", None)
-        if search_query:
-            lectures = lectures.filter(Q(title__icontains=search_query) | Q(instructor__icontains=search_query))
-        category_name = request.query_params.get("category", None)
-        if category_name:
-            lectures = lectures.filter(categories__name=category_name)
-        ordering_query = request.query_params.get("ordering", None)
-        if ordering_query:
-            if ordering_query == "price_asc":
-                lectures = lectures.order_by("original_price")
-            elif ordering_query == "price_desc":
-                lectures = lectures.order_by("-original_price")
-            elif ordering_query == "rating_asc":
-                lectures = lectures.order_by("average_rating")
-            elif ordering_query == "rating_desc":
-                lectures = lectures.order_by("-average_rating")
-            elif ordering_query == "oldest":
-                lectures = lectures.order_by("created_at")
+        # Filtering & Sorting
+        lectures = self.filter_lectures(lectures, request)
+        lectures = self.sort_lectures(lectures, request.query_params.get("ordering"))
 
-        # PageNation
-        paginator = self.pagination_class(lectures, self.page_size)
+        # Pagination
         page_number = request.query_params.get("page", 1)
+        page_obj, paginator = self.paginate(lectures, self.page_size, page_number)
+
+        if not page_obj:
+            return Response({"results": [], "next": None, "previous": None})
+
+        return Response({
+            "count": paginator.count,
+            "next": page_obj.next_page_number() if page_obj.has_next() else None,
+            "previous": page_obj.previous_page_number() if page_obj.has_previous() else None,
+            "results": list(page_obj)
+        })
+
+###########################
+#### Functionalization ####
+###########################
+
+    def filter_lectures(self, lectures, request):
+        search = request.query_params.get("search")
+        if search:
+            search = search.lower()
+            lectures = [
+                lec for lec in lectures
+                if search in lec["title"].lower() or search in lec["instructor"].lower()
+            ]
+        category = request.query_params.get("category")
+        if category:
+            lectures = [
+                lec for lec in lectures
+                if category in lec.get("categories", [])
+            ]
+        return lectures
+
+    def sort_lectures(self, lectures, ordering):
+        if ordering == "price_asc":
+            return sorted(lectures, key=lambda lec: lec.get("original_price") or 0)
+        elif ordering == "price_desc":
+            return sorted(lectures, key=lambda lec: lec.get("original_price") or 0, reverse=True)
+        elif ordering == "rating_asc":
+            return sorted(lectures, key=lambda lec: lec.get("average_rating") or 0)
+        elif ordering == "rating_desc":
+            return sorted(lectures, key=lambda lec: lec.get("average_rating") or 0, reverse=True)
+        elif ordering == "oldest":
+            return sorted(lectures, key=lambda lec: lec.get("updated_at") or "")
+        else:
+            return sorted(lectures, key=lambda lec: lec.get("updated_at") or lec.get("created_at"), reverse=True)
+
+    def paginate(self, queryset, page_size, page_number):
+        paginator = Paginator(queryset, page_size)
         try:
             page_obj = paginator.page(page_number)
         except PageNotAnInteger:
             page_obj = paginator.page(1)
         except EmptyPage:
-            return Response({"results": [], "next": None, "previous": None})
-
-        # Results
-        serializer = self.serializer_class(page_obj, many=True)
-
-        return Response(
-            {
-                "count": paginator.count,
-                "next": page_obj.next_page_number() if page_obj.has_next() else None,
-                "previous": page_obj.previous_page_number() if page_obj.has_previous() else None,
-                "results": serializer.data,
-            }
-        )
+            return None, paginator
+        return page_obj, paginator
