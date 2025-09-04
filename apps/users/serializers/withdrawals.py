@@ -6,9 +6,11 @@ from rest_framework import serializers
 
 from apps.users.models.withdrawals import WithdrawalsReasonChoices, Withdrwals
 
+
 # 사용자 본인 인증 부분(비밀번호 검증)
 class WithdrawalRequestSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
 
 # DB에 기록되는 부분
 class WithdrawalSerializer(serializers.ModelSerializer):
