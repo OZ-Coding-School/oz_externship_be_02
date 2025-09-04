@@ -5,8 +5,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.serializers.user_serializer import (
-    VerificationSerializer,
+from apps.users.serializers.email_verification_serializers import (
+    EmailVerifyCodeSerializer,
+    EmailVerificationRequestSerializer,
 )
 from apps.users.services.auth_service import (
     verify_user_email,
