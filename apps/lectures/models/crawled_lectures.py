@@ -1,4 +1,5 @@
 from django.db import models
+
 from apps.core.models.base import UUIDBaseModel
 from apps.lectures.models.categories import Category
 
@@ -8,9 +9,11 @@ class DifficultyChoices(models.TextChoices):
     NORMAL = "normal", "보통"
     HARD = "hard", "어려움"
 
+
 class PlatformChoices(models.TextChoices):
     UDEMY = "udemy", "유데미"
     INFLEARN = "inflearn", "인프런"
+
 
 class Lecture(UUIDBaseModel):
     title = models.CharField(max_length=255, null=False, blank=False)
