@@ -21,7 +21,7 @@ class TestCode(TestCase):
         self.user = self.users[0]
         self.group = self.groups[0]
         self.client.force_authenticate(user=self.user)
-        self.url = reverse("study-note-list", kwargs={"group_uuid": self.group.uuid})
+        self.url = reverse("create-study-note", kwargs={"group_uuid": self.group.uuid})
 
     def test_create_study_note_success(self):
         """
@@ -29,7 +29,7 @@ class TestCode(TestCase):
         """
         payload = {
             "title": "9월 04일 스터디 노트",
-            "content": "오늘은 Django 테스트 케이스 작성법에 대해 공부했습니다.",
+            "content": "오늘은 TDD 작성법에 대해 공부했습니다.",
             "images": ["https://example.com/image1.png"],
             "attachments": [{"file_url": "https://example.com/file1.pdf", "file_name": "file1.pdf"}],
         }
