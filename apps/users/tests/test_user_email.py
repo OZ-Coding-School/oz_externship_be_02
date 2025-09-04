@@ -15,6 +15,7 @@ from apps.users.services.auth_service import (
     verify_user_email,
 )
 
+
 class BaseUserTestCase(APITestCase):
     def _create_test_user(self, email: str = "test@example.com") -> User:
         return User.objects.create_user(
@@ -26,6 +27,7 @@ class BaseUserTestCase(APITestCase):
             gender="M",
             birthday="2000-01-01",
         )
+
 
 class EmailVerificationTests(BaseUserTestCase):
     def setUp(self) -> None:
