@@ -1,5 +1,4 @@
 # apps/users/serializers/withdrawals.py
-# 1순위
 
 from datetime import date, timedelta
 from typing import Any

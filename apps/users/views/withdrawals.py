@@ -1,5 +1,4 @@
 # apps/users/views/withdrawals.py
-# 3순위
 
 from datetime import date, timedelta
 
