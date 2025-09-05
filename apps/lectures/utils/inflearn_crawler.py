@@ -7,8 +7,12 @@ import time
 from typing import Any
 
 import requests
+from django.conf import settings
 
-logger = logging.getLogger(__name__)
+if not settings.DEBUG:
+    logger = logging.getLogger("django")
+else:
+    logger = logging.getLogger("django.server")
 
 
 def fetch_reviews(course_id: int) -> list[dict[str, Any]]:
