@@ -1,3 +1,12 @@
+import os
+import sys
+import django
+
+# Django 환경을 설정하는 코드를 추가하여, 스크립트가 단독으로 실행될 때도 Django의 설정(settings)을 정상적으로 불러올 수있도록 수정
+sys.path.append('/Users/jeongseong-un/Documents/GitHub/oz_externship_be_02')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
+django.setup()
+
 # 인프런의 강의 정보 및 리뷰를 크롤링하기 위한 스크립트
 # fetch_reviews 함수는 특정 강의의 리뷰를, crawl_inflearn_courses 함수는 모든 강의 정보를 가져옴.
 # 스크립트 실행 시 inflearn_courses.json 파일로 결과가 저장됨.
