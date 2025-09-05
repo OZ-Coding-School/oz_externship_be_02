@@ -1,9 +1,10 @@
 import os
 import sys
+
 import django
 
 # Django 환경을 설정하는 코드를 추가하여, 스크립트가 단독으로 실행될 때도 Django의 설정(settings)을 정상적으로 불러올 수있도록 수정
-sys.path.append('/Users/jeongseong-un/Documents/GitHub/oz_externship_be_02')
+sys.path.append("/Users/jeongseong-un/Documents/GitHub/oz_externship_be_02")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 django.setup()
 
