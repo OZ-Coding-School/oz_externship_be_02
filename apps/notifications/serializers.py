@@ -1,3 +1,6 @@
+import datetime
+from typing import Any, TypedDict
+
 from rest_framework import serializers
 from rest_framework.serializers import Serializer
 
@@ -28,9 +31,26 @@ class NotificationUpdateSerializer(serializers.ModelSerializer[Notification]):
         extra_kwargs = {"is_read": {"required": True}}
 
 
-class UnreadCountSerializer(Serializer["UnreadCountSerializer"]):
+class UnreadCountOut(TypedDict):
+    unread_count: int
+
+
+class UnreadCountSerializer(serializers.Serializer[UnreadCountOut]):
     """
     읽지 않은 알림 수 조회를 위한 Serializer
     """
 
     unread_count = serializers.IntegerField()
+
+
+class NotificationListSerializer(serializers.Serializer[Any]):
+    """
+    모킹 전용 Serializer
+    """
+
+    notification_id = serializers.IntegerField()
+    content = serializers.CharField()
+    type = serializers.CharField()
+    is_read = serializers.BooleanField()
+    back_url_link = serializers.CharField()
+    created_at = serializers.DateTimeField()

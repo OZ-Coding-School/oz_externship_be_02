@@ -4,14 +4,16 @@ from django.urls import URLPattern, path
 
 from apps.notifications import views
 
+app_name = "notifications"
+
 urlpatterns: List[URLPattern] = [
     # GET /api/v1/notifications
     path("", views.NotificationListView.as_view(), name="notification-list"),
-    # PATCH /api/v1/notifications/<notification_id>
+    # POST /api/v1/notifications/<notification_id>/read
     path(
-        "/<int:notification_id>",
+        "/<int:notification_id>/read",
         views.NotificationUpdateView.as_view(),
-        name="notification-update",
+        name="notification-read",
     ),
     # POST /api/v1/notifications/read-all
     path("/read-all", views.NotificationReadAllView.as_view(), name="notification-read-all"),
