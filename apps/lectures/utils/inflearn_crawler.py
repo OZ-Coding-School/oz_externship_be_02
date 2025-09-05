@@ -2,11 +2,13 @@
 # fetch_reviews 함수는 특정 강의의 리뷰를, crawl_inflearn_courses 함수는 모든 강의 정보를 가져옴.
 # 스크립트 실행 시 inflearn_courses.json 파일로 결과가 저장됨.
 import json
+import logging
 import time
 from typing import Any
 
 import requests
 
+logger = logging.getLogger(__name__)
 
 def fetch_reviews(course_id: int) -> list[dict[str, Any]]:
     """
@@ -83,12 +85,12 @@ def crawl_inflearn_courses() -> list[dict[str, Any]]:
         response.raise_for_status()
         data = response.json()
         total_page = data.get("data", {}).get("totalPage", 1)
-        print(f"전체 페이지 수: {total_page}, 페이지 당 강의 수: {page_size}")
+        logger.info(f"전체 페이지 수: {total_page}, 페이지 당 강의 수: {page_size}")
 
         # 전체 페이지를 순회하며 강의 정보 크롤링
         for page_num in range(1, total_page + 1):
             params["pageNumber"] = page_num
-            print(f"{page_num} / {total_page} 페이지를 크롤링 중...")
+            logger.info(f"{page_num} / {total_page} 페이지를 크롤링 중...")
             response = requests.get(base_url, params=params)
             response.raise_for_status()
             page_data = response.json()
@@ -134,10 +136,10 @@ def crawl_inflearn_courses() -> list[dict[str, Any]]:
         return all_processed_courses
 
     except requests.exceptions.RequestException as e:
-        print(f"API 요청 중 오류가 발생했습니다: {e}")
+        logger.error(f"API 요청 중 오류가 발생했습니다: {e}")
         return []
     except (json.JSONDecodeError, KeyError) as e:
-        print(f"API 응답을 파싱하는 데 실패했습니다: {e}")
+        logger.error(f"API 응답을 파싱하는 데 실패했습니다: {e}")
         return []
 
 
@@ -145,8 +147,8 @@ def crawl_inflearn_courses() -> list[dict[str, Any]]:
 if __name__ == "__main__":
     crawled_data = crawl_inflearn_courses()
     if crawled_data:
-        print(f"총 {len(crawled_data)}개의 강의 정보를 가져왔습니다.")
+        logger.info(f"총 {len(crawled_data)}개의 강의 정보를 가져왔습니다.")
         # 크롤링된 데이터를 JSON 파일로 저장
         with open("inflearn_courses.json", "w", encoding="utf-8") as f:
             json.dump(crawled_data, f, indent=4, ensure_ascii=False)
-        print("결과가 inflearn_courses.json 파일로 저장되었습니다.")
+        logger.info("결과가 inflearn_courses.json 파일로 저장되었습니다.")
