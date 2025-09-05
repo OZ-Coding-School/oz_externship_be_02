@@ -1,12 +1,12 @@
-import uuid
 import json
-import fakeredis
-from typing import cast
+import uuid
+from typing import cast, Dict, Set
 from unittest.mock import patch
 
+import fakeredis
+from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from django.core.cache import cache
 
 from apps.lectures.models.categories import Category
 from apps.lectures.models.crawled_lectures import Lecture
@@ -24,7 +24,7 @@ from apps.users.models.user import User
     }
 )
 class LectureTestCase(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         # Given
         cache.clear()
         self.client = Client()
@@ -70,23 +70,25 @@ class LectureTestCase(TestCase):
         LectureCategory.objects.create(lecture=self.lecture2, category=self.category_ds)
         LectureCategory.objects.create(lecture=self.lecture2, category=self.category_web)
 
-    def prepare_data_for_redis(self):
+    def prepare_data_for_redis(self) -> None:
         # Given
         lectures = Lecture.objects.all().order_by("-updated_at")
         data_to_cache = []
         for lecture in lectures:
             categories = [{"name": lc.category.name} for lc in lecture.lecturecategory_set.all()]
-            data_to_cache.append({
-                "id": lecture.id,
-                "title": lecture.title,
-                "instructor": lecture.instructor,
-                "average_rating": float(lecture.average_rating),
-                "original_price": lecture.original_price,
-                "categories": categories,
-            })
+            data_to_cache.append(
+                {
+                    "id": lecture.id,
+                    "title": lecture.title,
+                    "instructor": lecture.instructor,
+                    "average_rating": float(lecture.average_rating),
+                    "original_price": lecture.original_price,
+                    "categories": categories,
+                }
+            )
         cache.set("lectures:list", json.dumps(data_to_cache), timeout=600)
 
-    def test_lecture_list_from_redis(self):
+    def test_lecture_list_from_redis(self) -> None:
 
         self.prepare_data_for_redis()
         cached_data = cache.get("lectures:list")
@@ -103,7 +105,7 @@ class LectureTestCase(TestCase):
             if r["title"] == self.lecture2.title:
                 self.assertEqual(r["instructor"], self.lecture2.instructor)
 
-    def test_search_by_instructor_in_redis(self):
+    def test_search_by_instructor_in_redis(self) -> None:
         # When
         self.prepare_data_for_redis()
         cached_data = json.loads(cache.get("lectures:list"))
@@ -112,7 +114,7 @@ class LectureTestCase(TestCase):
         self.assertEqual(len(filtered), 1)
         self.assertEqual(filtered[0]["title"], self.lecture1.title)
 
-    def test_ordering_by_updated_at(self):
+    def test_ordering_by_updated_at(self) -> None:
         # When
         self.prepare_data_for_redis()
         cached_data = json.loads(cache.get("lectures:list"))
@@ -121,7 +123,7 @@ class LectureTestCase(TestCase):
         self.assertEqual(sorted_by_updated[0]["title"], self.lecture2.title)
         self.assertEqual(sorted_by_updated[1]["title"], self.lecture1.title)
 
-    def test_ordering_by_price(self):
+    def test_ordering_by_price(self) -> None:
         # When
         self.prepare_data_for_redis()
         cached_data = json.loads(cache.get("lectures:list"))
@@ -130,7 +132,7 @@ class LectureTestCase(TestCase):
         self.assertEqual(sorted_by_price[0]["title"], self.lecture2.title)
         self.assertEqual(sorted_by_price[1]["title"], self.lecture1.title)
 
-    def test_ordering_by_rating(self):
+    def test_ordering_by_rating(self) -> None:
         # When
         self.prepare_data_for_redis()
         cached_data = json.loads(cache.get("lectures:list"))
@@ -139,7 +141,7 @@ class LectureTestCase(TestCase):
         self.assertEqual(sorted_by_rating[0]["title"], self.lecture1.title)
         self.assertEqual(sorted_by_rating[1]["title"], self.lecture2.title)
 
-    def test_lecture_to_categories(self):
+    def test_lecture_to_categories(self) -> None:
         # When
         self.prepare_data_for_redis()
         cached_data = json.loads(cache.get("lectures:list"))
@@ -148,11 +150,11 @@ class LectureTestCase(TestCase):
         self.assertSetEqual(mapping[self.lecture1.title], {"AI", "데이터 사이언스"})
         self.assertSetEqual(mapping[self.lecture2.title], {"웹 개발", "데이터 사이언스"})
 
-    def test_category_to_lectures(self):
+    def test_category_to_lectures(self) -> None:
         # When
         self.prepare_data_for_redis()
         cached_data = json.loads(cache.get("lectures:list"))
-        category_map = {}
+        category_map : Dict[str, Set[str]] = {}
         for l in cached_data:
             for c in l["categories"]:
                 category_map.setdefault(c["name"], set()).add(l["title"])
@@ -160,4 +162,3 @@ class LectureTestCase(TestCase):
         self.assertSetEqual(category_map["AI"], {self.lecture1.title})
         self.assertSetEqual(category_map["데이터 사이언스"], {self.lecture1.title, self.lecture2.title})
         self.assertSetEqual(category_map["웹 개발"], {self.lecture2.title})
-
