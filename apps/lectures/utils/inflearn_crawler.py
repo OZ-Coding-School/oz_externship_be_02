@@ -10,6 +10,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+
 def fetch_reviews(course_id: int) -> list[dict[str, Any]]:
     """
     특정 강의의 리뷰 정보를 가져와 ERD에 맞게 가공하는 함수
