@@ -1,5 +1,6 @@
 # recruitments 앱에서 사용되는 Tag 모델에 대한 Serializer를 정의한다.
 from typing import Any, ClassVar, Dict, List
+
 from rest_framework import serializers
 
 from apps.recruitments.models.tags import Tag

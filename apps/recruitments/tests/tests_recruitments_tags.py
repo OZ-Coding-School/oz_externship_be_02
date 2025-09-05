@@ -1,5 +1,5 @@
-from rest_framework.test import APITestCase
 from rest_framework import status
+from rest_framework.test import APITestCase
 
 from apps.recruitments.models.tags import Tag
 from apps.users.models.user import User
