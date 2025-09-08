@@ -1,7 +1,9 @@
 from datetime import date
+
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from django.urls import reverse
+
 from apps.studies.models import StudyGroup
 from apps.study_group_schedules.models import GroupSchedule
 from apps.users.models.user import User
@@ -9,7 +11,7 @@ from apps.users.models.user import User
 
 class StudyGroupScheduleCreateTest(APITestCase):
     def setUp(self) -> None:
-        """ 테스트용 유저와 스터디 그룹 생성 """
+        """테스트용 유저와 스터디 그룹 생성"""
         self.user = User.objects.create_user(
             email="kimOz@example.com",
             password="password123",
