@@ -40,10 +40,8 @@ class NotificationListView(ListAPIView[Notification]):
 
     def get_queryset(self) -> QuerySet[Notification]:
         assert self.request.user.is_authenticated  # 인증 유저가 아니면 AssertionError를 발생시켜 요청 처리를 중단
-        qs = (
-            Notification.objects.filter(user_id=self.request.user.pk)
-            .only("id", "content", "notification_type", "is_read", "back_url_link", "created_at")
-            .order_by("-created_at", "-id")
+        qs = Notification.objects.filter(user_id=self.request.user.pk).only(
+            "id", "content", "notification_type", "is_read", "back_url_link", "created_at"
         )
 
         status = self.request.query_params.get("status", "all")
