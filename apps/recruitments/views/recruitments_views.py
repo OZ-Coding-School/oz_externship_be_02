@@ -1,11 +1,11 @@
 from uuid import UUID
 
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
 from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.serializers.recruitments_serializers import (
@@ -22,11 +22,9 @@ class RecruitmentDetailView(APIView):
         responses={
             status.HTTP_200_OK: RecruitmentDetailSerializer,
             status.HTTP_404_NOT_FOUND: OpenApiResponse(
-                description="해당 공고를 찾을 수 없음",
-                response={"error": "string"}
+                description="해당 공고를 찾을 수 없음", response={"error": "string"}
             ),
         },
-
         parameters=[
             OpenApiParameter(
                 name="recruitment_uuid",
@@ -36,7 +34,6 @@ class RecruitmentDetailView(APIView):
             ),
         ],
     )
-
     def get(self, request: Request, recruitment_uuid: UUID) -> Response:
         # 테이블 명세서대로 하기 -> model과 serializer 이용하면 해결될거에요
         try:
