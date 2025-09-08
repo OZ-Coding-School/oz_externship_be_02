@@ -1,0 +1,69 @@
+import io  # 가짜 파일을 만들기 위해 사용
+
+from django.test import TestCase
+from moto import mock_aws  # 가짜 버킷을 만들기 위해 사용
+from rest_framework.exceptions import APIException
+
+from apps.core.utils.s3_uploader import S3Uploader
+
+
+@mock_aws
+class TestS3Uploader(TestCase):
+    """
+    업로드 후 파일 존재 여부 확인
+    """
+
+    def setUp(self) -> None:
+        """
+        테스트를 위한 가짜 S3 버킷 생성(moto 사용)
+        boto3 클라이언트 초기화
+        """
+        bucket = "test-bucket"
+        region = "ap-northeast-2"
+        self.s3_uploader = S3Uploader(bucket=bucket, region=region)
+        self.s3_uploader.s3_client.create_bucket(
+            Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": region}
+        )
+
+    def test_upload_file(self) -> None:
+        """
+        파일 업로드 테스트
+        """
+        file = io.BytesIO(b"test_file")
+        file.name = "test.txt"
+        result = self.s3_uploader.upload_file(file)
+        self.assertTrue(isinstance(result, dict))
+        self.assertIn("key", result)
+        self.assertIn("url", result)
+
+    def test_file_exists(self) -> None:
+        """
+        파일 업로드 후 존재 여부 확인
+        """
+        file = io.BytesIO(b"test_file")
+        file.name = "test.txt"
+        result = self.s3_uploader.upload_file(file)
+        self.assertTrue(isinstance(result, dict))
+        uploaded_key = result["key"]
+        file_exists = self.s3_uploader.file_exists(uploaded_key)
+        self.assertTrue(file_exists)
+
+    def test_file_not_exists(self) -> None:
+        """
+        존재하지 않는 파일 확인
+        """
+        with self.assertRaises(APIException):
+            self.s3_uploader.file_exists("non_existent_file.txt")
+            self.assertEqual(APIException.status_code, 404)
+
+    def test_delete_file(self) -> None:
+        """
+        파일 업로드 후 파일 삭제
+        """
+        file = io.BytesIO(b"test_file")
+        file.name = "test.txt"
+        result = self.s3_uploader.upload_file(file)
+        self.assertTrue(isinstance(result, dict))
+        uploaded_key = result["key"]
+        deleted = self.s3_uploader.delete_file(uploaded_key)
+        self.assertTrue(deleted)
