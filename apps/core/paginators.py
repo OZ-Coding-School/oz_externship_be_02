@@ -1,13 +1,14 @@
-"""
-프로젝트 전반에서 사용되는 페이지네이션 클래스를 정의힌디.
-"""
-
 from rest_framework.pagination import PageNumberPagination
 
 
-# REQ-RECM-002/008 (태그 검색)에서 사용할 ㅍ페이지네이션
-# 페이지 당 5개의 항목을 반환하는 PageNumberPagination
-class FivePageNumberPagination(PageNumberPagination):
+class StandardPageNumberPagination(PageNumberPagination):
+    # 한 페이지에 기본적으로 표시할 항목의 개수를 5개로 설정.
+    # 클라이언트가 별도로 페이지 크기를 지정하지 않으면 이 값이 사용된다.
     page_size = 5
-    # 요청 예시 : /api/v1/tags/?page=2 -> page=2 : 두 번째 페이지 요청
-    # page는 PageNumberPagination 클래스에서 내부적으로 처리해준다.
+
+    # 클라이언트가 URL 쿼리 파라미터를 통해 페이지 당 항목 수를 직접 지정할 수 있도록 허용합니다.
+    # 예를 들어, /api/v1/some-url/?page_size=10 와 같이 요청하면, DRF가 이 파라미터를 인식하여 페이지 크기를 10으로 동적으로 변경합니다.
+    page_size_query_param = "page_size"
+
+    # 클라이언트가 'page_size_query_param'을 통해 요청할 수 있는 최대 항목 수를 100개로 제한. 비정상적으로 많은 수의 데이터를 한 번에 요청하여 서버에 과부하를 주는 것을 방지하는 안전장치 역할
+    max_page_size = 100

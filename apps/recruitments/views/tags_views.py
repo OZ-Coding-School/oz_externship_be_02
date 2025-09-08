@@ -1,69 +1,81 @@
-"""
-태그 API의 HTTP 요청/응답을 처리한다.
-"""
-
-from typing import Any
-
-from django.db import IntegrityError
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.core.paginators import FivePageNumberPagination
+from apps.core.paginators import StandardPageNumberPagination
 from apps.recruitments.models.tags import Tag
 from apps.recruitments.serializers.tags_serializers import TagSerializer
 from apps.recruitments.services.tags_services import TagService
 
 
-class TagViewSet(viewsets.ModelViewSet[Tag]):
+class TagAPIView(APIView):
     """
-    태그를 검색하고 생성하는 API
+    태그 모델에 대한 C(Create), R(Read) 기능을 처리하는 API 뷰.
 
-    - GET: ?search={keyword} 로 태그를 검색합니다. (페이지 당 5개)
-    - POST: {'name': 'new_tag'} 로 새로운 태그를 생성합니다.
+    - GET: 태그 목록을 조회하고, 쿼리 파라미터를 통해 검색 및 페이지네이션을 지원한다.
+    - POST: 새로운 태그를 생성한다.
     """
 
-    # --- GET 요청 관련 설정 ---
-    # GET 요청이 오면 ModelViewSet에 내장된 .list() 기능이 해당 요청을 처리하도록 결정한다.
-    queryset = Tag.objects.all().order_by(
-        "name"
-    )  # TagViewSet이 처리할 데이터베이스 쿼리셋을 정의한다. 모든 태그를 이름순으로 정렬한다.
-    serializer_class = TagSerializer  # TagViewSet이 데이터 직렬화/역직렬화에 사용할 클래스를 지정한다.
-    permission_classes = [
-        IsAuthenticated
-    ]  # TagViewSet에 접근하기 위해 필요한 권한을 지정한다. 로그인된 사용자만 접근 가능.
-    pagination_class = FivePageNumberPagination  # TagViewSet에서 사용할 페이지네이션 클래스를 지정한다. (페이지 당 5개)
-    filter_backends = [
-        filters.SearchFilter
-    ]  # TagViewSet에서 사용할 필터 백엔드를 지정한다. 여기서는 검색 기능을 사용한다.
-    search_fields = ["name"]  # SearchFilter가 적용될 필드를 지정한다. 'name' 필드를 기준으로 검색한다.
+    # --- 클래스 변수 설정 ---
+    # 이 View에서 사용할 Serializer, Permission, Paginator, Filter 등을 미리 정의한다.
+    serializer_class = TagSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardPageNumberPagination
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name"]
 
-    # --- POST 요청(생성) 로직 수정 ---
-    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+    def get(self, request: Request) -> Response:
         """
-        새로운 태그를 생성하기 위해 Service Layer를 호출한다.
+        GET 요청을 처리하여 태그 목록을 반환한다.
         """
-        # 1. Serializer로 요청 데이터의 형식을 검증합니다.
-        serializer = self.get_serializer(data=request.data)
+        # 1. 모든 태그를 이름순으로 정렬하여 기본 쿼리셋을 준비한다.
+        #    - 기본적으로 order_by를 사용하여 오름차순으로 정렬하도록 하였으며 이후 추가적인 작업을 통해 정렬방식을 선택할 수 있도록 기능을 추가할 예정
+        queryset = Tag.objects.all().order_by("name")
+        response: Response
+
+        # 2. 클래스 변수 'filter_backends'에 정의된 필터들을 순회하며 적용한다.
+        #    - SearchFilter가 'search_fields'를 참조하여, ?search=... 쿼리 파라미터가 있으면 쿼리셋을 필터링한다.
+        for backend in self.filter_backends:
+            queryset = backend().filter_queryset(request, queryset, self)
+
+        # 3. 클래스 변수 'pagination_class'를 사용하여 페이지네이션 객체를 생성한다.
+        paginator = self.pagination_class()
+        # 쿼리셋에 페이지네이션을 시도한다. 페이지네이션이 비활성화된 경우(예: page_size=None) None을 반환할 수 있다.
+        paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
+
+        # 4. 페이지네이션 적용 여부에 따라 분기하여 최종 응답(Response) 객체를 생성한다.
+        if paginated_queryset is not None:
+            # 페이지네이션이 적용된 경우: 직렬화 후, 페이지 정보(count, next, previous)를 포함한 응답을 생성한다.
+            serializer = self.serializer_class(paginated_queryset, many=True)
+            response = paginator.get_paginated_response(serializer.data)
+        else:
+            # 페이지네이션이 적용되지 않은 경우: 전체 쿼리셋을 직렬화하여 일반 응답을 생성한다.
+            serializer = self.serializer_class(queryset, many=True)
+            response = Response(serializer.data)
+
+        # 5. 생성된 응답 객체를 반환한다.
+        return response
+
+    def post(self, request: Request) -> Response:
+        """
+        POST 요청을 처리하여 새로운 태그를 생성합니다.
+        """
+        # 1. 요청 데이터를 Serializer에 전달하여 유효성을 검증한다.
+        #    - is_valid(raise_exception=True)는 유효성 검증 실패 시, 400 Bad Request 응답을 자동으로 발생시킨다.
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # 2. Service를 인스턴스화하고, 비즈니스 로직을 위임한다.
-        tag_service = TagService()
+        # 2. 유효성 검증을 통과한 데이터로 비즈니스 로직(서비스 계층)을 호출한다.
         name = serializer.validated_data["name"].strip()
-
-        # 2-1. 이름이 비어있는지에 대한 간단한 검증은 View에서 처리할 수 있다.
         if not name:
             return Response({"detail": "Tag name cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            # 2-2. 핵심 로직(중복 검사 및 생성)을 Service에 요청한다.
-            tag = tag_service.create_tag(name=name)
-        except IntegrityError as e:
-            # 3. Service에서 중복 에러가 발생하면, 409 Conflict 응답을 반환한다.
-            return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
+        # 서비스 계층에 태그 생성을 위임하여, View는 핵심 로직의 상세 구현을 알 필요가 없도록 한다. (관심사 분리)
+        tag_service = TagService()
+        tag = tag_service.create_tag(name=name)
 
-        # 4. 성공 시, 생성된 객체 정보로 201 Created 응답을 반환한다.
-        response_serializer = self.get_serializer(tag)
-        headers = self.get_success_headers(response_serializer.data)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        # 3. 성공적으로 생성된 태그 객체를 직렬화하여 201 Created 응답을 반환한다.
+        response_serializer = self.serializer_class(tag)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)

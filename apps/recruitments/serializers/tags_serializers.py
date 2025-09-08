@@ -10,9 +10,6 @@ class TagSerializer(serializers.ModelSerializer[Tag]):
 
     class Meta:
         model = Tag
-        fields = ["id", "name"]  # id와 name 필드를 클라이언트에게 반환하고, 데이터 유효성 검사를 수행한다.
-        # unique=True에 의해 자동으로 추가되는 UniqueValidator를 비활성화한다.
-        # 중복 검사는 Service Layer에서 직접 처리할것 .
-        extra_kwargs: ClassVar[Dict[str, Dict[str, List[Any]]]] = {
-            "name": {"validators": []},
-        }
+        fields = ["id", "name"]
+        # id와 name 필드를 클라이언트에게 반환하고, 데이터 유효성 검사를 수행한다.
+        # unique=True에 의한 UniqueValidator와 max_length 검사가 자동으로 활성화된다.
