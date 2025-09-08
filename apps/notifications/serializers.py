@@ -39,16 +39,3 @@ class UnreadCountSerializer(serializers.Serializer[UnreadCountOut]):
     """
 
     unread_count = serializers.IntegerField()
-
-
-# class NotificationListSerializer(serializers.Serializer[Any]):
-#     """
-#     모킹 전용 Serializer
-#     """
-#
-#     notification_id = serializers.IntegerField()
-#     content = serializers.CharField()
-#     type = serializers.CharField()
-#     is_read = serializers.BooleanField()
-#     back_url_link = serializers.CharField()
-#     created_at = serializers.DateTimeField()
