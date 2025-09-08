@@ -1,9 +1,14 @@
+from typing import List
+
+from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 
 from apps.lectures.models.crawled_lectures import Lecture
 
 
 class LectureSerializer(ModelSerializer[Lecture]):
+    categories = serializers.SerializerMethodField()
+
     class Meta:
         model = Lecture
         fields = (
@@ -21,3 +26,6 @@ class LectureSerializer(ModelSerializer[Lecture]):
             "thumbnail_img_url",
             "created_at",
         )
+
+    def get_categories(self, obj: Lecture) -> List[int]:
+        return [lc.category.id for lc in obj.lecturecategory_set.all()]

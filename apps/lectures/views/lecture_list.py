@@ -8,6 +8,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.lectures.models.categories import Category
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.serializers.crawled_lecture import LectureSerializer
 
@@ -87,9 +88,13 @@ class LectureListView(APIView):
             lectures = [
                 lec for lec in lectures if search in lec["title"].lower() or search in lec["instructor"].lower()
             ]
-        category = request.query_params.get("category")
-        if category:
-            lectures = [lec for lec in lectures if category in lec.get("categories", [])]
+        category_names = request.query_params.get("category")
+        if category_names:
+
+            names_to_filter = [name.strip() for name in category_names.split(",")]
+            category_ids = Category.objects.filter(name__in=names_to_filter).values_list("id", flat=True)
+
+            lectures = [lec for lec in lectures if any(cat_id in lec.get("categories", []) for cat_id in category_ids)]
         return lectures
 
     def sort_lectures(self, lectures, ordering):  # type: ignore
