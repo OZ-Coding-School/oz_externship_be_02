@@ -48,4 +48,3 @@ class S3Uploader:
         """
         self.s3_client.head_object(Bucket=self.bucket, Key=key)
         return True
-
