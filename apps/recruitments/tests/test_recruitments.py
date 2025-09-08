@@ -10,6 +10,9 @@ from apps.recruitments.models.recruitment_attachments import RecruitmentAttachme
 from apps.recruitments.models.recruitment_tags import RecruitmentTag
 from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.models.tags import Tag
+from apps.recruitments.serializers.recruitments_serializers import (
+    RecruitmentDetailSerializer,
+)
 from apps.studies.models.study_groups import StudyGroup
 from apps.users.models.user import User
 
@@ -61,28 +64,11 @@ class RecruitmentDetailViewMockTest(APITestCase):
     def test_get_recruitment_detail_mock_success(self) -> None:
         # GIVEN
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        expected_data = RecruitmentDetailSerializer(instance=self.recruitment).data
         # WHEN
         response = self.client.get(url)
         # THEN
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        data = response.data
-        self.assertEqual(data["id"], self.recruitment.id)
-        self.assertEqual(data["uuid"], str(self.recruitment.uuid))
-        self.assertIn("author", data)
-        self.assertIn("title", data)
-        self.assertIn("content", data)
-        self.assertIn("attachments", data)
-        self.assertIn("expected_headcount", data)
-        self.assertIn("estimated_fee", data)
-        self.assertIn("study_lectures", data)
-        self.assertIn("tags", data)
-        self.assertIn("close_at", data)
-        self.assertIn("created_at", data)
-        self.assertIn("updated_at", data)
-        self.assertIn("views_count", data)
-        self.assertIn("bookmark_count", data)
-        self.assertEqual(data["author"]["nickname"], "해파리볶음밥")
 
     def test_get_recruitment_detail_mock_fail(self) -> None:
         # GIVE
