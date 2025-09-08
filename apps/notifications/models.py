@@ -30,4 +30,4 @@ class Notification(BaseModel):
 
     class Meta:
         db_table = "notifications"
-        ordering = ["-created_at"]
+        ordering = ["-created_at", "-id"]

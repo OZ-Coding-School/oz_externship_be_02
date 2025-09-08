@@ -1,57 +1,56 @@
-import datetime
 from typing import Any
 
-from django.utils import timezone
+from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.notifications.models import Notification
+from apps.notifications.pagination import NotificationLimitOffsetPagination
 from apps.notifications.serializers import (
-    NotificationListSerializer,
+    NotificationSerializer,
     NotificationUpdateSerializer,
     UnreadCountOut,
     UnreadCountSerializer,
 )
 
+STATUS_ALL = "all"
+STATUS_UNREAD = "unread"
+STATUS_READ = "read"
+
 
 @extend_schema(
     tags=["Notifications"],
     summary="알림 목록 조회 API",
-    description="로그인한 유저의 알림 내역을 페이지네이션으로 조회. status와 type으로 필터링",
-    responses={200: NotificationListSerializer(many=True)},
+    description="로그인한 유저의 알림 내역을 페이지네이션으로 조회. status로 필터링",
+    responses={200: NotificationSerializer(many=True)},
 )
-class NotificationListView(APIView):
+class NotificationListView(ListAPIView[Notification]):
     """
-    알림 목록 조회
+    알림 목록 조회 with offset
     """
 
-    serializer_class = NotificationListSerializer
+    serializer_class: type[NotificationSerializer] = NotificationSerializer
+    pagination_class = NotificationLimitOffsetPagination
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        mock_notifications = [
-            {
-                "notification_id": 101,
-                "content": "'Python 기초 스터디' 공고에 새로운 지원자가 있습니다.",
-                "type": Notification.NotificationType.ADD_APPLICATION,
-                "is_read": False,
-                "back_url_link": "/recruitments/a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6/applications",
-                "created_at": timezone.now() - datetime.timedelta(hours=2),
-            },
-            {
-                "notification_id": 100,
-                "content": "'알고리즘 스터디'에 새로운 멤버가 참여했습니다.",
-                "type": Notification.NotificationType.STUDY_JOIN,
-                "is_read": True,
-                "back_url_link": "/studies/p6o5n4m3-l2k1-j0i9-h8g7-f6e5d4c3b2a1/chat",
-                "created_at": timezone.now() - datetime.timedelta(days=2),
-            },
-        ]
+    def get_queryset(self) -> QuerySet[Notification]:
+        assert self.request.user.is_authenticated  # 인증 유저가 아니면 AssertionError를 발생시켜 요청 처리를 중단
+        qs = Notification.objects.filter(user_id=self.request.user.pk).only(
+            "id", "content", "notification_type", "is_read", "back_url_link", "created_at"
+        )
 
-        serializer = NotificationListSerializer(instance=mock_notifications, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        status = self.request.query_params.get("status", "all")
+        if status == "unread":
+            qs = qs.filter(is_read=False)
+        elif status == "read":
+            qs = qs.filter(is_read=True)
+
+        return qs
 
 
 @extend_schema(
