@@ -22,4 +22,6 @@ def withdrawal_user(user: User, reason: str, reason_detail: str) -> Response:
     user.is_active = False
     user.save()
 
-    return Response({"회원 탈퇴가 완료되었습니다. 계정은 14일 후에 삭제됩니다."}, status=status.HTTP_200_OK)
+    return Response(
+        data={"detail": "회원 탈퇴가 완료되었습니다. 계정은 14일 후에 삭제됩니다."}, status=status.HTTP_200_OK
+    )
