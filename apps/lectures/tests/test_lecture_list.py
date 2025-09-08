@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import cast, Dict, Set
+from typing import Dict, Set, cast
 from unittest.mock import patch
 
 import fakeredis
@@ -20,6 +20,7 @@ from apps.users.models.user import User
     CACHES={
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
         }
     }
 )
@@ -154,7 +155,7 @@ class LectureTestCase(TestCase):
         # When
         self.prepare_data_for_redis()
         cached_data = json.loads(cache.get("lectures:list"))
-        category_map : Dict[str, Set[str]] = {}
+        category_map: Dict[str, Set[str]] = {}
         for l in cached_data:
             for c in l["categories"]:
                 category_map.setdefault(c["name"], set()).add(l["title"])
