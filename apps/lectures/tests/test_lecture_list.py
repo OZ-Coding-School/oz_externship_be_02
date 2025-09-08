@@ -1,9 +1,8 @@
 import json
 import uuid
 from typing import Dict, Set, cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-import fakeredis
 from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -15,25 +14,17 @@ from apps.lectures.serializers.crawled_lecture import LectureSerializer
 from apps.users.models.user import User
 
 
-# 테스트 환경에서 LocMemCache 사용
-@override_settings(
-    CACHES={
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "test-cache",
-        }
-    }
-)
 class LectureTestCase(TestCase):
     def setUp(self) -> None:
         # Given
         cache.clear()
-        self.client = Client()
-        self.list_url = reverse("lectures:lecture_list")
 
         self.category_ai = Category.objects.create(name="AI")
         self.category_web = Category.objects.create(name="웹 개발")
         self.category_ds = Category.objects.create(name="데이터 사이언스")
+        assert str(self.category_ai) == "AI"
+        assert str(self.category_web) == "웹 개발"
+        assert str(self.category_ds) == "데이터 사이언스"
 
         self.lecture1 = Lecture.objects.create(
             uuid=uuid.uuid4(),
@@ -65,101 +56,34 @@ class LectureTestCase(TestCase):
             thumbnail_img_url="http://example.com/img2.jpg",
             updated_at="2025-09-04T14:27:49.615546+09:00",
         )
+        assert str(self.lecture1) == "PyTorch를 활용한 AI 모델 학습"
+        assert str(self.lecture2) == "Django로 웹 서비스 만들기"
 
         LectureCategory.objects.create(lecture=self.lecture1, category=self.category_ai)
         LectureCategory.objects.create(lecture=self.lecture1, category=self.category_ds)
         LectureCategory.objects.create(lecture=self.lecture2, category=self.category_ds)
         LectureCategory.objects.create(lecture=self.lecture2, category=self.category_web)
 
-    def prepare_data_for_redis(self) -> None:
-        # Given
-        lectures = Lecture.objects.all().order_by("-updated_at")
-        data_to_cache = []
-        for lecture in lectures:
-            categories = [{"name": lc.category.name} for lc in lecture.lecturecategory_set.all()]
-            data_to_cache.append(
-                {
-                    "id": lecture.id,
-                    "title": lecture.title,
-                    "instructor": lecture.instructor,
-                    "average_rating": float(lecture.average_rating),
-                    "original_price": lecture.original_price,
-                    "categories": categories,
-                }
-            )
-        cache.set("lectures:list", json.dumps(data_to_cache), timeout=600)
+    @patch("apps.lectures.views.lecture_list.redis.Redis")  # Redis mocking
+    def test_get_lecture_list_success(self, mock_redis: MagicMock) -> None:
+        fake_redis = mock_redis.return_value
+        fake_redis.get.return_value = None  # 캐시 없을 때
 
-    def test_lecture_list_from_redis(self) -> None:
+        client = Client()
+        url = reverse("lectures:lecture_list")
 
-        self.prepare_data_for_redis()
-        cached_data = cache.get("lectures:list")
-        self.assertIsNotNone(cached_data)
-        results = json.loads(cached_data)
-        self.assertEqual(len(results), 2)
-        titles = [r["title"] for r in results]
-        self.assertIn(self.lecture1.title, titles)
-        self.assertIn(self.lecture2.title, titles)
+        response = client.get(url)
+        self.assertEqual(response.status_code, 200)
 
-        for r in results:
-            if r["title"] == self.lecture1.title:
-                self.assertEqual(r["instructor"], self.lecture1.instructor)
-            if r["title"] == self.lecture2.title:
-                self.assertEqual(r["instructor"], self.lecture2.instructor)
+        data = response.json()
+        self.assertIn("results", data)
+        self.assertIsInstance(data["results"], list)
+        self.assertGreaterEqual(len(data["results"]), 2)
 
-    def test_search_by_instructor_in_redis(self) -> None:
-        # When
-        self.prepare_data_for_redis()
-        cached_data = json.loads(cache.get("lectures:list"))
-        filtered = [l for l in cached_data if "이코딩" in l["instructor"]]
-        # Then
-        self.assertEqual(len(filtered), 1)
-        self.assertEqual(filtered[0]["title"], self.lecture1.title)
+        # 검색 필터 확인
+        titles = [lec["title"] for lec in data["results"]]
+        self.assertIn("PyTorch를 활용한 AI 모델 학습", titles)
+        self.assertIn("Django로 웹 서비스 만들기", titles)
 
-    def test_ordering_by_updated_at(self) -> None:
-        # When
-        self.prepare_data_for_redis()
-        cached_data = json.loads(cache.get("lectures:list"))
-        sorted_by_updated = sorted(cached_data, key=lambda x: x["id"], reverse=True)
-        # Then
-        self.assertEqual(sorted_by_updated[0]["title"], self.lecture2.title)
-        self.assertEqual(sorted_by_updated[1]["title"], self.lecture1.title)
-
-    def test_ordering_by_price(self) -> None:
-        # When
-        self.prepare_data_for_redis()
-        cached_data = json.loads(cache.get("lectures:list"))
-        sorted_by_price = sorted(cached_data, key=lambda x: x["original_price"], reverse=True)
-        # Then
-        self.assertEqual(sorted_by_price[0]["title"], self.lecture2.title)
-        self.assertEqual(sorted_by_price[1]["title"], self.lecture1.title)
-
-    def test_ordering_by_rating(self) -> None:
-        # When
-        self.prepare_data_for_redis()
-        cached_data = json.loads(cache.get("lectures:list"))
-        sorted_by_rating = sorted(cached_data, key=lambda x: x["average_rating"], reverse=True)
-        # Then
-        self.assertEqual(sorted_by_rating[0]["title"], self.lecture1.title)
-        self.assertEqual(sorted_by_rating[1]["title"], self.lecture2.title)
-
-    def test_lecture_to_categories(self) -> None:
-        # When
-        self.prepare_data_for_redis()
-        cached_data = json.loads(cache.get("lectures:list"))
-        mapping = {l["title"]: {c["name"] for c in l["categories"]} for l in cached_data}
-        # Then
-        self.assertSetEqual(mapping[self.lecture1.title], {"AI", "데이터 사이언스"})
-        self.assertSetEqual(mapping[self.lecture2.title], {"웹 개발", "데이터 사이언스"})
-
-    def test_category_to_lectures(self) -> None:
-        # When
-        self.prepare_data_for_redis()
-        cached_data = json.loads(cache.get("lectures:list"))
-        category_map: Dict[str, Set[str]] = {}
-        for l in cached_data:
-            for c in l["categories"]:
-                category_map.setdefault(c["name"], set()).add(l["title"])
-        # Then
-        self.assertSetEqual(category_map["AI"], {self.lecture1.title})
-        self.assertSetEqual(category_map["데이터 사이언스"], {self.lecture1.title, self.lecture2.title})
-        self.assertSetEqual(category_map["웹 개발"], {self.lecture2.title})
+        # Redis에 캐시 저장 확인
+        fake_redis.set.assert_called_once()
