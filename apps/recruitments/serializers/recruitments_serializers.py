@@ -1,15 +1,7 @@
 from rest_framework import serializers
 
-from apps.users.models.user import User
-
 from ..models.recruitment_attachments import RecruitmentAttachment
 from ..models.recruitments import Recruitment
-
-
-class UserSerializer(serializers.ModelSerializer[User]):
-    class Meta:
-        model = User
-        fields = ["id", "nickname"]
 
 
 class AttachmentSerializer(serializers.ModelSerializer[RecruitmentAttachment]):
@@ -19,7 +11,7 @@ class AttachmentSerializer(serializers.ModelSerializer[RecruitmentAttachment]):
 
 
 class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
-    author = UserSerializer(read_only=True)
+    author = serializers.SerializerMethodField()
     attachments = AttachmentSerializer(many=True, read_only=True)
     bookmark_count = serializers.SerializerMethodField()
     study_lectures = serializers.SerializerMethodField()
@@ -29,6 +21,7 @@ class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
         model = Recruitment
         fields = [
             "id",
+            "uuid",
             "author",
             "title",
             "content",
@@ -38,11 +31,20 @@ class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
             "tags",
             "attachments",
             "created_at",
+            "updated_at",
             "close_at",
             "is_closed",
             "views_count",
             "bookmark_count",
         ]
+
+    def get_author(self, obj: Recruitment) -> dict[str, str | int] | None:
+        if obj.author:
+            return {
+                "id": obj.author.id,
+                "nickname": obj.author.nickname,
+            }
+        return None
 
     def get_bookmark_count(self, obj: Recruitment) -> int:
         return obj.bookmark_users.count()
@@ -58,4 +60,5 @@ class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
         ]
 
     def get_tags(self, obj: Recruitment) -> list[str]:
-        return [tag.name for tag in obj.tags.all()]
+        tags_list: list[str] = [tag.name for tag in obj.tags.all()]
+        return tags_list

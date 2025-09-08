@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, timedelta
 
 from django.urls import reverse
@@ -59,16 +60,15 @@ class RecruitmentDetailViewMockTest(APITestCase):
 
     def test_get_recruitment_detail_mock_success(self) -> None:
         # GIVEN
-        url = reverse("recruitment-detail", kwargs={"recruitment_id": self.recruitment.id})
-
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
         # WHEN
         response = self.client.get(url)
-
         # THEN
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.data
         self.assertEqual(data["id"], self.recruitment.id)
+        self.assertEqual(data["uuid"], str(self.recruitment.uuid))
         self.assertIn("author", data)
         self.assertIn("title", data)
         self.assertIn("content", data)
@@ -79,6 +79,16 @@ class RecruitmentDetailViewMockTest(APITestCase):
         self.assertIn("tags", data)
         self.assertIn("close_at", data)
         self.assertIn("created_at", data)
+        self.assertIn("updated_at", data)
         self.assertIn("views_count", data)
         self.assertIn("bookmark_count", data)
         self.assertEqual(data["author"]["nickname"], "해파리볶음밥")
+
+    def test_get_recruitment_detail_mock_fail(self) -> None:
+        # GIVE
+        non_existent_uuid = uuid.uuid4()
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": non_existent_uuid})
+        # WHEN
+        response = self.client.get(url)
+        # THEN
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
