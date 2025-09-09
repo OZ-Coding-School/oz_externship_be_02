@@ -18,7 +18,7 @@ class WithdrawalsReasonChoices(models.TextChoices):
     OTHER = "OTHER", "기타"
 
 
-class Withdrawals(UUIDBaseModel):
+class Withdrawals(BaseModel):
     user = models.OneToOneField("users.User", on_delete=models.CASCADE, unique=True, help_text="유저")
     reason = models.CharField(
         max_length=30, choices=WithdrawalsReasonChoices.choices, null=False, blank=False, help_text="탈퇴 사유"
