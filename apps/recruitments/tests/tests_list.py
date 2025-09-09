@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
-from django.utils import timezone
 
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.lectures.models.crawled_lectures import Lecture
@@ -14,13 +14,24 @@ from apps.users.models.user import User
 
 
 class RecruitmentsListTestCase(APITestCase):
+    # setUp과 달리 cls.study_group을 동적으로 속성을 추가하는 것으로 봐서 선언되어있지 않다고 mypy오류가 뜸
+    # 클래스에 속성이 존재할 것을 선언하고 타입 명시
+    study_group: StudyGroup
+    lecture1: Lecture
+    lecture2: Lecture
+    recruitment: Recruitment
+    tag1: Tag
+    tag2: Tag
+    tag3: Tag
+    user: User
+
     @classmethod
     def setUpTestData(cls) -> None:
         cls.study_group = StudyGroup.objects.create(
             name="test group",
             max_headcount=5,
             start_at=timezone.now(),
-            end_at=timezone.now()+timedelta(days=1),
+            end_at=timezone.now() + timedelta(days=1),
         )
         cls.lecture1 = Lecture.objects.create(
             title="lecture 1",
@@ -66,7 +77,7 @@ class RecruitmentsListTestCase(APITestCase):
         RecruitmentTag.objects.create(tag=cls.tag2, recruitment=cls.recruitment)
         RecruitmentTag.objects.create(tag=cls.tag3, recruitment=cls.recruitment)
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.client.force_authenticate(user=self.user)
 
     def test_recruitment_list_get(self) -> None:
@@ -74,8 +85,8 @@ class RecruitmentsListTestCase(APITestCase):
         res = self.client.get(url)
         self.assertEqual(res.status_code, 200)
 
-        self.assertEqual(len(res.data),1)
-        data=res.data[0]
-        #print(data)
-        self.assertEqual(len(data["lectures"]),2)
-        self.assertEqual(len(data["tags"]),3)
+        self.assertEqual(len(res.data), 1)
+        data = res.data[0]
+        # print(data)
+        self.assertEqual(len(data["lectures"]), 2)
+        self.assertEqual(len(data["tags"]), 3)

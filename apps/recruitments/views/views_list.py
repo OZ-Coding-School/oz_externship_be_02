@@ -1,6 +1,5 @@
 import typing
 
-from django.db.models import Count, OuterRef, Subquery
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -8,9 +7,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.recruitments.models.recruitment_images import RecruitmentImage
+from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
 from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
+from apps.recruitments.services.services_list import active_get_query
 
 
 class RecruitmentView(APIView):
@@ -28,19 +28,9 @@ class RecruitmentView(APIView):
         "3. 검색기능(공고 제목에서 검색)\n\n"
         "4. 필터링기능(카테고리, 사용자 정의 태그)\n\n"
         "5. 정렬 기능(최신순-기본, 조회수 높은 순, 북마크 순)",
-        responses={status.HTTP_200_OK:RecruitmentListSerializer(many=True)},
+        responses={status.HTTP_200_OK: RecruitmentListSerializer(many=True)},
     )
     def get(self: typing.Self, request: Request) -> Response:
-        # 마감된 공고는 필터하고 최신순을 기본 정렬로 함
-        queryset = Recruitment.objects.filter(is_closed=False).order_by("-created_at")
-        # 시리얼라이저에 필요한 정보 채우기
-        # outerref : https://www.reddit.com/r/django/comments/q40km4/help_understanding_outerref/?tl=ko
-        img_subquery = RecruitmentImage.objects.filter(recruitment=OuterRef("id")).values("img_url")[:1]
-        optimized_queryset = (
-            queryset.annotate(img=Subquery(img_subquery), bookmarks_count=Count("bookmark_users", distinct=True))
-            .select_related("study_group")
-            .prefetch_related("study_group__lectures", "tags")
-        )
-
+        optimized_queryset: RecruitmentListQuerySet[Recruitment] = active_get_query()
         serializer = RecruitmentListSerializer(optimized_queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

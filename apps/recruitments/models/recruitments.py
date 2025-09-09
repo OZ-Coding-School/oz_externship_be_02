@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.models.base import UUIDBaseModel
+from apps.recruitments.managers.managers_list import RecruitmentListManager
 from apps.recruitments.models.tags import Tag
 from apps.studies.models import StudyGroup
 from apps.users.models.user import User
@@ -56,6 +57,12 @@ class Recruitment(UUIDBaseModel):
                 name="recruitment_expected_headcount_range_1_10",
             )
         ]
+
+    # 기본 오브젝트! 수정X
+    objects = models.Manager()
+
+    # 공고 리스트에서 사용 manager
+    object_list = RecruitmentListManager()
 
     def __str__(self) -> str:
         return self.title
