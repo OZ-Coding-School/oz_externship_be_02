@@ -2,8 +2,8 @@ from django.db import models
 
 from apps.core.models.base import BaseModel, UUIDBaseModel
 
-from .user import User
 from ..managers.withdrawals_user_manager import WithdrawalUserManager
+from .user import User
 
 
 class WithdrawalsReasonChoices(models.TextChoices):
@@ -27,5 +27,6 @@ class Withdrawals(UUIDBaseModel):
     due_date = models.DateField(null=False, blank=False, help_text="계정 삭제 예정일")
 
     objects = WithdrawalUserManager()
+
     def __str__(self) -> str:
         return f"{self.user.email} - {self.reason}"
