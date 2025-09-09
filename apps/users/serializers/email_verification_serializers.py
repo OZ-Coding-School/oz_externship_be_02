@@ -9,4 +9,4 @@ class EmailVerificationRequestSerializer(serializers.Serializer[dict[str, Any]])
 
 class EmailVerifyCodeSerializer(serializers.Serializer[dict[str, Any]]):
     email = serializers.EmailField(required=True)
-    code = serializers.CharField(required=True)
+    code = serializers.CharField(required=True, max_length=6)
