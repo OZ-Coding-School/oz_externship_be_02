@@ -1,5 +1,6 @@
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
+from urllib.parse import quote
 
 import requests
 from django.core.management.base import BaseCommand
@@ -7,9 +8,7 @@ from django.db import transaction
 
 from apps.core.logger import logger
 from apps.lectures.models.categories import Category
-from apps.lectures.models.crawled_lecture_reviews import LectureReview, RatingChoices
 from apps.lectures.models.crawled_lectures import (
-    DifficultyChoices,
     Lecture,
     PlatformChoices,
 )
@@ -23,7 +22,7 @@ class Command(BaseCommand):
     REVIEW_API_URL = "https://ucc-api.inflearn.com/client/api/v1/reviews/course/{course_id}"
     PAGE_SIZE = 100
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         logger.info("인프런 API 크롤링 및 DB 동기화를 시작합니다...")
 
         # 1. API를 통해 모든 강의 데이터를 크롤링하고 가공 (메모리에서만 처리)
@@ -42,7 +41,12 @@ class Command(BaseCommand):
         (기존 inflearn_crawler.py의 crawl_inflearn_courses 함수 로직)
         """
         try:
-            params = {"pageNumber": 1, "pageSize": self.PAGE_SIZE, "sort": "POPULAR", "lang": "ko"}
+            params: Dict[str, Union[str, int]] = {
+                "pageNumber": 1,
+                "pageSize": self.PAGE_SIZE,
+                "sort": "POPULAR",
+                "lang": "ko",
+            }
             response = requests.get(self.BASE_URL, params=params)
             response.raise_for_status()
             total_page = response.json().get("data", {}).get("totalPage", 1)
@@ -76,7 +80,7 @@ class Command(BaseCommand):
                         "original_price": item.get("listPrice", {}).get("regularPrice", 0),
                         "discount_price": item.get("listPrice", {}).get("payPrice", 0),
                         "url_link": f"https://www.inflearn.com/course/{course_info.get('slug')}",
-                        "thumbnail_img_url": course_info.get("thumbnailUrl"),
+                        "thumbnail_img_url": quote(course_info.get("thumbnailUrl"), safe=":/=?&"),
                         "categories": [
                             cat.get("title")
                             for cat in course_info.get("metadata", {}).get("categories", [])
@@ -93,7 +97,7 @@ class Command(BaseCommand):
 
     def _fetch_reviews(self, course_id: int) -> List[Dict[str, Any]]:
         # (이전과 동일)
-        params = {"pageNumber": 1, "pageSize": 4, "sort": "RECOMMEND", "lang": "ko"}
+        params: Dict[str, Union[str, int]] = {"pageNumber": 1, "pageSize": 4, "sort": "RECOMMEND", "lang": "ko"}
         rating_map = {
             5: "5_OUT_OF_5_STARS",
             4: "4_OUT_OF_5_STARS",
@@ -110,11 +114,11 @@ class Command(BaseCommand):
                 if rating:
                     processed_reviews.append({"rating": rating, "content": review.get("body", "")})
             return processed_reviews
-        except Exception:
-            logger.warning(f"강의 ID {course_id}의 리뷰를 가져오는 데 실패했습니다.", exc_info=True)
+        except Exception as e:
+            logger.warning(f"강의 ID {course_id}의 리뷰를 가져오는 데 실패했습니다. Error : {e}", exc_info=True)
             return []
 
-    def sync_data_with_db(self, courses_data: List[Dict[str, Any]]):
+    def sync_data_with_db(self, courses_data: List[Dict[str, Any]]) -> None:
         # (이전 동기화 로직과 동일)
         api_data_map = {item.get("title"): item for item in courses_data if item.get("title")}
         api_titles = set(api_data_map.keys())
