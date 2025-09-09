@@ -6,7 +6,8 @@ from rest_framework import status
 
 from apps.core.tests.mixins.test_user_mixins import TestUserMixin
 from apps.core.utils.test_clients import RedisTestClient
-from apps.users.services.auth_service import EmailVerificationService
+from apps.users.services.email_service import EmailVerificationService
+from apps.users.utils.enums import VerificationPurpose
 
 
 class EmailVerificationServiceUnitTests(TestCase):
@@ -20,21 +21,19 @@ class EmailVerificationServiceUnitTests(TestCase):
 
     def test_send_verification_email_func(self) -> None:
         send_mail_count_before = len(mail.outbox)
-        self.service.send_verification_email("test@example.com")
+        self.service.send_verification_email("test@example.com", purpose=VerificationPurpose.SIGNUP)
         self.assertEqual(len(mail.outbox), send_mail_count_before + 1)
 
     def test_verify_code_success_func(self) -> None:  # given
         email = "test@example.com"
-        verification_code = self.service.generate_verification_code()
-        cache.set(email, verification_code)
-
+        self.service.send_verification_email(email, purpose=VerificationPurpose.SIGNUP)
+        verification_code = cache.get(f"{VerificationPurpose.SIGNUP}-{email}")
         # when
-        result = self.service.verify_code(email, verification_code)
+        result = self.service.verify_code(email, verification_code, purpose=VerificationPurpose.SIGNUP)
 
         # then
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(result.data, {"detail": "이메일 인증 성공"})
-        self.assertIsNone(cache.get(email))
 
     def test_verify_code_failed_func_when_code_is_wrong(self) -> None:  # given
         email = "test@example.com"
@@ -42,11 +41,11 @@ class EmailVerificationServiceUnitTests(TestCase):
         cache.set(email, verification_code)
 
         # when
-        result = self.service.verify_code(email, "wrong")
+        result = self.service.verify_code(email, "wrong", purpose=VerificationPurpose.SIGNUP)
 
         # then
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data, {"error": "인증번호가 일치하지 않습니다."})
+        self.assertEqual(result.data, {"error": "인증번호가 일치하지 않습니다"})
 
 
 class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
@@ -68,7 +67,7 @@ class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
         self.assertEqual(mail.outbox[0].subject, "회원가입 이메일 인증")
 
         # 이메일 발송 시 사용한 인증번호를 캐시로 부터 가져오기
-        verification_code = cache.get(email)
+        verification_code = cache.get(f"{VerificationPurpose.SIGNUP}-{email}")
 
         # 인증번호가 캐시에 올바르게 저장되어 있었는지 검증
         self.assertIsNotNone(verification_code)
@@ -83,7 +82,7 @@ class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
         # 이메일 인증 이메일 전송 요청
         self.client.post(self.send_url, data)
         # 이메일 발송 시 사용한 인증번호를 캐시로 부터 가져오기
-        verification_code = cache.get(email)
+        verification_code = cache.get(f"{VerificationPurpose.SIGNUP}-{email}")
 
         response = self.client.post(self.verify_url, {"email": self.email, "code": verification_code})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
