@@ -5,5 +5,6 @@ from ..views.tags_views import TagAPIView
 app_name = "recruitments"
 
 urlpatterns = [
+    path("", include("apps.recruitments.recruitments_urls")),
     path("/tags", include("apps.recruitments.urls.tags_urls")),
 ]
