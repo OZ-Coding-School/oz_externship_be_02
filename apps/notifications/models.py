@@ -1,6 +1,7 @@
 from django.db import models
 
 from apps.core.models.base import BaseModel
+from apps.notifications.managers import NotificationManager
 
 
 class Notification(BaseModel):
@@ -25,9 +26,11 @@ class Notification(BaseModel):
     is_read = models.BooleanField(default=False)
     back_url_link = models.URLField(max_length=255)  # URL은 길어질 수 있으므로
 
+    objects = NotificationManager()
+
     def __str__(self) -> str:
         return f"Notification for {self.user.nickname}: {self.content[:30]}"
 
     class Meta:
         db_table = "notifications"
-        ordering = ["-created_at"]
+        ordering = ["-created_at", "-id"]
