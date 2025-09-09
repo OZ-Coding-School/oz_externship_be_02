@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 from django.db import models
 from django.db.models import QuerySet
