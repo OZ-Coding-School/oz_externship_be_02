@@ -1,3 +1,3 @@
-from .schedule_urls import urlpatterns
+from .urls import urlpatterns
 
 __all__ = ["urlpatterns"]

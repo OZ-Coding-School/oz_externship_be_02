@@ -1,4 +1,4 @@
-from .schedule_views import (
+from .views import (
     StudyGroupScheduleCreateView,
 )
 
