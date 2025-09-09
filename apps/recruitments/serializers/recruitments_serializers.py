@@ -1,7 +1,17 @@
 from rest_framework import serializers
 
+from apps.lectures.models.crawled_lectures import Lecture
+from apps.users.models.user import User
+
 from ..models.recruitment_attachments import RecruitmentAttachment
 from ..models.recruitments import Recruitment
+from ..models.tags import Tag
+
+
+class UserSerializer(serializers.ModelSerializer[User]):
+    class Meta:
+        model = User
+        fields = ["id", "nickname"]
 
 
 class AttachmentSerializer(serializers.ModelSerializer[RecruitmentAttachment]):
@@ -10,12 +20,28 @@ class AttachmentSerializer(serializers.ModelSerializer[RecruitmentAttachment]):
         fields = ["file_name", "file_url"]
 
 
+class TagSerializer(serializers.ModelSerializer[Tag]):
+    class Meta:
+        model = Tag
+        fields = ["id", "name"]
+
+
+class LectureSerializer(serializers.ModelSerializer[Lecture]):
+    name = serializers.CharField(source="title")
+    shortcut_link = serializers.URLField(source="url_link")
+    thumbnail_image_url = serializers.URLField(source="thumbnail_img_url")
+
+    class Meta:
+        model = Lecture
+        fields = ["thumbnail_image_url", "name", "instructor", "shortcut_link"]
+
+
 class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
-    author = serializers.SerializerMethodField()
+    author = UserSerializer(read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    study_lectures = LectureSerializer(many=True, read_only=True, source="study_group.lectures.all")
     bookmark_count = serializers.SerializerMethodField()
-    study_lectures = serializers.SerializerMethodField()
-    tags = serializers.SerializerMethodField()
 
     class Meta:
         model = Recruitment
@@ -38,27 +64,6 @@ class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
             "bookmark_count",
         ]
 
-    def get_author(self, obj: Recruitment) -> dict[str, str | int] | None:
-        if obj.author:
-            return {
-                "id": obj.author.id,
-                "nickname": obj.author.nickname,
-            }
-        return None
-
-    def get_bookmark_count(self, obj: Recruitment) -> int:
+    @staticmethod
+    def get_bookmark_count(obj: Recruitment) -> int:
         return obj.bookmark_users.count()
-
-    def get_study_lectures(self, obj: Recruitment) -> list[dict[str, str | int]]:
-        return [
-            {
-                "thumbnail_image_url": "https://example.com/thumbnail1.jpg",
-                "name": "Django 기본 강좌",
-                "instructor": "최재현",
-                "shortcut_link": "https://example.com/lecture/1",
-            }
-        ]
-
-    def get_tags(self, obj: Recruitment) -> list[str]:
-        tags_list: list[str] = [tag.name for tag in obj.tags.all()]
-        return tags_list
