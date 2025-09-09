@@ -1,9 +1,9 @@
 from .schedule_serializers import (
     StudyGroupScheduleCreateSerializer,
-    StudyGroupScheduleResponseSerializer,
+    StudyGroupScheduleResponseSerializerWithUUID,
 )
 
 __all__ = [
     "StudyGroupScheduleCreateSerializer",
-    "StudyGroupScheduleResponseSerializer",
+    "StudyGroupScheduleResponseSerializerWithUUID",
 ]
