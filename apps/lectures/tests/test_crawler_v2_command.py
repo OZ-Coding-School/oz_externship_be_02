@@ -1,6 +1,6 @@
-
 import json
 from decimal import Decimal
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from django.core.management import call_command
@@ -16,7 +16,7 @@ class SyncInflearnV2CommandTest(TestCase):
     crawler_v2 커맨드 테스트
     """
 
-    def setUp(self):
+    def setUp(self) -> None:
         """테스트 시작 전, DB에 동기화 기준이 될 초기 데이터를 생성합니다."""
         # API 응답에 없고 DB에만 존재하는 강의 (삭제 대상)
         self.lecture_to_be_deleted = Lecture.objects.create(
@@ -36,7 +36,7 @@ class SyncInflearnV2CommandTest(TestCase):
             duration=0,  # 필수 필드 값 추가
         )
 
-    def _mock_requests_get(self, *args, **kwargs):
+    def _mock_requests_get(self, *args: Any, **kwargs: Any) -> MagicMock:
         """URL에 따라 다른 Mock Response를 반환하는 함수"""
         url = args[0]
         mock_response = MagicMock()
@@ -102,7 +102,7 @@ class SyncInflearnV2CommandTest(TestCase):
         return mock_response
 
     @patch("requests.get")
-    def test_crawler_v2_command_success(self, mock_get):
+    def test_crawler_v2_command_success(self, mock_get: MagicMock) -> None:
         """crawler_v2 커맨드 실행 시 데이터 동기화가 성공적으로 수행되는지 테스트"""
         # given
         mock_get.side_effect = self._mock_requests_get
