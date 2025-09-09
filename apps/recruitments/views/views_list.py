@@ -13,7 +13,7 @@ from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
 
 
-class RecruitmentListView(APIView):
+class RecruitmentView(APIView):
     # swagger 테스트를 위해 사용
     permession_class = [AllowAny]
 
@@ -28,7 +28,7 @@ class RecruitmentListView(APIView):
         "3. 검색기능(공고 제목에서 검색)\n\n"
         "4. 필터링기능(카테고리, 사용자 정의 태그)\n\n"
         "5. 정렬 기능(최신순-기본, 조회수 높은 순, 북마크 순)",
-        responses=RecruitmentListSerializer,
+        responses={status.HTTP_200_OK:RecruitmentListSerializer(many=True)},
     )
     def get(self: typing.Self, request: Request) -> Response:
         # 마감된 공고는 필터하고 최신순을 기본 정렬로 함
