@@ -2,8 +2,8 @@ import logging
 import uuid
 from typing import Any, BinaryIO, Callable, Dict, cast
 
-import boto3  # AWS 와 통신을 하기 위한 라이브러리
-from botocore.exceptions import ClientError  # S3 에러 처리
+import boto3  # AWS 와 통신을 하기 위한 라이브러리 #type: ignore
+from botocore.exceptions import ClientError  # S3 에러 처리 #type: ignore
 from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from rest_framework.exceptions import APIException, NotFound
