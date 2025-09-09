@@ -1,9 +1,12 @@
 from typing import TYPE_CHECKING
+
 from django.contrib.auth.base_user import BaseUserManager
 from django.db import models
 
 if TYPE_CHECKING:
     from apps.users.models.user import User
+
+
 class UserManager(models.Manager["User"]):
     # 탈퇴하지않은 유저 조회
     def active(self) -> models.QuerySet["User"]:
