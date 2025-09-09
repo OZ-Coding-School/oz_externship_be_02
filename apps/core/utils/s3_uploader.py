@@ -14,7 +14,10 @@ else:
     logger = logging.getLogger("django.server")
 
 
-class S3Uploader:
+from apps.core.utils.uploader_protocol import Uploader
+
+
+class S3Uploader(Uploader):
     """
     S3에 파일을 업로드하는 클래스
     """
