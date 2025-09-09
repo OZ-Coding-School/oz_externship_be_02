@@ -52,7 +52,7 @@ class EmailVerificationServiceUnitTests(TestCase):
 class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
     def setUp(self) -> None:
         self.email = "test@example.com"
-        self.send_url = reverse("send_code_email")
+        self.send_url = reverse("email_send_code")
         self.verify_url = reverse("email_verify_code")
 
     def test_send_verification_email(self) -> None:
