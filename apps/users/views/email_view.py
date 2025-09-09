@@ -7,22 +7,32 @@ from apps.users.serializers.email_verification_serializers import (
     EmailVerificationRequestSerializer,
     EmailVerifyCodeSerializer,
 )
-from apps.users.services.auth_service import EmailVerificationService
+from apps.users.services.email_service import EmailVerificationService
+from apps.users.utils.enums import VerificationPurpose
 
 
-class EmailVerificationSendAPIView(APIView):
+class SignUpEmailVerificationSendAPIView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request: Request) -> Response:
         serializer = EmailVerificationRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return EmailVerificationService().send_verification_email(serializer.validated_data["email"])
+
+        email = serializer.validated_data["email"]
+        purpose = VerificationPurpose.SIGNUP
+
+        return EmailVerificationService().send_verification_email(email=email, purpose=purpose)
 
 
-class EmailVerifyCodeAPIView(APIView):
+class SignUpEmailVerifiCationVerifyAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return EmailVerificationService().verify_code(**serializer.validated_data)
+
+        email = serializer.validated_data["email"]
+        purpose = VerificationPurpose.SIGNUP
+        code = serializer.validated_data["code"]
+
+        return EmailVerificationService().verify_code(email=email, purpose=purpose, code=code)
