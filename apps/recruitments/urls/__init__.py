@@ -1,10 +1,6 @@
-from django.urls import include, path
+from apps.recruitments.urls.tags_urls import urlpatterns as tags_urls
+from apps.recruitments.urls.recruitments_urls import urlpatterns as recruitments_urls
 
-from ..views.tags_views import TagAPIView
+# app_name = "recruitments"
 
-app_name = "recruitments"
-
-urlpatterns = [
-    path("", include("apps.recruitments.urls.recruitments_urls")),
-    path("/tags", include("apps.recruitments.urls.tags_urls")),
-]
+urlpatterns = recruitments_urls + tags_urls

@@ -43,7 +43,7 @@ class TagAPITestCase(APITestCase):
     # 1. 신규 태그 생성 테스트
     def test_create_tag_success(self) -> None:
         """태그 생성 성공 테스트"""
-        url = reverse("recruitments:tag-list")
+        url = reverse("tag-list")
         data = {"name": "new_tag"}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -52,7 +52,7 @@ class TagAPITestCase(APITestCase):
     def test_create_tag_unauthenticated(self) -> None:
         """태그 생성 실패 테스트 (미인증)"""
         self.client.logout()
-        url = reverse("recruitments:tag-list")
+        url = reverse("tag-list")
         data = {"name": "another_tag"}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -75,7 +75,7 @@ class TagAPITestCase(APITestCase):
         # 아래 코드는 recruitments 앱 네임스페이스에 속한 'tag-list'라는 이름의 URL 패턴을 찾아
         # 해당하는 URL(예: '/api/v1/recruitments/tags/')을 동적으로 생성하여 url 변수에 할당합니다.
         # 이 URL은 중복 태그 생성을 테스트하기 위한 POST 요청의 엔드포인트로 사용됩니다.
-        url = reverse("recruitments:tag-list")
+        url = reverse("tag-list")
 
         # When: 중복된 이름으로 태그 생성 요청
         data = {"name": "Existing Tag"}
@@ -90,7 +90,7 @@ class TagAPITestCase(APITestCase):
 
     def test_create_tag_blank_name(self) -> None:
         """태그 생성 실패 테스트 (빈 이름)"""
-        url = reverse("recruitments:tag-list")
+        url = reverse("tag-list")
         data = {"name": ""}
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -98,7 +98,7 @@ class TagAPITestCase(APITestCase):
     # 2. 태그 목록 조회 및 검색 테스트
     def test_list_tags_success(self) -> None:
         """태그 목록 조회 성공 테스트 (페이지네이션)"""
-        url = reverse("recruitments:tag-list")
+        url = reverse("tag-list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # 페이지네이션(5개)이 적용되었는지 확인
@@ -108,7 +108,7 @@ class TagAPITestCase(APITestCase):
 
     def test_search_tags_success(self) -> None:
         """태그 검색 성공 테스트"""
-        url = reverse("recruitments:tag-list") + "?search=py"
+        url = reverse("tag-list") + "?search=py"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # 검색 결과가 1개인지 확인
@@ -119,6 +119,6 @@ class TagAPITestCase(APITestCase):
     def test_list_tags_unauthenticated(self) -> None:
         """태그 목록 조회 실패 테스트 (미인증)"""
         self.client.logout()
-        url = reverse("recruitments:tag-list")
+        url = reverse("tag-list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
