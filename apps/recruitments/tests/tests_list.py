@@ -1,4 +1,5 @@
-import datetime
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -13,11 +14,15 @@ from apps.users.models.user import User
 
 
 class RecruitmentsListTestCase(APITestCase):
-    def setUp(self) -> None:
-        self.study_group = StudyGroup.objects.create(
-            name="test group", max_headcount=5, start_at=datetime.date.today(), end_at=datetime.date.today()
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.study_group = StudyGroup.objects.create(
+            name="test group",
+            max_headcount=5,
+            start_at=timezone.now(),
+            end_at=timezone.now()+timedelta(days=1),
         )
-        self.lecture1 = Lecture.objects.create(
+        cls.lecture1 = Lecture.objects.create(
             title="lecture 1",
             instructor="instructor 1",
             duration=5,
@@ -25,7 +30,7 @@ class RecruitmentsListTestCase(APITestCase):
             platform="udemy",
             url_link="https://www.test.com",
         )
-        self.lecture2 = Lecture.objects.create(
+        cls.lecture2 = Lecture.objects.create(
             title="lecture 2",
             instructor="instructor 2",
             duration=5,
@@ -33,37 +38,44 @@ class RecruitmentsListTestCase(APITestCase):
             platform="udemy",
             url_link="https://www.test.com",
         )
-        StudyLecture.objects.create(lecture=self.lecture1, study_group=self.study_group)
-        StudyLecture.objects.create(lecture=self.lecture2, study_group=self.study_group)
+        StudyLecture.objects.create(lecture=cls.lecture1, study_group=cls.study_group)
+        StudyLecture.objects.create(lecture=cls.lecture2, study_group=cls.study_group)
 
-        self.user = User.objects.create_user(
+        cls.user = User.objects.create_user(
             email="test@test.com",
             password="itspassword",
             name="test",
             nickname="test",
             phone_number="010-0000-0000",
             gender="male",
-            birthday=datetime.date(2000, 1, 1),
+            birthday=timezone.make_aware(datetime(2025, 9, 9)),
         )
-        self.client.force_authenticate(user=self.user)
 
-        self.recruitment = Recruitment.objects.create(
-            study_group=self.study_group,
-            author=self.user,
+        cls.recruitment = Recruitment.objects.create(
+            study_group=cls.study_group,
+            author=cls.user,
             title="test recruitment",
             content="test content",
             estimated_fee=50000,
             expected_headcount=5,
         )
-        self.tag1 = Tag.objects.create(name="tag1")
-        self.tag2 = Tag.objects.create(name="tag2")
-        self.tag3 = Tag.objects.create(name="tag3")
-        RecruitmentTag.objects.create(tag=self.tag1, recruitment=self.recruitment)
-        RecruitmentTag.objects.create(tag=self.tag2, recruitment=self.recruitment)
-        RecruitmentTag.objects.create(tag=self.tag3, recruitment=self.recruitment)
+        cls.tag1 = Tag.objects.create(name="tag1")
+        cls.tag2 = Tag.objects.create(name="tag2")
+        cls.tag3 = Tag.objects.create(name="tag3")
+        RecruitmentTag.objects.create(tag=cls.tag1, recruitment=cls.recruitment)
+        RecruitmentTag.objects.create(tag=cls.tag2, recruitment=cls.recruitment)
+        RecruitmentTag.objects.create(tag=cls.tag3, recruitment=cls.recruitment)
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.user)
 
     def test_recruitment_list_get(self) -> None:
-        url = reverse("recruitment-list")
+        url = reverse("recruitment")
         res = self.client.get(url)
         self.assertEqual(res.status_code, 200)
-        print(res.data)
+
+        self.assertEqual(len(res.data),1)
+        data=res.data[0]
+        #print(data)
+        self.assertEqual(len(data["lectures"]),2)
+        self.assertEqual(len(data["tags"]),3)
