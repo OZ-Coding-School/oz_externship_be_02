@@ -6,13 +6,13 @@ from rest_framework.views import APIView
 
 from apps.study_group_schedules.serializers import (
     StudyGroupScheduleCreateSerializer,
-    StudyGroupScheduleResponseSerializerWithUUID,
+    StudyGroupScheduleResponseSerializer,
 )
 
 
 @extend_schema(
     request=StudyGroupScheduleCreateSerializer,
-    responses={201: StudyGroupScheduleResponseSerializerWithUUID},
+    responses={201: StudyGroupScheduleResponseSerializer},
     summary="스터디 그룹 스케줄 생성",
     description="새로운 스터디 그룹 스케줄을 생성합니다.",
     tags=["Study Group Schedules"],
@@ -27,7 +27,7 @@ class StudyGroupScheduleCreateView(APIView):
 
         if serializer.is_valid():
             schedule = serializer.save()
-            response_serializer = StudyGroupScheduleResponseSerializerWithUUID(schedule)
+            response_serializer = StudyGroupScheduleResponseSerializer(schedule)
 
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
