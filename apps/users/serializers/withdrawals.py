@@ -1,12 +1,19 @@
-# apps/users/serializers/withdrawals.py
-
-from typing import Any
-
 from rest_framework import serializers
 
-from apps.users.models.withdrawals import WithdrawalsReasonChoices
+from apps.recruitments.serializers.recruitments_serializers import UserSerializer
+from apps.users.models.withdrawals import Withdrawals
 
 
-class WithdrawalRequestSerializer(serializers.Serializer[dict[str, Any]]):
-    reason = serializers.ChoiceField(choices=WithdrawalsReasonChoices.choices)
-    reason_detail = serializers.CharField(required=True, allow_blank=True)
+class WithdrawalRequestSerializer(serializers.ModelSerializer[Withdrawals]):
+
+    class Meta:
+        model = Withdrawals
+        fields = ("reason", "reason_detail")
+
+
+class WithdrawalResponseSerializer(serializers.ModelSerializer[Withdrawals]):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Withdrawals
+        fields = ("user", "reason", "reason_detail", "due_date", "created_at", "updated_at")
