@@ -8,6 +8,7 @@ from django.db import models
 from apps.studies.models import StudyGroup
 from apps.users.models import User
 
+# 순환 참조 / model <=> manager
 if TYPE_CHECKING:
     from apps.study_notes.models.study_notes import StudyNote
 
