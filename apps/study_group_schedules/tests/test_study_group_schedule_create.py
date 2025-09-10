@@ -13,7 +13,6 @@ from apps.users.models.user import User
 class StudyGroupScheduleCreateTest(APITestCase):
     test_user: ClassVar[User]
     test_study_group: ClassVar[StudyGroup]
-    base_valid_data: ClassVar[dict[str, Any]]
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -36,18 +35,8 @@ class StudyGroupScheduleCreateTest(APITestCase):
             introduction="테스트용 스터디 그룹",
             max_headcount=5,
             start_at="2025-09-20T00:00:00Z",
-            end_at="2025-09-21T23:59:59Z",
+            end_at="2025-10-21T23:59:59Z",
         )
-
-        # 기본 템플릿 데이터 (읽기 전용)
-        cls.base_valid_data = {
-            "study_group": cls.test_study_group.id,
-            "title": "1주차 스터디",
-            "objective": "Django REST Framework 기초 학습",
-            "session_date": "2025-09-20",
-            "start_time": "14:00:00",
-            "end_time": "18:00:00",
-        }
 
     def setUp(self) -> None:
         """각 테스트마다 실행되는 설정"""
@@ -100,7 +89,7 @@ class StudyGroupScheduleCreateTest(APITestCase):
 
         # Response 데이터 검증
         self.assertEqual(response.data["title"], "1주차 스터디")
-        self.assertEqual(response.data["study_group_name"], "스터디 그룹")
+        self.assertEqual(response.data["study_group"]["name"], "스터디 그룹")
 
     def test_create_schedule_invalid_time(self) -> None:
         """잘못된 시간 설정 테스트 (시작 시간 >= 종료 시간)"""
@@ -210,7 +199,6 @@ class StudyGroupScheduleCreateTest(APITestCase):
 
     def test_create_schedule_past_date(self) -> None:
         """과거 날짜 스케줄 생성 테스트 (실패해야 함)"""
-        from datetime import date, timedelta
 
         invalid_data = self.valid_data.copy()
         past_date = date.today() - timedelta(days=1)  # 어제
@@ -225,7 +213,6 @@ class StudyGroupScheduleCreateTest(APITestCase):
 
     def test_create_schedule_today_date(self) -> None:
         """오늘 날짜 스케줄 생성 테스트 (성공해야 함)"""
-        from datetime import date
 
         valid_data = self.valid_data.copy()
         today = date.today()
@@ -239,7 +226,6 @@ class StudyGroupScheduleCreateTest(APITestCase):
 
     def test_create_schedule_future_date(self) -> None:
         """미래 날짜 스케줄 생성 테스트 (성공해야 함)"""
-        from datetime import date, timedelta
 
         valid_data = self.valid_data.copy()
         future_date = date.today() + timedelta(days=7)  # 일주일 후
