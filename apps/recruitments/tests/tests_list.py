@@ -18,7 +18,7 @@ class RecruitmentsListTestCase(APITestCase):
     # 클래스에 속성이 존재할 것을 선언하고 타입 명시
     study_group: StudyGroup
     lecture: list[Lecture]
-    recruitment: Recruitment
+    recruitment: list[Recruitment]
     tag: list[Tag]
     user: User
 
@@ -68,21 +68,26 @@ class RecruitmentsListTestCase(APITestCase):
             birthday=timezone.make_aware(datetime(2025, 9, 9)),
         )
 
-        cls.recruitment = Recruitment.objects.create(
-            study_group=cls.study_group,
-            author=cls.user,
-            title="test recruitment",
-            content="test content",
-            estimated_fee=50000,
-            expected_headcount=5,
-        )
+        recruitment = []
+        for i in range(15):
+            recruitment.append(
+                Recruitment(
+                    study_group=cls.study_group,
+                    author=cls.user,
+                    title=f"test recruitment{i+1}",
+                    content="test content",
+                    estimated_fee=50000,
+                    expected_headcount=5,
+                )
+            )
+        cls.recruitment = Recruitment.objects.bulk_create(recruitment)
         tag = [Tag(name="tag1"), Tag(name="tag2"), Tag(name="tag3")]
         cls.tag = Tag.objects.bulk_create(tag)
-        recruitment_tag = [
-            RecruitmentTag(tag=cls.tag[0], recruitment=cls.recruitment),
-            RecruitmentTag(tag=cls.tag[1], recruitment=cls.recruitment),
-            RecruitmentTag(tag=cls.tag[2], recruitment=cls.recruitment),
-        ]
+
+        recruitment_tag = []
+        for i in range(15):
+            for j in range(3):
+                recruitment_tag.append(RecruitmentTag(tag=cls.tag[j], recruitment=cls.recruitment[i]))
         RecruitmentTag.objects.bulk_create(recruitment_tag)
 
     def setUp(self) -> None:
@@ -90,11 +95,13 @@ class RecruitmentsListTestCase(APITestCase):
 
     def test_recruitment_list_get(self) -> None:
         url = reverse("recruitment-list")
-        res = self.client.get(url)
+        query_params = {"page": 2}
+        res = self.client.get(url, data=query_params)
         self.assertEqual(res.status_code, 200)
-
-        self.assertEqual(len(res.data), 1)
-        data = res.data[0]
+        # print(res.data)
+        results = res.data["results"]
+        self.assertEqual(len(results), 5)
+        data = results[0]
         # print(data)
         self.assertEqual(len(data["lectures"]), 2)
         self.assertEqual(len(data["tags"]), 3)
