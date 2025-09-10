@@ -25,7 +25,7 @@ class NotificationViewsTests(APITestCase):
 
         now = timezone.now()
 
-        Notification.objects.bulk_create(
+        notis = Notification.objects.bulk_create(
             [
                 Notification(
                     user=self.user,
@@ -53,7 +53,7 @@ class NotificationViewsTests(APITestCase):
                 ),
             ]
         )
-
+        self.notification = notis[0]  # 첫번째 알람을 테스트 대상으로함 / self.notification 속성 정의를 위함(119)
         self.url = reverse("notifications:notification-list")
 
     def test_list_pagination(self) -> None:
@@ -116,11 +116,12 @@ class NotificationViewsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_read_api_for_only_one_notification(self) -> None:
-        url = reverse("notifications:notification-read", kwargs={"notification_id": 1})
+        url = reverse("notifications:notification-read", kwargs={"notification_id": self.notification.id})
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")  # 204 노컨텐츠이기에 빈 문자열
+        self.assertTrue(self.notification.is_read)
 
     def test_read_api_for_all_notification(self) -> None:
         url = reverse("notifications:notification-read-all")

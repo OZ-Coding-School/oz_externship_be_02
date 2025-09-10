@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.db import transaction
 from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -59,7 +60,13 @@ class NotificationUpdateView(APIView):
     특정 알림 읽음 처리
     """
 
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
     def post(self, request: Request, notification_id: int, *args: Any, **kwargs: Any) -> Response:
+        update = Notification.objects.read_only_one_queryset(notification_id=notification_id, user_id=request.user.pk)
+        if update == 0:
+            return Response({"detail": "Notification not found or access denied."}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

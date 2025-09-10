@@ -21,3 +21,8 @@ class NotificationManager(models.Manager["Notification"]):
             qs = qs.filter(is_read=True)
 
         return qs
+
+    def read_only_one_queryset(self, notification_id: int, user_id: int | None) -> int:
+        if user_id is None:
+            return 0
+        return self.get_queryset().filter(id=notification_id, user_id=user_id).update(is_read=True)
