@@ -1,5 +1,3 @@
-# users/tests/test_withdrawals.py
-
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -15,11 +13,7 @@ class UserWithdrawalJWTAPITest(APITestCase, TestUserMixin):
         self.client.force_authenticate(user=self.user)
 
     def test_successful_withdrawal_request(self) -> None:
-        data = {
-            "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
-            "reason_detail": "개인정보/보안/우려",
-            "due_date": "2025-09-08",
-        }
+        data = {"reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS, "reason_detail": "개인정보/보안/우려"}
         response = self.client.post(self.url, data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -41,7 +35,6 @@ class UserWithdrawalJWTAPITest(APITestCase, TestUserMixin):
         first_data = {
             "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             "reason_detail": "첫 요청",
-            "due_date": "2025-09-08",
         }
         first_response = self.client.post(self.url, first_data)
         self.assertEqual(first_response.status_code, status.HTTP_200_OK)
@@ -49,8 +42,11 @@ class UserWithdrawalJWTAPITest(APITestCase, TestUserMixin):
         second_data = {
             "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             "reason_detail": "테스트용 중복 요청",
-            "due_date": "2025-09-08",
         }
         second_response = self.client.post(self.url, second_data)
         self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(second_response.data["error"], "이미 탈퇴 요청이 존재합니다.")
+
+        error_detail = second_response.data["non_field_errors"][0]
+
+        self.assertEqual(str(error_detail), "이미 탈퇴 요청이 존재합니다.")
+        self.assertEqual(error_detail.code, "error")
