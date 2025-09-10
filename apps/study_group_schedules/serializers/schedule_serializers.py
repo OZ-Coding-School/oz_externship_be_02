@@ -1,29 +1,46 @@
+from datetime import date, datetime, time, timedelta
 from typing import Any, Dict
 
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 
+from apps.studies.models.study_groups import StudyGroup
 from apps.study_group_schedules.models import GroupSchedule
 
 
-class StudyGroupScheduleResponseSerializerWithUUID(serializers.ModelSerializer[GroupSchedule]):
-    """스터디 그룹의 UUID 사용"""
+class StudyGroupSerializer(serializers.ModelSerializer[StudyGroup]):
+    """스터디 그룹 정보를 위한 Nested Serializer"""
 
-    study_group_name = serializers.CharField(source="study_group.name", read_only=True)
-    study_group_uuid = serializers.UUIDField(source="study_group.uuid", read_only=True)  # 스터디 그룹의 UUID
+    class Meta:
+        model = StudyGroup
+        fields = [
+            "id",
+            "uuid",
+            "name",
+            "introduction",
+            "max_headcount",
+            "profile_img_url",
+            "start_at",
+            "end_at",
+            "status",
+        ]
+
+
+class StudyGroupScheduleResponseSerializer(serializers.ModelSerializer[GroupSchedule]):
+    """스터디 그룹 Nested Serializer 사용"""
+
+    study_group = StudyGroupSerializer(read_only=True)
 
     class Meta:
         model = GroupSchedule
         fields = [
-            "id",  # 스케줄 자체의 ID
+            "id",
             "title",
             "objective",
             "session_date",
             "start_time",
             "end_time",
             "study_group",
-            "study_group_name",
-            "study_group_uuid",  # 스터디 그룹의 UUID
             "created_at",
             "updated_at",
         ]
@@ -37,32 +54,31 @@ class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedu
         model = GroupSchedule
         fields = ["study_group", "title", "objective", "session_date", "start_time", "end_time"]
 
-    def validate(self, data: dict[str, Any]) -> dict[str, Any]:
-        """종합 검증 로직: 날짜 + 시간"""
-        from datetime import date, datetime, timedelta
+    def validate_session_date(self, value: date) -> date:
+        """날짜 검증: 오늘 이후로만 가능"""
+        if value < date.today():
+            raise serializers.ValidationError("스케줄 날짜는 오늘 이후로만 설정 가능합니다.")
+        return value
 
-        session_date = data.get("session_date")
+    def validate_time_range(self, start_time: time, end_time: time) -> None:
+        """시간 검증"""
+
+        # 시작 시간이 종료 시간보다 늦거나 같은 경우
+        if start_time >= end_time:
+            raise serializers.ValidationError("시작 시간은 종료 시간보다 이전이어야 합니다.")
+
+        # 최소 30분 간격 검증
+        base_date = date.today()
+        duration = datetime.combine(base_date, end_time) - datetime.combine(base_date, start_time)
+        if duration < timedelta(minutes=30):
+            raise serializers.ValidationError("스터디 시간은 최소 30분 이상이어야 합니다.")
+
+    def validate(self, data: dict[str, Any]) -> dict[str, Any]:
+        """통합 검증"""
         start_time = data.get("start_time")
         end_time = data.get("end_time")
 
-        # 1. 날짜 검증: 오늘 이후로만 가능
-        if session_date:
-            today = date.today()
-            if session_date < today:
-                raise serializers.ValidationError("스케줄 날짜는 오늘 이후로만 설정 가능합니다.")
-
-        # 2. 시간 검증
         if start_time and end_time:
-            # 2-1. 시작 시간이 종료 시간보다 늦거나 같은 경우
-            if start_time >= end_time:
-                raise serializers.ValidationError("시작 시간은 종료 시간보다 이전이어야 합니다.")
-
-            # 2-2. 최소 30분 간격 검증
-            start_datetime = datetime.combine(datetime.today(), start_time)
-            end_datetime = datetime.combine(datetime.today(), end_time)
-            duration = end_datetime - start_datetime
-
-            if duration < timedelta(minutes=30):
-                raise serializers.ValidationError("스터디 시간은 최소 30분 이상이어야 합니다.")
+            self.validate_time_range(start_time, end_time)
 
         return data
