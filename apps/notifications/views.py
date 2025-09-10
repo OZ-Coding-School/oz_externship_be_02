@@ -1,6 +1,5 @@
-from typing import Any
+from typing import Any, cast
 
-from django.db import transaction
 from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -13,11 +12,14 @@ from rest_framework.views import APIView
 from apps.notifications.models import Notification
 from apps.notifications.pagination import NotificationLimitOffsetPagination
 from apps.notifications.serializers import (
+    NotificationListSerializer,
     NotificationSerializer,
     NotificationUpdateSerializer,
     UnreadCountOut,
     UnreadCountSerializer,
 )
+from apps.notifications.services.read_service import NotificationService
+from apps.users.models.user import User
 
 STATUS_ALL = "all"
 STATUS_UNREAD = "unread"
@@ -40,12 +42,15 @@ class NotificationListView(ListAPIView[Notification]):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self) -> QuerySet[Notification]:
-        assert self.request.user.is_authenticated  # 인증 유저가 아니면 AssertionError를 발생시켜 요청 처리를 중단
-        user_id = self.request.user.id
+        # 쿼리파라미터 검증
+        qp = NotificationListSerializer(data=self.request.query_params)
+        qp.is_valid(raise_exception=True)
+        is_read = qp.validated_data.get("is_read", None)
 
-        status_param = self.request.query_params.get("status", "all")
+        user = cast(User, self.request.user)
 
-        return Notification.objects.list_queryset(user_id=user_id, status=status_param)
+        # 서비스 호출 (검증된 값만 전달)
+        return NotificationService.get_notifications_list(user_id=user.id, is_read=is_read)
 
 
 @extend_schema(
@@ -62,11 +67,9 @@ class NotificationUpdateView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    @transaction.atomic
     def post(self, request: Request, notification_id: int, *args: Any, **kwargs: Any) -> Response:
-        update = Notification.objects.read_only_one_queryset(notification_id=notification_id, user_id=request.user.pk)
-        if update == 0:
-            return Response({"detail": "Notification not found or access denied."}, status=status.HTTP_404_NOT_FOUND)
+        user = cast(User, request.user)
+        NotificationService.read_notification(notification_id=notification_id, user_id=user.id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -81,7 +84,11 @@ class NotificationReadAllView(APIView):
     모든 알림 일괄 읽음 처리
     """
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        user = cast(User, request.user)
+        NotificationService.read_all_user_notifications(user_id=user.id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

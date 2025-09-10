@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from rest_framework import serializers
 
@@ -39,3 +39,13 @@ class UnreadCountSerializer(serializers.Serializer[UnreadCountOut]):
     """
 
     unread_count = serializers.IntegerField()
+
+
+class NotificationListSerializer(serializers.Serializer[Any]):
+    is_read = serializers.BooleanField(required=False)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        # 쿼리스트링에 'is_read' 키 자체가 없었다면, 검증 결과에서도 제거
+        if "is_read" not in self.initial_data:
+            attrs.pop("is_read", None)
+        return attrs

@@ -97,14 +97,14 @@ class NotificationViewsTests(APITestCase):
         self.assertEqual(len(response2.data["results"]), 1)
 
     def test_get_read_notification_list(self) -> None:
-        response = self.client.get(self.url, {"status": "read", "limit": "10", "offset": "0"})
+        response = self.client.get(self.url, {"is_read": "true", "limit": "10", "offset": "0"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         for item in response.data["results"]:
             self.assertTrue(item["is_read"])
 
     def test_get_unread_notification_list(self) -> None:
-        response = self.client.get(self.url, {"status": "unread", "limit": "10", "offset": "0"})
+        response = self.client.get(self.url, {"is_read": "false", "limit": "10", "offset": "0"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 2)
         for item in response.data["results"]:
@@ -121,6 +121,7 @@ class NotificationViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")  # 204 노컨텐츠이기에 빈 문자열
+        self.notification.refresh_from_db()  # 서비스에서 save() 호출 시 실제로 바뀌는지 확인하는 테스트
         self.assertTrue(self.notification.is_read)
 
     def test_read_api_for_all_notification(self) -> None:
@@ -129,6 +130,8 @@ class NotificationViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")
+        unread_exists = Notification.objects.filter(user=self.user, is_read=False).exists()
+        self.assertFalse(unread_exists)  # 전체 읽음 후 미읽음 개수가 0개인지 확인
 
     def test_unread_count(self) -> None:
         url = reverse("notifications:notification-unread-count")
