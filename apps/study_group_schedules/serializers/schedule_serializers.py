@@ -8,28 +8,11 @@ from apps.studies.models.study_groups import StudyGroup
 from apps.study_group_schedules.models import GroupSchedule
 
 
-class StudyGroupSerializer(serializers.ModelSerializer[StudyGroup]):
-    """스터디 그룹 정보를 위한 Nested Serializer"""
-
-    class Meta:
-        model = StudyGroup
-        fields = [
-            "id",
-            "uuid",
-            "name",
-            "introduction",
-            "max_headcount",
-            "profile_img_url",
-            "start_at",
-            "end_at",
-            "status",
-        ]
-
-
 class StudyGroupScheduleResponseSerializer(serializers.ModelSerializer[GroupSchedule]):
     """스터디 그룹 Nested Serializer 사용"""
 
-    study_group = StudyGroupSerializer(read_only=True)
+    study_group_uuid = serializers.UUIDField(source="study_group.uuid", read_only=True)
+    study_group_name = serializers.CharField(source="study_group.name", read_only=True)
 
     class Meta:
         model = GroupSchedule
@@ -40,7 +23,8 @@ class StudyGroupScheduleResponseSerializer(serializers.ModelSerializer[GroupSche
             "session_date",
             "start_time",
             "end_time",
-            "study_group",
+            "study_group_uuid",
+            "study_group_name",
             "created_at",
             "updated_at",
         ]
