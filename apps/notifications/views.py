@@ -21,10 +21,6 @@ from apps.notifications.serializers import (
 from apps.notifications.services.read_service import NotificationService
 from apps.users.models.user import User
 
-STATUS_ALL = "all"
-STATUS_UNREAD = "unread"
-STATUS_READ = "read"
-
 
 @extend_schema(
     tags=["Notifications"],
@@ -46,11 +42,13 @@ class NotificationListView(ListAPIView[Notification]):
         qp = NotificationListSerializer(data=self.request.query_params)
         qp.is_valid(raise_exception=True)
         is_read = qp.validated_data.get("is_read", None)
-
+        notification_type = qp.validated_data.get("type")
         user = cast(User, self.request.user)
 
         # 서비스 호출 (검증된 값만 전달)
-        return NotificationService.get_notifications_list(user_id=user.id, is_read=is_read)
+        return NotificationService.get_notifications_list(
+            user_id=user.id, is_read=is_read, notification_type=notification_type
+        )
 
 
 @extend_schema(

@@ -140,3 +140,11 @@ class NotificationViewsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("unread_count", response.data)  # unread_count 키값이 있는지 확인
         self.assertIsInstance(response.data["unread_count"], int)  # unread_count가 int면 통과
+
+    def test_filter_by_type(self) -> None:
+        response = self.client.get(self.url, {"limit": 10, "offset": 0})
+        self.assertEqual(response.status_code, 200)
+        results = response.data["results"]
+        self.assertGreaterEqual(len(results), 2)
+        self.assertEqual(results[1]["type"], "ADD_APPLICATION")
+        self.assertEqual(results[1]["content"], "2")

@@ -43,9 +43,12 @@ class UnreadCountSerializer(serializers.Serializer[UnreadCountOut]):
 
 class NotificationListSerializer(serializers.Serializer[Any]):
     is_read = serializers.BooleanField(required=False)
+    type = serializers.ChoiceField(choices=Notification.NotificationType.choices, required=False)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        # 쿼리스트링에 'is_read' 키 자체가 없었다면, 검증 결과에서도 제거
+        # 쿼리스트링에 밑의 키 자체가 없었다면, 검증 결과에서도 제거
         if "is_read" not in self.initial_data:
             attrs.pop("is_read", None)
+        if "type" not in self.initial_data:
+            attrs.pop("type", None)
         return attrs

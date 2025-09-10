@@ -10,11 +10,17 @@ from apps.notifications.models import Notification
 class NotificationService:
     # 서비스에서는 Repository(Model Manager or 쿼리셋) 호출하여 비즈니스 로직 구성
     @classmethod
-    def get_notifications_list(cls, *, user_id: int, is_read: Optional[bool] = None) -> QuerySet[Notification]:
+    def get_notifications_list(
+        cls, *, user_id: int, is_read: Optional[bool] = None, notification_type: str
+    ) -> QuerySet[Notification]:
         if is_read is None:
-            return Notification.objects.filter(user_id=user_id)
+            list = Notification.objects.filter(user_id=user_id)
+        else:
+            list = Notification.objects.get_list_by_user_id_and_is_read(user_id=user_id, is_read=is_read)
+        if notification_type is not None:
+            list = list.filter(notification_type=notification_type)
 
-        return Notification.objects.get_list_by_user_id_and_is_read(user_id=user_id, is_read=is_read)
+        return list
 
     @classmethod
     @transaction.atomic
