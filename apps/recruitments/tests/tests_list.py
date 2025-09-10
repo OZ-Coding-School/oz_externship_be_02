@@ -17,12 +17,9 @@ class RecruitmentsListTestCase(APITestCase):
     # setUp과 달리 cls.study_group을 동적으로 속성을 추가하는 것으로 봐서 선언되어있지 않다고 mypy오류가 뜸
     # 클래스에 속성이 존재할 것을 선언하고 타입 명시
     study_group: StudyGroup
-    lecture1: Lecture
-    lecture2: Lecture
+    lecture: list[Lecture]
     recruitment: Recruitment
-    tag1: Tag
-    tag2: Tag
-    tag3: Tag
+    tag: list[Tag]
     user: User
 
     @classmethod
@@ -33,24 +30,33 @@ class RecruitmentsListTestCase(APITestCase):
             start_at=timezone.now(),
             end_at=timezone.now() + timedelta(days=1),
         )
-        cls.lecture1 = Lecture.objects.create(
-            title="lecture 1",
-            instructor="instructor 1",
-            duration=5,
-            description="description 1",
-            platform="udemy",
-            url_link="https://www.test.com",
+        lecture = []
+        lecture.append(
+            Lecture(
+                title="lecture 1",
+                instructor="instructor 1",
+                duration=5,
+                description="description 1",
+                platform="udemy",
+                url_link="https://www.test.com",
+            )
         )
-        cls.lecture2 = Lecture.objects.create(
-            title="lecture 2",
-            instructor="instructor 2",
-            duration=5,
-            description="description 2",
-            platform="udemy",
-            url_link="https://www.test.com",
+        lecture.append(
+            Lecture(
+                title="lecture 2",
+                instructor="instructor 2",
+                duration=5,
+                description="description 2",
+                platform="udemy",
+                url_link="https://www.test.com",
+            )
         )
-        StudyLecture.objects.create(lecture=cls.lecture1, study_group=cls.study_group)
-        StudyLecture.objects.create(lecture=cls.lecture2, study_group=cls.study_group)
+        cls.lecture = Lecture.objects.bulk_create(lecture)
+        study_lecture = [
+            StudyLecture(lecture=cls.lecture[0], study_group=cls.study_group),
+            StudyLecture(lecture=cls.lecture[1], study_group=cls.study_group),
+        ]
+        StudyLecture.objects.bulk_create(study_lecture)
 
         cls.user = User.objects.create_user(
             email="test@test.com",
@@ -70,18 +76,20 @@ class RecruitmentsListTestCase(APITestCase):
             estimated_fee=50000,
             expected_headcount=5,
         )
-        cls.tag1 = Tag.objects.create(name="tag1")
-        cls.tag2 = Tag.objects.create(name="tag2")
-        cls.tag3 = Tag.objects.create(name="tag3")
-        RecruitmentTag.objects.create(tag=cls.tag1, recruitment=cls.recruitment)
-        RecruitmentTag.objects.create(tag=cls.tag2, recruitment=cls.recruitment)
-        RecruitmentTag.objects.create(tag=cls.tag3, recruitment=cls.recruitment)
+        tag = [Tag(name="tag1"), Tag(name="tag2"), Tag(name="tag3")]
+        cls.tag = Tag.objects.bulk_create(tag)
+        recruitment_tag = [
+            RecruitmentTag(tag=cls.tag[0], recruitment=cls.recruitment),
+            RecruitmentTag(tag=cls.tag[1], recruitment=cls.recruitment),
+            RecruitmentTag(tag=cls.tag[2], recruitment=cls.recruitment),
+        ]
+        RecruitmentTag.objects.bulk_create(recruitment_tag)
 
     def setUp(self) -> None:
         self.client.force_authenticate(user=self.user)
 
     def test_recruitment_list_get(self) -> None:
-        url = reverse("recruitment")
+        url = reverse("recruitment-list")
         res = self.client.get(url)
         self.assertEqual(res.status_code, 200)
 

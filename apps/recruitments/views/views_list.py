@@ -31,6 +31,6 @@ class RecruitmentView(APIView):
         responses={status.HTTP_200_OK: RecruitmentListSerializer(many=True)},
     )
     def get(self: typing.Self, request: Request) -> Response:
-        optimized_queryset: RecruitmentListQuerySet[Recruitment] = active_get_query()
+        optimized_queryset: RecruitmentListQuerySet = active_get_query()
         serializer = RecruitmentListSerializer(optimized_queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
