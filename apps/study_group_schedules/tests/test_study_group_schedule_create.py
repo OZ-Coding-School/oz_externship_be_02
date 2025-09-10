@@ -89,7 +89,7 @@ class StudyGroupScheduleCreateTest(APITestCase):
 
         # Response 데이터 검증
         self.assertEqual(response.data["title"], "1주차 스터디")
-        self.assertEqual(response.data["study_group"]["name"], "스터디 그룹")
+        self.assertEqual(response.data["study_group_name"], "스터디 그룹")
 
     def test_create_schedule_invalid_time(self) -> None:
         """잘못된 시간 설정 테스트 (시작 시간 >= 종료 시간)"""
