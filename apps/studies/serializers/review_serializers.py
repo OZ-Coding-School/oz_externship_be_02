@@ -25,7 +25,7 @@ class ReviewCreateSerializer(serializers.ModelSerializer[StudyReview]):
 
     # 내부 Hidden 필드
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    study_group = serializers.HiddenField(default=None) 
+    study_group = serializers.HiddenField(default=None)
 
     class Meta:
         model = StudyReview
@@ -36,7 +36,7 @@ class ReviewCreateSerializer(serializers.ModelSerializer[StudyReview]):
             "user": {"write_only": True},
             "study_group": {"write_only": True},  # 응답에서 숨김
         }
-        validators = [ # 코치님 피드백 반영: user + study_group 중복 검증은 UniqueTogetherValidator로 처리
+        validators = [  # 코치님 피드백 반영: user + study_group 중복 검증은 UniqueTogetherValidator로 처리
             UniqueTogetherValidator(
                 queryset=StudyReview.objects.all(),
                 fields=["user", "study_group"],
