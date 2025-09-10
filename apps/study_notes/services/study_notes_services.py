@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 from django.core.files.uploadedfile import UploadedFile
 
@@ -9,12 +9,14 @@ from apps.study_notes.models.study_notes import (
     StudyNoteAttachment,
     StudyNoteImage,
 )
+from apps.study_notes.tests.mock_s3_uploader import MockS3Uploader
 from apps.users.models.user import User
 
 
 class StudyNoteService:
-    def __init__(self, s3_uploader: Optional[S3Uploader] = None) -> None:
-        self.s3 = s3_uploader or S3Uploader()
+    def __init__(self, s3_uploader: Optional[Union[S3Uploader, MockS3Uploader]] = None) -> None:
+        # 실제 기능: None이면 S3Uploader() 사용, 테스트: MockS3Uploader 주입
+        self.s3: Union[S3Uploader, MockS3Uploader] = s3_uploader or S3Uploader()
 
     def create_study_note(
         self,
