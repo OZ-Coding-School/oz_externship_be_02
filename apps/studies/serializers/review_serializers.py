@@ -51,6 +51,3 @@ class ReviewCreateSerializer(serializers.ModelSerializer[StudyReview]):
                 {"study_group_id": ["종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다."]}
             )
         return attrs
-
-    def create(self, validated_data: dict[str, Any]) -> StudyReview:
-        return StudyReview.objects.create(**validated_data)
