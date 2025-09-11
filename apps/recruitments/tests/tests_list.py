@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
+from typing import Dict, Union
 
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.lectures.models.crawled_lectures import Lecture
+from apps.recruitments.models import RecruitmentBookmark
 from apps.recruitments.models.recruitment_tags import RecruitmentTag
 from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.models.tags import Tag
@@ -20,7 +22,8 @@ class RecruitmentsListTestCase(APITestCase):
     lecture: list[Lecture]
     recruitment: list[Recruitment]
     tag: list[Tag]
-    user: User
+    user: list[User]
+    recruitment_bookmarks: list[RecruitmentBookmark]
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -58,50 +61,86 @@ class RecruitmentsListTestCase(APITestCase):
         ]
         StudyLecture.objects.bulk_create(study_lecture)
 
-        cls.user = User.objects.create_user(
-            email="test@test.com",
-            password="itspassword",
-            name="test",
-            nickname="test",
-            phone_number="010-0000-0000",
-            gender="male",
-            birthday=timezone.make_aware(datetime(2025, 9, 9)),
-        )
+        user = []
+        for i in range(5):
+            user.append(
+                User(
+                    email=f"testuser{i}@test.com",
+                    password="itspassword",
+                    name="test",
+                    nickname=f"testuser{i}",
+                    phone_number=f"010-0000-000{i}",
+                    gender="male",
+                    birthday=timezone.make_aware(datetime(2025, 9, 9)),
+                )
+            )
+        cls.user = User.objects.bulk_create(user)
 
         recruitment = []
         for i in range(15):
             recruitment.append(
                 Recruitment(
                     study_group=cls.study_group,
-                    author=cls.user,
+                    author=cls.user[0],
                     title=f"test recruitment{i+1}",
                     content="test content",
                     estimated_fee=50000,
                     expected_headcount=5,
+                    views_count=15 - i,
                 )
             )
         cls.recruitment = Recruitment.objects.bulk_create(recruitment)
+
         tag = [Tag(name="tag1"), Tag(name="tag2"), Tag(name="tag3")]
         cls.tag = Tag.objects.bulk_create(tag)
-
         recruitment_tag = []
         for i in range(15):
             for j in range(3):
                 recruitment_tag.append(RecruitmentTag(tag=cls.tag[j], recruitment=cls.recruitment[i]))
         RecruitmentTag.objects.bulk_create(recruitment_tag)
 
-    def setUp(self) -> None:
-        self.client.force_authenticate(user=self.user)
+        recruitment_bookmarks = []
+        for i in range(5):
+            for j in range(5 - i):
+                recruitment_bookmarks.append(RecruitmentBookmark(recruitment=cls.recruitment[i + 5], user=cls.user[j]))
+        RecruitmentBookmark.objects.bulk_create(recruitment_bookmarks)
 
-    def test_recruitment_list_get(self) -> None:
+    def test_list_get(self) -> None:
+        url = reverse("recruitment-list")
+        query_params = {"page": 1}
+        res = self.client.get(url, query_params)
+        self.assertEqual(res.status_code, 200)
+        results = res.data["results"]
+        # for i in results:
+        #     print(i['id'])
+        data = results[0]
+        self.assertEqual(len(data["lectures"]), 2)
+        self.assertEqual(len(data["tags"]), 3)
+
+    def test_list_page(self) -> None:
         url = reverse("recruitment-list")
         query_params = {"page": 1, "size": 3}
         res = self.client.get(url, data=query_params)
         self.assertEqual(res.status_code, 200)
-        print(res.data)
+        # print(res.data)
         results = res.data["results"]
         self.assertEqual(len(results), 3)
-        data = results[0]
-        # print(data)
-        self.assertEqual(len(data["lectures"]), 2)
-        self.assertEqual(len(data["tags"]), 3)
+
+    def test_list_search(self) -> None:
+        url = reverse("recruitment-list")
+        query_params: Dict[str, Union[str, int]] = {"page": 1, "search": "3"}
+        res = self.client.get(url, data=query_params)
+        self.assertEqual(res.status_code, 200)
+        # print(res.data)
+        results = res.data["results"]
+        # print(results)
+        self.assertEqual(len(results), 2)
+
+    def test_list_order(self) -> None:
+        url = reverse("recruitment-list")
+        query_params: Dict[str, Union[str, int]] = {"page": 1, "size": 20, "ordering": "-bookmarks_count,-created_at"}
+        res = self.client.get(url, data=query_params)
+        self.assertEqual(res.status_code, 200)
+        results = res.data["results"]
+        # for i in results:
+        #     print(i["id"], i["bookmarks_count"])
