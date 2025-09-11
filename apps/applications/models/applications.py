@@ -1,5 +1,6 @@
 from django.db import models
 
+from apps.applications.managers.application_managers import ApplicationManager
 from apps.core.models import BaseModel
 from apps.recruitments.models.recruitments import Recruitment
 from apps.users.models.user import User
@@ -42,6 +43,10 @@ class Application(BaseModel):
         default=ApplicationStatus.PENDING,
         help_text="공고 지원 상태",
     )
+
+    # 커스텀 매니저인 ApplicationManager를 기본 매니저('objects')로 지정합니다.
+    # 이를 통해 Application.objects.create_application()과 같은 커스텀 메서드를 사용할 수 있게 됩니다.
+    objects = ApplicationManager()
 
     class Meta:
         db_table = "applications"
