@@ -25,7 +25,7 @@ class NotificationViewsTests(APITestCase):
 
         now = timezone.now()
 
-        Notification.objects.bulk_create(
+        notis = Notification.objects.bulk_create(
             [
                 Notification(
                     user=self.user,
@@ -53,7 +53,7 @@ class NotificationViewsTests(APITestCase):
                 ),
             ]
         )
-
+        self.notification = notis[0]  # 첫번째 알람을 테스트 대상으로함 / self.notification 속성 정의를 위함(119)
         self.url = reverse("notifications:notification-list")
 
     def test_list_pagination(self) -> None:
@@ -97,14 +97,14 @@ class NotificationViewsTests(APITestCase):
         self.assertEqual(len(response2.data["results"]), 1)
 
     def test_get_read_notification_list(self) -> None:
-        response = self.client.get(self.url, {"status": "read", "limit": "10", "offset": "0"})
+        response = self.client.get(self.url, {"is_read": "true", "limit": "10", "offset": "0"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         for item in response.data["results"]:
             self.assertTrue(item["is_read"])
 
     def test_get_unread_notification_list(self) -> None:
-        response = self.client.get(self.url, {"status": "unread", "limit": "10", "offset": "0"})
+        response = self.client.get(self.url, {"is_read": "false", "limit": "10", "offset": "0"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 2)
         for item in response.data["results"]:
@@ -116,11 +116,13 @@ class NotificationViewsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_read_api_for_only_one_notification(self) -> None:
-        url = reverse("notifications:notification-read", kwargs={"notification_id": 1})
+        url = reverse("notifications:notification-read", kwargs={"notification_id": self.notification.id})
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")  # 204 노컨텐츠이기에 빈 문자열
+        self.notification.refresh_from_db()  # 서비스에서 save() 호출 시 실제로 바뀌는지 확인하는 테스트
+        self.assertTrue(self.notification.is_read)
 
     def test_read_api_for_all_notification(self) -> None:
         url = reverse("notifications:notification-read-all")
@@ -128,6 +130,8 @@ class NotificationViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(response.content, b"")
+        unread_exists = Notification.objects.filter(user=self.user, is_read=False).exists()
+        self.assertFalse(unread_exists)  # 전체 읽음 후 미읽음 개수가 0개인지 확인
 
     def test_unread_count(self) -> None:
         url = reverse("notifications:notification-unread-count")
@@ -136,3 +140,11 @@ class NotificationViewsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("unread_count", response.data)  # unread_count 키값이 있는지 확인
         self.assertIsInstance(response.data["unread_count"], int)  # unread_count가 int면 통과
+
+    def test_filter_by_type(self) -> None:
+        response = self.client.get(self.url, {"limit": 10, "offset": 0})
+        self.assertEqual(response.status_code, 200)
+        results = response.data["results"]
+        self.assertGreaterEqual(len(results), 2)
+        self.assertEqual(results[1]["type"], "ADD_APPLICATION")
+        self.assertEqual(results[1]["content"], "2")

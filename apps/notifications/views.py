@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
@@ -12,39 +12,45 @@ from rest_framework.views import APIView
 from apps.notifications.models import Notification
 from apps.notifications.pagination import NotificationLimitOffsetPagination
 from apps.notifications.serializers import (
-    NotificationSerializer,
+    NotificationListQueryParamsSerializer,
+    NotificationListSerializer,
     NotificationUpdateSerializer,
     UnreadCountOut,
     UnreadCountSerializer,
 )
-
-STATUS_ALL = "all"
-STATUS_UNREAD = "unread"
-STATUS_READ = "read"
+from apps.notifications.services.read_service import NotificationService
+from apps.users.models.user import User
 
 
 @extend_schema(
     tags=["Notifications"],
     summary="알림 목록 조회 API",
     description="로그인한 유저의 알림 내역을 페이지네이션으로 조회. status로 필터링",
-    responses={200: NotificationSerializer(many=True)},
+    responses={200: NotificationListSerializer(many=True)},
 )
 class NotificationListView(ListAPIView[Notification]):
     """
     알림 목록 조회 with offset
     """
 
-    serializer_class: type[NotificationSerializer] = NotificationSerializer
+    serializer_class: type[NotificationListSerializer] = NotificationListSerializer
     pagination_class = NotificationLimitOffsetPagination
     permission_classes = [IsAuthenticated]
+    validated_query_params: dict[str, Any]
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        # 쿼리파라미터 검증
+        qp = NotificationListQueryParamsSerializer(data=self.request.query_params)
+        qp.is_valid(raise_exception=True)
+        self.validated_query_params = qp.validated_data
+
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self) -> QuerySet[Notification]:
-        assert self.request.user.is_authenticated  # 인증 유저가 아니면 AssertionError를 발생시켜 요청 처리를 중단
-        user_id = self.request.user.id
+        user = cast(User, self.request.user)
 
-        status_param = self.request.query_params.get("status", "all")
-
-        return Notification.objects.list_queryset(user_id=user_id, status=status_param)
+        # 서비스 호출 (검증된 값만 전달)
+        return NotificationService.get_notifications_list(user_id=user.id, **self.validated_query_params)
 
 
 @extend_schema(
@@ -59,7 +65,11 @@ class NotificationUpdateView(APIView):
     특정 알림 읽음 처리
     """
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request: Request, notification_id: int, *args: Any, **kwargs: Any) -> Response:
+        user = cast(User, request.user)
+        NotificationService.read_notification(notification_id=notification_id, user_id=user.id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -74,7 +84,11 @@ class NotificationReadAllView(APIView):
     모든 알림 일괄 읽음 처리
     """
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        user = cast(User, request.user)
+        NotificationService.read_all_user_notifications(user_id=user.id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

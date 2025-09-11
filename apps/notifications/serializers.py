@@ -1,11 +1,13 @@
-from typing import TypedDict
+from typing import Any, TypedDict
 
+# def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+#     # 쿼리스트링에 밑의 키 자체가 없었다면, 검증 결과에서도 제거
 from rest_framework import serializers
 
 from apps.notifications.models import Notification
 
 
-class NotificationSerializer(serializers.ModelSerializer[Notification]):
+class NotificationListSerializer(serializers.ModelSerializer[Notification]):
     """
     알림 목록 조회를 위한 Serializer
     """
@@ -39,3 +41,16 @@ class UnreadCountSerializer(serializers.Serializer[UnreadCountOut]):
     """
 
     unread_count = serializers.IntegerField()
+
+
+class NotificationListQueryParamsSerializer(serializers.Serializer[Any]):
+    is_read = serializers.CharField(required=False)
+    n_type = serializers.ChoiceField(choices=Notification.NotificationType.choices, required=False)
+
+    def validate_is_read(self, value: str) -> bool:
+        if value.lower() == "true":
+            return True
+        elif value.lower() == "false":
+            return False
+        else:
+            raise serializers.ValidationError("is_read value is must be 'true' or 'false'.")

@@ -8,16 +8,5 @@ if TYPE_CHECKING:
 
 
 class NotificationManager(models.Manager["Notification"]):
-    def list_queryset(self, user_id: int, status: str) -> QuerySet["Notification"]:
-        qs = (
-            self.get_queryset()
-            .filter(user_id=user_id)
-            .only("id", "content", "notification_type", "is_read", "back_url_link", "created_at")
-        )
-
-        if status == "unread":
-            qs = qs.filter(is_read=False)
-        elif status == "read":
-            qs = qs.filter(is_read=True)
-
-        return qs
+    def get_list_by_user_id_and_is_read(self, user_id: int, is_read: bool) -> QuerySet["Notification"]:
+        return self.get_queryset().filter(user_id=user_id, is_read=is_read)
