@@ -54,4 +54,3 @@ class NotificationListQueryParamsSerializer(serializers.Serializer[Any]):
             return False
         else:
             raise serializers.ValidationError("is_read value is must be 'true' or 'false'.")
-
