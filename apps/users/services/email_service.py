@@ -15,7 +15,7 @@ class EmailVerificationService:
     def generate_verification_code(self) -> str:
         return Base62.uuid_encode(u=uuid.uuid4())
 
-    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 3600) -> Response:
+    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> Response:
 
         verification_code = self.generate_verification_code()
         cache_key = f"{purpose.value}-{email}"
@@ -56,6 +56,4 @@ class EmailVerificationService:
             return Response({"error": "인증번호가 일치하지 않습니다"}, status=status.HTTP_400_BAD_REQUEST)
 
         cache.set(cache_key, verification_code, timeout=300)
-        print("cache_verification_code:", cache_verification_code)
-        print("verification_code from request:", verification_code)
         return Response({"detail": f"인증이 완료되었습니다"}, status=status.HTTP_200_OK)
