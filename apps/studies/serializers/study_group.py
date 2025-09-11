@@ -79,6 +79,7 @@ class StudyCreateSerializer(serializers.ModelSerializer[GroupMember]):
             GroupMember.objects.create(study_group=study_group, is_leader=True, **validated_data)
         return study_group
 
+
 class CreateSuccessResponse(serializers.ModelSerializer[GroupMember]):
     """
     스터디 그룹 생성 성공 시, 응답 데이터 Serializer
@@ -96,7 +97,7 @@ class CreateSuccessResponse(serializers.ModelSerializer[GroupMember]):
             "start_at",
             "end_at",
             "max_headcount",
-            "created_by", # created_by 필드 추가
+            "created_by",  # created_by 필드 추가
             "created_at",
         ]
 
