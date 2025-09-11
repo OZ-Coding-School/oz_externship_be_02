@@ -58,46 +58,59 @@ class StudyCreateSerializer(serializers.ModelSerializer[GroupMember]):
     스터디 그룹 멤버 Serializer
     """
 
-    study_group = StudyGroupSerializer()
-    user: PrimaryKeyRelatedField[User] = serializers.PrimaryKeyRelatedField(read_only=True)
+    study_group = StudyGroupSerializer()  # 스터디 그룹 Serializer로 데이터 받아오기
+    user: PrimaryKeyRelatedField[User] = serializers.PrimaryKeyRelatedField(read_only=True)  # 유저 데이터 가져오기
 
     class Meta:
         model = GroupMember
         fields = ["study_group", "user", "is_leader"]
 
-    def create(self, validated_data: Dict[str, Any]) -> GroupMember:
+    def create(self, validated_data: Dict[str, Any]) -> Any:
         """
-        스터디 그룹 생성 시, GroupMember에 리더 멤버 등록
+        스터디 그룹 생성과 함께 GroupMember에 리더 멤버 등록
         :param validated_data: study_group 데이터
         :param user:
-        :return:
+        :return: study_group data
         """
         with transaction.atomic():
             study_group_data = validated_data.pop("study_group")
             study_group = StudyGroup.objects.create(**study_group_data)
 
-            leader = GroupMember.objects.create(study_group=study_group, is_leader=True, **validated_data)
-        return leader
-
+            GroupMember.objects.create(study_group=study_group, is_leader=True, **validated_data)
+        return study_group
 
 class CreateSuccessResponse(serializers.ModelSerializer[GroupMember]):
-    class Meta:
-        # model = StudyGroup
-        # fields = ['uuid', 'name', 'introduction', 'profile_img_url', 'start_at', 'end_at', 'max_headcount', 'created_at']
-        model = GroupMember
-        fields = ["user", "study_group"]
+    """
+    스터디 그룹 생성 성공 시, 응답 데이터 Serializer
+    """
 
-    def to_representation(self, obj: GroupMember) -> Dict[str, Any]:
+    created_by = serializers.SerializerMethodField()  # StudyGroup Model에 존재하지 않는 값.
+
+    class Meta:
+        model = StudyGroup
+        fields = [
+            "uuid",
+            "name",
+            "introduction",
+            "profile_img_url",
+            "start_at",
+            "end_at",
+            "max_headcount",
+            "created_by", # created_by 필드 추가
+            "created_at",
+        ]
+
+    def get_created_by(self, obj: StudyGroup) -> Dict[str, str]:
+        """
+        `created_by` 생성 함수.
+        GroupMember에서 리더 데이터 조회 후, 필요한 데이터만 return
+        :param obj: StudyGroup
+        :return: created_by : user_uuid, user_nickname
+        """
+        leader = obj.groupmember_set.filter(is_leader=True, study_group=obj).first()
+        if leader is None:
+            return {"user_uuid": "", "user_nickname": ""}
         return {
-            "uuid": str(obj.study_group.uuid),
-            "name": obj.study_group.name,
-            "introduction": obj.study_group.introduction,
-            "profile_img_url": obj.study_group.profile_img_url,
-            "start_at": obj.study_group.start_at.isoformat(),
-            "end_at": obj.study_group.end_at.isoformat(),
-            "max_headcount": obj.study_group.max_headcount,
-            "created_by": {
-                "uuid": str(obj.user.uuid),
-                "nickname": obj.user.nickname,
-            },
+            "uuid": str(leader.user.uuid),
+            "nickname": leader.user.nickname,
         }
