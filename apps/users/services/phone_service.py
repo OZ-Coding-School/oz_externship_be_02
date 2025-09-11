@@ -25,6 +25,6 @@ class TwilioAuthService:
             )
             if verification_check.status == "approved":
                 return {"success": True, "message": "휴대폰 인증 완료"}
-            return {"succesgs": False, "message": "인증번호가 일치하지 않습니다"}
+            return {"success": False, "message": "인증번호가 일치하지 않습니다"}
         except Exception as e:
             return {"success": False, "message": "인증 실패: 서버 오류"}
