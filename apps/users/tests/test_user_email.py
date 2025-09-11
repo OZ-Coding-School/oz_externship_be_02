@@ -53,10 +53,12 @@ class EmailVerificationServiceUnitTests(TestCase):
 
 
 class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
-    def setUp(self) -> None:
-        self.email = "test@example.com"
-        self.send_url = reverse("email_send_code")
-        self.verify_url = reverse("email_verify_code")
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = cls._create_test_user()
+
+    def setUp(self):
+        self.email_verication()
 
     def test_send_verification_email(self) -> None:
         # 이메일 인증요청에 사용할 이메일
@@ -108,19 +110,19 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
     """
     비밀번호 찾기 이메일 인증 테스틐 코드
     """
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = cls._create_test_user()
 
-    def setUp(self) -> None:
-        self._create_test_user()
-        self.email = "reset@example.com"
-        self.reset_password_send_url = reverse("password_reset_send")
-        self.reset_password_verify_url = reverse("password_reset_verify")
+    def setUp(self):
+        self.email_reset_password()
 
     def test_send_verification_email(self) -> None:
         """
         비밀 번호 찾기 이메일 코드 전송
         """
         data = {"email": self.email}
-        response = self.client.post(self.reset_password_send_url, data)
+        response = self.client.post(self.send_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mail.outbox[0].subject, "비밀번호 재설정 이메일 인증")
@@ -128,7 +130,7 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
         verification_code = cache.get(cache_key)
         self.assertIsNotNone(verification_code)
 
-        response = self.client.post(self.reset_password_verify_url, {"email": self.email, "code": verification_code})
+        response = self.client.post(self.verify_url, {"email": self.email, "code": verification_code})
         self.assertIn(verification_code, mail.outbox[0].body)
 
     def test_email_verify_code_success(self) -> None:
@@ -137,7 +139,7 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
         :return:
         """
         data = {"email": self.email}
-        self.client.post(self.reset_password_send_url, data)
+        self.client.post(self.send_url, data)
 
         cache_key = f"{VerificationPurpose.RESET_PASSWORD.value}-{self.email}"
         verification_code = cache.get(cache_key)
@@ -145,7 +147,7 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
         self.assertIsNotNone(verification_code)
 
         response = self.client.post(
-            self.reset_password_verify_url, {"email": self.email, "verification_code": verification_code}
+            self.verify_url, {"email": self.email, "verification_code": verification_code}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(cache.get(cache_key))
@@ -155,18 +157,20 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
         비밀번호 찾기 인증 실패 케이스
         """
         data = {"email": self.email}
-        self.client.post(self.reset_password_verify_url, data)
+        self.client.post(self.verify_url, data)
 
-        response = self.client.post(self.reset_password_verify_url, {"email": self.email, "code": "wrong"})
+        response = self.client.post(self.verify_url, {"email": self.email, "code": "wrong"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class AccountRecoveryEmailVerificationAPITest(RedisTestClient, TestUserMixin):
-    def setUp(self) -> None:
-        self._create_test_user()
-        self.email = "recover@test.com"
-        self.send_url = reverse("recover_account_send")
-        self.verify_url = reverse("recover_account_verify")
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = cls._create_test_user()
+
+    def setUp(self):
+        self.email_recover_account()
 
     def test_send_verification_email_success(self) -> None:
         """
