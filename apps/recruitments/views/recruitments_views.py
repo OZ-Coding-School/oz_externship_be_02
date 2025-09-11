@@ -1,52 +1,56 @@
 from uuid import UUID
 
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
-from rest_framework.decorators import authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.recruitments.models.recruitments import Recruitment
-from apps.recruitments.serializers.recruitments_serializers import (
+from ..serializers.recruitments_serializers import (
     RecruitmentDetailSerializer,
+    RecruitmentUpdateSerializer,
 )
+from ..services.recruitments_services import get_recruitment_detail, update_recruitment
 
 
 class RecruitmentDetailView(APIView):
+    # [수정됨] 기본 권한은 '누구나'로 설정하여, 모든 요청이 일단 View 안으로 들어오게 합니다.
+    # 이것이 405 에러를 피하는 가장 확실한 방법입니다.
     permission_classes = [AllowAny]
     authentication_classes = ()
 
-    @extend_schema(
-        summary="스터디 구인공고 상세 조회",
-        description="recruitment_uuid에 해당하는 스터디 구인공고의 모든 상세정보 조회",
-        responses={
-            status.HTTP_200_OK: RecruitmentDetailSerializer,
-            status.HTTP_404_NOT_FOUND: OpenApiResponse(
-                description="해당 공고를 찾을 수 없음", response={"error": "string"}
-            ),
-        },
-        parameters=[
-            OpenApiParameter(
-                name="recruitment_uuid",
-                type=UUID,
-                location=OpenApiParameter.PATH,
-                description="조회할 공고의 고유 UUID",
-            ),
-        ],
-    )
     def get(self, request: Request, recruitment_uuid: UUID) -> Response:
-        # 테이블 명세서대로 하기 -> model과 serializer 이용하면 해결될거에요
+        # GET 요청은 권한 검사가 전혀 필요 없으므로, 바로 로직을 실행합니다.
         try:
-            # 1. URL 경로로 recruitment_uuid를 사용해 데이터베이스에 해당하는 Recruitment 객체 조회
-            recruitment = (
-                Recruitment.objects.select_related("author")
-                .prefetch_related("tags", "attachments", "bookmark_users")
-                .get(uuid=recruitment_uuid)
-            )
-        except Recruitment.DoesNotExist:
-            return Response({"error": "해당 공고를 찾을 수 없음."}, status=status.HTTP_404_NOT_FOUND)
-
+            recruitment = get_recruitment_detail(recruitment_uuid=recruitment_uuid)
+        except ObjectDoesNotExist as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
         serializer = RecruitmentDetailSerializer(recruitment)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request: Request, recruitment_uuid: UUID) -> Response:
+
+        # 1단계: 로그인 여부 확인
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED  # <-- 비로그인 시 401 에러
+            )
+
+        try:
+            recruitment_to_update = get_recruitment_detail(recruitment_uuid=recruitment_uuid)
+        except ObjectDoesNotExist as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        # 2단계: 작성자 본인 여부 확인
+        if request.user != recruitment_to_update.author:
+            return Response(
+                {"error": "이 공고를 수정할 권한이 없습니다."},
+                status=status.HTTP_403_FORBIDDEN,  # <-- 작성자 아니면 403
+            )
+
+        # 모든 권한 검사를 통과한 경우 실행
+        updated_recruitment = update_recruitment(recruitment=recruitment_to_update, data=request.data)
+
+        response_serializer = RecruitmentDetailSerializer(updated_recruitment)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
