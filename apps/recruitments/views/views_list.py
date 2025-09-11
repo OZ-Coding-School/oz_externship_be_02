@@ -49,6 +49,8 @@ class RecruitmentView(APIView):
         # 페이지네이션
         paginator = PageNumberPagination()
         paginator.page_size = 10
+        paginator.page_size_query_param='size'
+        paginator.max_page_size=100
         # url의 page파라미터를 읽어 데이터 슬라이싱
         paginated_queryset = paginator.paginate_queryset(optimized_queryset, request)
 
