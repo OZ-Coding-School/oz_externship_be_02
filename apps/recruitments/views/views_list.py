@@ -1,14 +1,15 @@
 import typing
 
-from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import serializers
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
-from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
 from apps.recruitments.services.services_list import active_get_query
 
@@ -28,9 +29,38 @@ class RecruitmentView(APIView):
         "3. 검색기능(공고 제목에서 검색)\n\n"
         "4. 필터링기능(카테고리, 사용자 정의 태그)\n\n"
         "5. 정렬 기능(최신순-기본, 조회수 높은 순, 북마크 순)",
-        responses={status.HTTP_200_OK: RecruitmentListSerializer(many=True)},
+        parameters=[
+            OpenApiParameter(name="page", description="조회할 page", required=True, type=OpenApiTypes.INT),
+            OpenApiParameter(
+                name="size",
+                description="조회할 page의 데이터 개수를 정할 수 있음",
+                required=False,
+                type=OpenApiTypes.INT,
+            ),
+        ],
+        responses={
+            200: inline_serializer(
+                name="get_pagelist",
+                fields={
+                    "count": serializers.IntegerField(default=100),
+                    "next": serializers.URLField(default="https://api.example.org/accounts/?page=5"),
+                    "previous": serializers.URLField(default="https://api.example.org/accounts/?page=3"),
+                    "results": RecruitmentListSerializer(many=True),
+                },
+            )
+        },
     )
     def get(self: typing.Self, request: Request) -> Response:
+        # 조회
         optimized_queryset: RecruitmentListQuerySet = active_get_query()
-        serializer = RecruitmentListSerializer(optimized_queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # 페이지네이션
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        paginator.page_size_query_param = "size"
+        paginator.max_page_size = 100
+        # url의 page파라미터를 읽어 데이터 슬라이싱
+        paginated_queryset = paginator.paginate_queryset(optimized_queryset, request)
+
+        serializer = RecruitmentListSerializer(paginated_queryset, many=True)
+        return paginator.get_paginated_response(serializer.data)
