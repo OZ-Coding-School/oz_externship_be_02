@@ -29,7 +29,10 @@ class RecruitmentView(APIView):
         "3. 검색기능(공고 제목에서 검색)\n\n"
         "4. 필터링기능(카테고리, 사용자 정의 태그)\n\n"
         "5. 정렬 기능(최신순-기본, 조회수 높은 순, 북마크 순)",
-        parameters=[OpenApiParameter(name="page", description="조회할 page", required=True, type=OpenApiTypes.INT)],
+        parameters=[
+            OpenApiParameter(name="page", description="조회할 page", required=True, type=OpenApiTypes.INT),
+            OpenApiParameter(name="size", description="조회할 page의 데이터 개수를 정할 수 있음", required=False, type=OpenApiTypes.INT)
+        ],
         responses={
             200: inline_serializer(
                 name="get_pagelist",
