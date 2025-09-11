@@ -8,16 +8,17 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from apps.core.utils.base62 import Base62
+from apps.users.utils.enums import VerificationPurpose
 
 
 class EmailVerificationService:
     def generate_verification_code(self) -> str:
         return Base62.uuid_encode(u=uuid.uuid4())
 
-    def send_verification_email(self, email: str, purpose: str, timeout: int = 3600) -> Response:
+    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 3600) -> Response:
 
         verification_code = self.generate_verification_code()
-        cache_key = f"{purpose}-{email}"
+        cache_key = f"{purpose.value}-{email}"
         cache.set(cache_key, verification_code, timeout=timeout)
 
         subject_map = {
@@ -46,13 +47,15 @@ class EmailVerificationService:
                 {"error": "이메일 발송 중 예외가 발생하였습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def verify_code(self, email: str, code: str, purpose: str) -> Response:
+    def verify_code(self, email: str, purpose: VerificationPurpose, verification_code: str) -> Response:
 
-        cache_key = f"{purpose}-{email}"
+        cache_key = f"{purpose.value}-{email}"
         cache_verification_code = cache.get(cache_key)
 
-        if cache_verification_code != code:
+        if cache_verification_code != verification_code:
             return Response({"error": "인증번호가 일치하지 않습니다"}, status=status.HTTP_400_BAD_REQUEST)
 
-        cache.set(cache_key, True, timeout=300)
-        return Response({"detail": f"이메일 인증 성공"}, status=status.HTTP_200_OK)
+        cache.set(cache_key, verification_code, timeout=300)
+        print("cache_verification_code:", cache_verification_code)
+        print("verification_code from request:", verification_code)
+        return Response({"detail": f"인증이 완료되었습니다"}, status=status.HTTP_200_OK)
