@@ -119,7 +119,4 @@ class TestStudyReviewCreateAPI(APITestCase):
         # 기존: self.assertIn("study_group_id", response.data)
         # 수정: "detail" 키와 메시지 내용 확인
         self.assertIn("detail", response.data)
-        self.assertIn(
-            "종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다.",
-            response.data["detail"]
-        )
+        self.assertIn("종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다.", response.data["detail"])

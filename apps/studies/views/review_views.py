@@ -17,9 +17,7 @@ class ReviewCreateAPIView(APIView):
 
     def post(self, request: Request, *args: object, **kwargs: object) -> Response:
         # 요청 검증
-        request_serializer = ReviewCreateRequestSerializer(
-            data=request.data, context={"request": request}
-        )
+        request_serializer = ReviewCreateRequestSerializer(data=request.data, context={"request": request})
         if request_serializer.is_valid():
             # 저장
             review = request_serializer.save()
