@@ -2,6 +2,7 @@ from django.db import models
 
 from apps.core.models import BaseModel
 from apps.studies.models.study_groups import StudyGroup
+from apps.study_notes.managers import StudyNoteManager
 from apps.users.models.user import User
 
 
@@ -15,6 +16,8 @@ class StudyNote(BaseModel):
     title = models.CharField(max_length=50)
     content = models.TextField()
     ai_summary = models.TextField()
+
+    objects = StudyNoteManager()
 
     class Meta:
         db_table = "study_notes"
