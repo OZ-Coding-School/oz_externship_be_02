@@ -90,7 +90,7 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RECOVER_ACCOUNT
 
-        return EmailVerificationService().send_verification_email(email=email, purpose=purpose)
+        return EmailVerificationService().send_verification_email(email=email, purpose=purpose )
 
 
 class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
@@ -102,7 +102,6 @@ class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        print(serializer.errors)
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RECOVER_ACCOUNT
         verification_code = serializer.validated_data["verification_code"]
