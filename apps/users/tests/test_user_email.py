@@ -31,7 +31,9 @@ class EmailVerificationServiceUnitTests(TestCase):
         self.service.send_verification_email(email, purpose=VerificationPurpose.SIGNUP)
         verification_code = cache.get(f"{VerificationPurpose.SIGNUP}-{email}")
         # when
-        result = self.service.verify_code(email, purpose=VerificationPurpose.SIGNUP, verification_code=verification_code)
+        result = self.service.verify_code(
+            email, purpose=VerificationPurpose.SIGNUP, verification_code=verification_code
+        )
 
         # then
         self.assertEqual(result.status_code, status.HTTP_200_OK)
@@ -101,10 +103,12 @@ class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
         response = self.client.post(self.verify_url, {"email": self.email, "verification_code": "wrong code"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+
 class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
     """
     비밀번호 찾기 이메일 인증 테스틐 코드
     """
+
     def setUp(self) -> None:
         self._create_test_user()
         self.email = "reset@example.com"
@@ -140,7 +144,9 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
 
         self.assertIsNotNone(verification_code)
 
-        response = self.client.post(self.reset_password_verify_url, {"email": self.email, "verification_code": verification_code})
+        response = self.client.post(
+            self.reset_password_verify_url, {"email": self.email, "verification_code": verification_code}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(cache.get(cache_key))
 
@@ -153,6 +159,7 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
 
         response = self.client.post(self.reset_password_verify_url, {"email": self.email, "code": "wrong"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class AccountRecoveryEmailVerificationAPITest(RedisTestClient, TestUserMixin):
     def setUp(self) -> None:
@@ -178,7 +185,7 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, TestUserMixin):
 
         self.assertIn(verification_code, mail.outbox[0].body)
 
-    def test_email_verify_code_success(self):
+    def test_email_verify_code_success(self) -> None:
         """
         계정 복구 이메인 인증 성공 케이스
         """
@@ -193,8 +200,7 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, TestUserMixin):
         self.assertEqual(response.data["detail"], "인증이 완료되었습니다")
         self.assertTrue(cache.get(cache_key))
 
-
-    def test_email_verify_code_failed(self):
+    def test_email_verify_code_failed(self) -> None:
         self.client.post(self.send_url, {"email": self.email})
 
         response = self.client.post(self.verify_url, {"email": self.email, "verification_code": "wrong"})

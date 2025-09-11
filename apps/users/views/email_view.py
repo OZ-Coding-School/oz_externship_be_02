@@ -32,6 +32,7 @@ class SignUpEmailVerifiCationVerifyAPIView(APIView):
     """
     회원가입 이메일 전송 코드 검증
     """
+
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -41,6 +42,7 @@ class SignUpEmailVerifiCationVerifyAPIView(APIView):
         verification_code = serializer.validated_data["verification_code"]
 
         return EmailVerificationService().verify_code(email=email, purpose=purpose, verification_code=verification_code)
+
 
 class PasswordResetEmailVerificationSendAPIView(APIView):
     permission_classes = [AllowAny]
@@ -57,11 +59,13 @@ class PasswordResetEmailVerificationSendAPIView(APIView):
 
         return EmailVerificationService().send_verification_email(email=email, purpose=purpose)
 
+
 class PassowrdResetEmailVerificationVerifyAPIView(APIView):
     permission_classes = [AllowAny]
     """
     비밀번호 찾기 이메일 전송 코드 검증
     """
+
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -72,11 +76,13 @@ class PassowrdResetEmailVerificationVerifyAPIView(APIView):
 
         return EmailVerificationService().verify_code(email=email, purpose=purpose, verification_code=verification_code)
 
+
 class AccountRecoveryEmailVerificationSendAPIView(APIView):
     permission_classes = [AllowAny]
     """
     계정 복구 이메일  코드 전송
     """
+
     def post(self, request: Request) -> Response:
         serializer = EmailVerificationRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -86,11 +92,13 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
 
         return EmailVerificationService().send_verification_email(email=email, purpose=purpose)
 
+
 class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
     permission_classes = [AllowAny]
     """
     계정 복구 이메일 코드 검증
     """
+
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -100,4 +108,3 @@ class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
         verification_code = serializer.validated_data["verification_code"]
 
         return EmailVerificationService().verify_code(email=email, purpose=purpose, verification_code=verification_code)
-
