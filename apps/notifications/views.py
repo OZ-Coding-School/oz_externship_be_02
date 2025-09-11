@@ -12,8 +12,8 @@ from rest_framework.views import APIView
 from apps.notifications.models import Notification
 from apps.notifications.pagination import NotificationLimitOffsetPagination
 from apps.notifications.serializers import (
+    NotificationListQueryParamsSerializer,
     NotificationListSerializer,
-    NotificationSerializer,
     NotificationUpdateSerializer,
     UnreadCountOut,
     UnreadCountSerializer,
@@ -26,29 +26,31 @@ from apps.users.models.user import User
     tags=["Notifications"],
     summary="알림 목록 조회 API",
     description="로그인한 유저의 알림 내역을 페이지네이션으로 조회. status로 필터링",
-    responses={200: NotificationSerializer(many=True)},
+    responses={200: NotificationListSerializer(many=True)},
 )
 class NotificationListView(ListAPIView[Notification]):
     """
     알림 목록 조회 with offset
     """
 
-    serializer_class: type[NotificationSerializer] = NotificationSerializer
+    serializer_class: type[NotificationListSerializer] = NotificationListSerializer
     pagination_class = NotificationLimitOffsetPagination
     permission_classes = [IsAuthenticated]
+    validated_query_params: dict[str, Any]
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        # 쿼리파라미터 검증
+        qp = NotificationListQueryParamsSerializer(data=self.request.query_params)
+        qp.is_valid(raise_exception=True)
+        self.validated_query_params = qp.validated_data
+
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self) -> QuerySet[Notification]:
-        # 쿼리파라미터 검증
-        qp = NotificationListSerializer(data=self.request.query_params)
-        qp.is_valid(raise_exception=True)
-        is_read = qp.validated_data.get("is_read", None)
-        notification_type = qp.validated_data.get("type")
         user = cast(User, self.request.user)
 
         # 서비스 호출 (검증된 값만 전달)
-        return NotificationService.get_notifications_list(
-            user_id=user.id, is_read=is_read, notification_type=notification_type
-        )
+        return NotificationService.get_notifications_list(user_id=user.id, **self.validated_query_params)
 
 
 @extend_schema(

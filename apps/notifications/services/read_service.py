@@ -11,16 +11,16 @@ class NotificationService:
     # 서비스에서는 Repository(Model Manager or 쿼리셋) 호출하여 비즈니스 로직 구성
     @classmethod
     def get_notifications_list(
-        cls, *, user_id: int, is_read: Optional[bool] = None, notification_type: str
+        cls, user_id: int, is_read: Optional[bool] = None, n_type: Optional[str] = None
     ) -> QuerySet[Notification]:
         if is_read is None:
-            list = Notification.objects.filter(user_id=user_id)
+            n_list = Notification.objects.filter(user_id=user_id)
         else:
-            list = Notification.objects.get_list_by_user_id_and_is_read(user_id=user_id, is_read=is_read)
-        if notification_type is not None:
-            list = list.filter(notification_type=notification_type)
+            n_list = Notification.objects.get_list_by_user_id_and_is_read(user_id=user_id, is_read=is_read)
+        if n_type is not None:
+            n_list = n_list.filter(notification_type=n_type)
 
-        return list
+        return n_list
 
     @classmethod
     @transaction.atomic
