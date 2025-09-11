@@ -37,3 +37,7 @@ class NotificationService:
     def read_all_user_notifications(cls, user_id: int) -> int:
         notifications = Notification.objects.get_list_by_user_id_and_is_read(user_id=user_id, is_read=False)
         return notifications.update(is_read=True)
+
+    @classmethod
+    def get_unread_count(cls, user_id: int) -> int:
+        return Notification.objects.unread_count(user_id=user_id)
