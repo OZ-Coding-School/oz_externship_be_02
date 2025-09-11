@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from django.core.exceptions import ObjectDoesNotExist
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -9,17 +10,32 @@ from rest_framework.views import APIView
 
 from ..serializers.recruitments_serializers import (
     RecruitmentDetailSerializer,
-    RecruitmentUpdateSerializer,
 )
 from ..services.recruitments_services import get_recruitment_detail, update_recruitment
 
 
 class RecruitmentDetailView(APIView):
-    # [수정됨] 기본 권한은 '누구나'로 설정하여, 모든 요청이 일단 View 안으로 들어오게 합니다.
-    # 이것이 405 에러를 피하는 가장 확실한 방법입니다.
     permission_classes = [AllowAny]
     authentication_classes = ()
 
+    @extend_schema(
+        summary="스터디 구인공고 상세조회",
+        description="recruitment_uuid에 해당하는 스터디 구인공고의 모든 상세정보 조회",
+        responses={
+            status.HTTP_200_OK: RecruitmentDetailSerializer,
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(
+                description="해당 공고를 찾을 수 없음", response={"erros": "string"}
+            ),
+        },
+        parameters=[
+            OpenApiParameter(
+                name="recruitment_uuid",
+                type=UUID,
+                location=OpenApiParameter.PATH,
+                description="조회할 공고의 고유 UUID",
+            ),
+        ],
+    )
     def get(self, request: Request, recruitment_uuid: UUID) -> Response:
         # GET 요청은 권한 검사가 전혀 필요 없으므로, 바로 로직을 실행합니다.
         try:
@@ -29,6 +45,23 @@ class RecruitmentDetailView(APIView):
         serializer = RecruitmentDetailSerializer(recruitment)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        summary="스터디 구인 공고 수정 (PATCH method)",
+        responses={
+            status.HTTP_200_OK: RecruitmentDetailSerializer,
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="인증이 필요합니다."),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="수정 권한이 없습니다."),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description="해당 공고를 찾을 수 없습니다."),
+        },
+        parameters=[
+            OpenApiParameter(
+                name="recruitment_uuid",
+                type=UUID,
+                location=OpenApiParameter.PATH,
+                description="수정할 공고의 고유 UUID",
+            ),
+        ],
+    )
     def patch(self, request: Request, recruitment_uuid: UUID) -> Response:
 
         # 1단계: 로그인 여부 확인
