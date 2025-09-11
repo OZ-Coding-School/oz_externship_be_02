@@ -55,11 +55,12 @@ class EmailVerificationServiceUnitTests(TestCase):
 
 class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
     user: User
+
     @classmethod
-    def setUpTestData(cls) ->None:
+    def setUpTestData(cls) -> None:
         cls.user = cls._create_test_user()
 
-    def setUp(self) ->None:
+    def setUp(self) -> None:
         self.email_verication()
 
     def test_send_verification_email(self) -> None:
@@ -113,11 +114,12 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
     """
     비밀번호 찾기 이메일 인증 테스틐 코드
     """
+
     @classmethod
-    def setUpTestData(cls) ->None:
+    def setUpTestData(cls) -> None:
         cls.user = cls._create_test_user()
 
-    def setUp(self) ->None:
+    def setUp(self) -> None:
         self.email_reset_password()
 
     def test_send_verification_email(self) -> None:
@@ -166,11 +168,12 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
 
 class AccountRecoveryEmailVerificationAPITest(RedisTestClient, TestUserMixin):
     user: User
+
     @classmethod
-    def setUpTestData(cls) ->None:
+    def setUpTestData(cls) -> None:
         cls.user = cls._create_test_user()
 
-    def setUp(self) ->None:
+    def setUp(self) -> None:
         self.email_recover_account()
 
     def test_send_verification_email_success(self) -> None:

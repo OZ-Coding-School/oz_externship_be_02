@@ -17,20 +17,20 @@ class TestUserMixin:
         )
 
     def email_recover_account(self) -> None:
-        self.email ="recover@test.com"
+        self.email = "recover@test.com"
         self.send_url = reverse("recover_account_send")
         self.verify_url = reverse("recover_account_verify")
 
-    def email_reset_password(self) ->None:
+    def email_reset_password(self) -> None:
         self.email = "password@example.com"
         self.send_url = reverse("password_reset_send")
         self.verify_url = reverse("password_reset_verify")
 
-    def email_verication(self) ->None:
+    def email_verication(self) -> None:
         self.email = "email@example.com"
         self.send_url = reverse("email_send_code")
         self.verify_url = reverse("email_verify_code")
 
-    def phone_verification(self) ->None:
+    def phone_verification(self) -> None:
         self.send_url = reverse("phone_send_code")
         self.verify_url = reverse("phone_verify_code")
