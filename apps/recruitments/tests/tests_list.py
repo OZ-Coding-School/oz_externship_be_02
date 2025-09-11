@@ -95,7 +95,7 @@ class RecruitmentsListTestCase(APITestCase):
 
     def test_recruitment_list_get(self) -> None:
         url = reverse("recruitment-list")
-        query_params = {"page": 1, 'size':3}
+        query_params = {"page": 1, "size": 3}
         res = self.client.get(url, data=query_params)
         self.assertEqual(res.status_code, 200)
         print(res.data)

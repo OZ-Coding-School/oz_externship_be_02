@@ -31,7 +31,12 @@ class RecruitmentView(APIView):
         "5. 정렬 기능(최신순-기본, 조회수 높은 순, 북마크 순)",
         parameters=[
             OpenApiParameter(name="page", description="조회할 page", required=True, type=OpenApiTypes.INT),
-            OpenApiParameter(name="size", description="조회할 page의 데이터 개수를 정할 수 있음", required=False, type=OpenApiTypes.INT)
+            OpenApiParameter(
+                name="size",
+                description="조회할 page의 데이터 개수를 정할 수 있음",
+                required=False,
+                type=OpenApiTypes.INT,
+            ),
         ],
         responses={
             200: inline_serializer(
@@ -52,8 +57,8 @@ class RecruitmentView(APIView):
         # 페이지네이션
         paginator = PageNumberPagination()
         paginator.page_size = 10
-        paginator.page_size_query_param='size'
-        paginator.max_page_size=100
+        paginator.page_size_query_param = "size"
+        paginator.max_page_size = 100
         # url의 page파라미터를 읽어 데이터 슬라이싱
         paginated_queryset = paginator.paginate_queryset(optimized_queryset, request)
 
