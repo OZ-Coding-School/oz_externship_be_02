@@ -40,7 +40,9 @@ class NotificationListView(ListAPIView[Notification]):
 
     def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         # 쿼리파라미터 검증
-        qp = NotificationListQueryParamsSerializer(data=self.request.query_params)
+        qp = NotificationListQueryParamsSerializer(
+            data=self.request.query_params
+        )  # 본문 데이터가 request.query_params로 저장
         qp.is_valid(raise_exception=True)
         self.validated_query_params = qp.validated_data
 
@@ -103,8 +105,11 @@ class UnreadCountView(APIView):
     읽지 않은 알림 수 조회
     """
 
-    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        mock_count: UnreadCountOut = {"unread_count": 5}
+    permission_classes = [IsAuthenticated]
 
-        serializer = UnreadCountSerializer(instance=mock_count)
+    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        user = cast(User, request.user)
+        count = NotificationService.get_unread_count(user_id=user.id)
+        payload: UnreadCountOut = {"unread_count": count}
+        serializer = UnreadCountSerializer(instance=payload)
         return Response(serializer.data, status=status.HTTP_200_OK)
