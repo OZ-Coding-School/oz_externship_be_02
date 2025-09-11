@@ -5,41 +5,40 @@ from rest_framework.validators import UniqueTogetherValidator
 
 from apps.studies.models.study_groups import StudyGroup
 from apps.studies.models.study_reviews import StudyReview
+from apps.users.models.user import User
 
-
-class ReviewCreateSerializer(serializers.ModelSerializer[StudyReview]):
+# 요청 전용 Serializer
+class ReviewCreateRequestSerializer(serializers.ModelSerializer):
     """
-    스터디 리뷰 작성 Serializer
-    - 종료된 스터디 그룹만 리뷰 가능
-    - 한 유저가 같은 스터디 그룹에 중복 리뷰 작성 불가
+    스터디 리뷰 작성 Request Serializer
+    - 클라이언트가 보내는 값만 포함
     """
 
-    # 요청에서 받는 필드
     study_group_id = serializers.PrimaryKeyRelatedField(
-        queryset=StudyGroup.objects.all(), source="study_group", write_only=True
+        queryset=StudyGroup.objects.all(),
+        source="study_group",
+        write_only=True,
     )
-    rating = serializers.ChoiceField(choices=StudyReview.RatingEnum.choices, source="star_rating")
-
-    # 응답 전용
-    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    rating = serializers.ChoiceField(
+        choices=StudyReview.RatingEnum.choices,
+        source="star_rating",
+        write_only=True,
+    )
 
     # 내부 Hidden 필드
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    study_group = serializers.HiddenField(default=None)
-
+    
     class Meta:
         model = StudyReview
-        fields = ["id", "user", "user_id", "study_group", "study_group_id", "rating", "content", "created_at"]
-        read_only_fields = ["id", "user_id", "created_at"]
+        fields = ["user", "study_group_id", "rating", "content"]
 
         extra_kwargs = {
-            "user": {"write_only": True},
-            "study_group": {"write_only": True},  # 응답에서 숨김
+            "content": {"write_only": True}
         }
-        validators = [  # 코치님 피드백 반영: user + study_group 중복 검증은 UniqueTogetherValidator로 처리
+        validators = [
             UniqueTogetherValidator(
                 queryset=StudyReview.objects.all(),
-                fields=["user", "study_group"],
+                fields=["user", "study_group_id"],
                 message="이미 리뷰를 작성한 스터디 그룹입니다.",
             )
         ]
@@ -48,6 +47,23 @@ class ReviewCreateSerializer(serializers.ModelSerializer[StudyReview]):
         study_group = attrs["study_group"]
         if study_group.status != StudyGroup.StatusChoices.ENDED:
             raise serializers.ValidationError(
-                {"study_group_id": ["종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다."]}
+                {"detail": "종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다."}
             )
         return attrs
+
+
+#응답 전용 Serializer
+class ReviewCreateResponseSerializer(serializers.ModelSerializer):
+    """
+    스터디 리뷰 작성 Response Serializer
+    - 서버가 클라이언트에게 돌려주는 값만 포함
+    """
+
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    study_group_id = serializers.IntegerField(source="study_group.id", read_only=True)
+    rating = serializers.IntegerField(source="star_rating")
+
+    class Meta:
+        model = StudyReview
+        fields = ["id", "user_id", "study_group_id", "rating", "content", "created_at"]
+        read_only_fields = ["id", "user_id", "study_group_id", "created_at"]

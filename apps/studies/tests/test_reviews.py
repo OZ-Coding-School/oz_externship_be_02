@@ -99,7 +99,6 @@ class TestStudyReviewCreateAPI(APITestCase):
 
     def test_create_review_exact_error_messages(self) -> None:
         # 실패 케이스에서 ValidationError 메시지 구조까지 검증
-        # 종료되지 않은 그룹
         active_group = StudyGroup.objects.create(
             name="미종료 스터디",
             introduction="테스트",
@@ -108,9 +107,19 @@ class TestStudyReviewCreateAPI(APITestCase):
             end_at=timezone.now() + timedelta(days=5),
             status=StudyGroup.StatusChoices.ONGOING,
         )
-        data = {"study_group_id": active_group.id, "rating": 5, "content": "에러 메시지 확인"}
+        data = {
+            "study_group_id": active_group.id,
+            "rating": 5,
+            "content": "에러 메시지 확인",
+        }
         response = self.client.post(self.url, data, format="json")
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("study_group_id", response.data)
-        self.assertIn("종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다.", response.data["study_group_id"])
+
+        # 기존: self.assertIn("study_group_id", response.data)
+        # 수정: "detail" 키와 메시지 내용 확인
+        self.assertIn("detail", response.data)
+        self.assertIn(
+            "종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다.",
+            response.data["detail"]
+        )
