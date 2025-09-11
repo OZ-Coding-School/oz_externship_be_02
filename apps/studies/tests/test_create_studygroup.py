@@ -141,7 +141,7 @@ class CreateStudyGroupAPITestFail(APITestCase):
         """
         가상 user data 생성
         """
-        self.url = reverse("studies:create_study_group")  # 라우터 설정
+        self.url = reverse("create_study_group")  # 라우터 설정
         self.user = User.objects.create(**user_data)  # 가상 유저 데이터 생성
         self.client.force_authenticate(user=self.user)  # 유저 로그인
 
@@ -201,7 +201,7 @@ class CreateStudyGroupAPITest(APITestCase):
     """
 
     def setUp(self) -> None:
-        self.url = reverse("studies:create_study_group")  # 라우터 설정
+        self.url = reverse("create_study_group")  # 라우터 설정
         self.user = User.objects.create(**user_data)  # 가상 유저 데이터 생성
         self.client.force_authenticate(user=self.user)  # 유저 로그인
 
