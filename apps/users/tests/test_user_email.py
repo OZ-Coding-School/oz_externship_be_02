@@ -8,6 +8,7 @@ from rest_framework import status
 
 from apps.core.tests.mixins.test_user_mixins import TestUserMixin
 from apps.core.utils.test_clients import RedisTestClient
+from apps.users.models import User
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.utils.enums import VerificationPurpose
 
@@ -53,11 +54,12 @@ class EmailVerificationServiceUnitTests(TestCase):
 
 
 class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
+    user: User
     @classmethod
-    def setUpTestData(cls):
+    def setUpTestData(cls) ->None:
         cls.user = cls._create_test_user()
 
-    def setUp(self):
+    def setUp(self) ->None:
         self.email_verication()
 
     def test_send_verification_email(self) -> None:
@@ -107,14 +109,15 @@ class EmailVerificationAPITest(RedisTestClient, TestUserMixin):
 
 
 class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
+    user: User
     """
     비밀번호 찾기 이메일 인증 테스틐 코드
     """
     @classmethod
-    def setUpTestData(cls):
+    def setUpTestData(cls) ->None:
         cls.user = cls._create_test_user()
 
-    def setUp(self):
+    def setUp(self) ->None:
         self.email_reset_password()
 
     def test_send_verification_email(self) -> None:
@@ -146,9 +149,7 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
 
         self.assertIsNotNone(verification_code)
 
-        response = self.client.post(
-            self.verify_url, {"email": self.email, "verification_code": verification_code}
-        )
+        response = self.client.post(self.verify_url, {"email": self.email, "verification_code": verification_code})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(cache.get(cache_key))
 
@@ -164,12 +165,12 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, TestUserMixin):
 
 
 class AccountRecoveryEmailVerificationAPITest(RedisTestClient, TestUserMixin):
-
+    user: User
     @classmethod
-    def setUpTestData(cls):
+    def setUpTestData(cls) ->None:
         cls.user = cls._create_test_user()
 
-    def setUp(self):
+    def setUp(self) ->None:
         self.email_recover_account()
 
     def test_send_verification_email_success(self) -> None:
