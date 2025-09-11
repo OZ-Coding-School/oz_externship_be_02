@@ -7,13 +7,27 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
-urlpatterns: list[URLPattern | URLResolver] = [
-    path("api/v1/admin/", include("config.admin_urls")),
-    path("api/v1/", include("apps.users.urls.main")),
+apps_urlpatterns: list[URLPattern | URLResolver] = [
+    path("api/v1/", include("apps.users.urls")),
     path("api/v1/notifications", include("apps.notifications.urls")),
-    path("api/v1/recruitments", include("apps.recruitments.urls.main")),
+    path("api/v1/recruitments", include("apps.recruitments.urls")),
     path("api/v1/schedules", include("apps.study_group_schedules.urls")),
 ]
+
+admin_urlpatterns: list[URLPattern | URLResolver] = [
+    path(
+        "api/v1/admin/",
+        include(
+            [
+                path("", include("apps.users.urls.admin_urls")),
+                path("", include("apps.recruitments.urls.admin_urls")),
+                path("", include("apps.applications.urls.admin_urls")),
+            ]
+        ),
+    ),
+]
+
+urlpatterns = apps_urlpatterns + admin_urlpatterns
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
