@@ -13,7 +13,9 @@ from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.models.lecture_categories import LectureCategory
 from apps.lectures.serializers.crawled_lecture import LectureSerializer
 from apps.users.models.user import User
+import logging
 
+logger = logging.getLogger(__name__)
 
 class LectureTestCase(TestCase):
     def setUp(self) -> None:
@@ -99,23 +101,29 @@ class LectureTestCase(TestCase):
     def test_redis_connection_error(self, mock_redis: MagicMock) -> None:
         # Given
         fake_redis = mock_redis.return_value
-        # When
         fake_redis.get.side_effect = redis.exceptions.ConnectionError
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 500)
-        # Then
-        self.assertIn("detail", response.json())
+        # When + Then
+        with self.assertLogs("apps.lectures.views.lecture_list", level="WARNING") as cm:
+            response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("ERROR:apps.lectures.views.lecture_list:\nLectureLog: Redis connection failed, fallback to DB:", cm.output[0])
 
     @patch("apps.lectures.views.lecture_list.redis.Redis")
     def test_invalid_cached_data(self, mock_redis: MagicMock) -> None:
         # Given
         fake_redis = mock_redis.return_value
         fake_redis.get.return_value = "{invalid-json}"
+        fake_redis.set.side_effect = redis.exceptions.ConnectionError  # set()에서 예외
+
         # When
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 500)
+        with self.assertLogs("apps.lectures.views.lecture_list", level="WARNING") as cm:
+            response = self.client.get(self.url)
         # Then
-        self.assertIn("detail", response.json())
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            any("LectureLog: Failed to set lectures in Redis cache, skipping" in msg for msg in cm.output)
+        )
 
     @patch("apps.lectures.views.lecture_list.redis.Redis")
     @patch("apps.lectures.views.lecture_list.Category.objects")
