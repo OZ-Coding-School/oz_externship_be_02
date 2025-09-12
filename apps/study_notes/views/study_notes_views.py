@@ -36,8 +36,7 @@ class StudyNoteCreateView(APIView):
 
     def post(self, request: Request, group_uuid: UUID) -> Response:
         group = get_object_or_404(StudyGroup, uuid=group_uuid)
-        data = request.data.copy()
-        serializer = StudyNoteSerializer(data=data)
+        serializer = StudyNoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         images = request.FILES.getlist("images")
