@@ -125,7 +125,7 @@ class Command(BaseCommand):
                         course_info.get("metadata", {}).get("level"), "easy"
                     ),
                     "description": course_info.get("description", "").replace("\n", " "),
-                    "platform": "Inflearn",
+                    "platform": PlatformChoices.INFLEARN,
                     "original_price": item.get("listPrice", {}).get("regularPrice", 0),
                     "discount_price": item.get("listPrice", {}).get("payPrice", 0),
                     "url_link": f"https://www.inflearn.com/course/{course_info.get('slug')}",
