@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Dict, Union
+from typing import Dict, Final, Union
 
 from django.urls import reverse
 from django.utils import timezone
@@ -76,8 +76,9 @@ class RecruitmentsListTestCase(APITestCase):
             )
         cls.user = User.objects.bulk_create(user)
 
+        RECRUITMENT_COUNT: Final = 15
         recruitment = []
-        for i in range(15):
+        for i in range(RECRUITMENT_COUNT):
             recruitment.append(
                 Recruitment(
                     study_group=cls.study_group,
@@ -86,7 +87,7 @@ class RecruitmentsListTestCase(APITestCase):
                     content="test content",
                     estimated_fee=50000,
                     expected_headcount=5,
-                    views_count=15 - i,
+                    views_count=RECRUITMENT_COUNT - i,
                 )
             )
         cls.recruitment = Recruitment.objects.bulk_create(recruitment)
@@ -94,7 +95,7 @@ class RecruitmentsListTestCase(APITestCase):
         tag = [Tag(name="tag1"), Tag(name="tag2"), Tag(name="tag3")]
         cls.tag = Tag.objects.bulk_create(tag)
         recruitment_tag = []
-        for i in range(15):
+        for i in range(RECRUITMENT_COUNT):
             for j in range(3):
                 recruitment_tag.append(RecruitmentTag(tag=cls.tag[j], recruitment=cls.recruitment[i]))
         RecruitmentTag.objects.bulk_create(recruitment_tag)
@@ -137,5 +138,5 @@ class RecruitmentsListTestCase(APITestCase):
         res = self.client.get(url, data=query_params)
         self.assertEqual(res.status_code, 200)
         results = res.data["results"]
-        for i in results:
-            print(i["id"], i["bookmarks_count"])
+        self.assertEqual(results[0]["bookmarks_count"], 5)
+        self.assertEqual(results[2]["bookmarks_count"], 3)
