@@ -62,6 +62,7 @@ class RecruitmentsListTestCase(APITestCase):
         StudyLecture.objects.bulk_create(study_lecture)
 
         user = []
+        const int user_num=5
         for i in range(5):
             user.append(
                 User(
@@ -111,8 +112,6 @@ class RecruitmentsListTestCase(APITestCase):
         res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         results = res.data["results"]
-        # for i in results:
-        #     print(i['id'])
         data = results[0]
         self.assertEqual(len(data["lectures"]), 2)
         self.assertEqual(len(data["tags"]), 3)
@@ -122,7 +121,6 @@ class RecruitmentsListTestCase(APITestCase):
         query_params = {"page": 1, "size": 3}
         res = self.client.get(url, data=query_params)
         self.assertEqual(res.status_code, 200)
-        # print(res.data)
         results = res.data["results"]
         self.assertEqual(len(results), 3)
 
@@ -131,9 +129,7 @@ class RecruitmentsListTestCase(APITestCase):
         query_params: Dict[str, Union[str, int]] = {"page": 1, "search": "3"}
         res = self.client.get(url, data=query_params)
         self.assertEqual(res.status_code, 200)
-        # print(res.data)
         results = res.data["results"]
-        # print(results)
         self.assertEqual(len(results), 2)
 
     def test_list_order(self) -> None:
@@ -142,5 +138,5 @@ class RecruitmentsListTestCase(APITestCase):
         res = self.client.get(url, data=query_params)
         self.assertEqual(res.status_code, 200)
         results = res.data["results"]
-        # for i in results:
-        #     print(i["id"], i["bookmarks_count"])
+        for i in results:
+            print(i["id"], i["bookmarks_count"])
