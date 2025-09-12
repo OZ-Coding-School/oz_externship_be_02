@@ -1,3 +1,4 @@
+from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -9,6 +10,8 @@ from apps.users.serializers.email_verification_serializers import (
 )
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.utils.enums import VerificationPurpose
+
+email_service = EmailVerificationService()
 
 
 class SignUpEmailVerificationSendAPIView(APIView):
@@ -23,8 +26,11 @@ class SignUpEmailVerificationSendAPIView(APIView):
 
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.SIGNUP
-
-        return EmailVerificationService().send_verification_email(email=email, purpose=purpose)
+        result = email_service.send_verification_email(email, purpose)
+        if "detail" in result:
+            return Response(result, status=status.HTTP_200_OK)
+        else:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SignUpEmailVerifiCationVerifyAPIView(APIView):
@@ -41,7 +47,11 @@ class SignUpEmailVerifiCationVerifyAPIView(APIView):
         purpose = VerificationPurpose.SIGNUP
         verification_code = serializer.validated_data["verification_code"]
 
-        return EmailVerificationService().verify_code(email=email, purpose=purpose, verification_code=verification_code)
+        result = email_service.verify_code(email, purpose, verification_code)
+        if "detail" in result:
+            return Response(result, status=status.HTTP_200_OK)
+        else:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PasswordResetEmailVerificationSendAPIView(APIView):
@@ -57,7 +67,11 @@ class PasswordResetEmailVerificationSendAPIView(APIView):
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RESET_PASSWORD
 
-        return EmailVerificationService().send_verification_email(email=email, purpose=purpose)
+        result = email_service.send_verification_email(email, purpose)
+        if "detail" in result:
+            return Response(result, status=status.HTTP_200_OK)
+        else:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PassowrdResetEmailVerificationVerifyAPIView(APIView):
@@ -74,7 +88,11 @@ class PassowrdResetEmailVerificationVerifyAPIView(APIView):
         purpose = VerificationPurpose.RESET_PASSWORD
         verification_code = serializer.validated_data["verification_code"]
 
-        return EmailVerificationService().verify_code(email=email, purpose=purpose, verification_code=verification_code)
+        result = email_service.verify_code(email, purpose, verification_code)
+        if "detail" in result:
+            return Response(result, status=status.HTTP_200_OK)
+        else:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AccountRecoveryEmailVerificationSendAPIView(APIView):
@@ -90,7 +108,11 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RECOVER_ACCOUNT
 
-        return EmailVerificationService().send_verification_email(email=email, purpose=purpose)
+        result = email_service.send_verification_email(email, purpose)
+        if "detail" in result:
+            return Response(result, status=status.HTTP_200_OK)
+        else:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
@@ -106,4 +128,8 @@ class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
         purpose = VerificationPurpose.RECOVER_ACCOUNT
         verification_code = serializer.validated_data["verification_code"]
 
-        return EmailVerificationService().verify_code(email=email, purpose=purpose, verification_code=verification_code)
+        result = email_service.verify_code(email, purpose, verification_code)
+        if "detail" in result:
+            return Response(result, status=status.HTTP_200_OK)
+        else:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
