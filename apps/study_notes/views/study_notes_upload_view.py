@@ -8,6 +8,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.study_notes.serializers.study_notes_serializers import StudyNoteSerializer
 from apps.study_notes.services.study_notes_services import StudyNoteService
 
 
@@ -29,10 +30,10 @@ class StudyNoteUploadView(APIView):
         tags=["스터디 기록 (StudyNotes)"],
         summary="스터디 기록 이미지/첨부 업로드",
         description="글 작성 전에 이미지/첨부파일을 업로드하여 S3 URL을 받습니다.",
-        request=None,
+        request=StudyNoteSerializer,
         responses={200: {"type": "object"}},
     )
-    def post(self, request: Request, group_uuid:str) -> Response:
+    def post(self, request: Request, group_uuid: str) -> Response:
         service = self.get_service()
         assert service is not None
 
@@ -43,7 +44,6 @@ class StudyNoteUploadView(APIView):
 
         result: Dict[str, List[Union[str, Dict[str, str]]]] = {"images": [], "attachments": []}
 
-        # 반복 최소화: 한 번의 for문으로 처리
         for key, files in files_to_upload.items():
             for f in files:
                 try:
