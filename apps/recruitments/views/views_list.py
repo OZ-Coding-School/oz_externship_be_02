@@ -11,7 +11,11 @@ from rest_framework.views import APIView
 
 from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
-from apps.recruitments.services.services_list import active_get_query
+from apps.recruitments.services.services_list import (
+    active_get_query,
+    filter_category,
+    filter_tag,
+)
 
 
 class RecruitmentView(APIView):
@@ -73,13 +77,24 @@ class RecruitmentView(APIView):
         # 조회
         optimized_queryset: RecruitmentListQuerySet = active_get_query()
 
+        # 필터
+        # 'tag' 파라미터 확인
+        tag = request.query_params.get("tag", None)
+        if tag is not None and tag != "":
+            optimized_queryset = filter_tag(optimized_queryset, tag)
+
+        # 'category' 파라미터 확인
+        category = request.query_params.get("category", None)
+        if category is not None and category != "":
+            optimized_queryset = filter_category(optimized_queryset, category)
+
         # 검색
         search_filter = filters.SearchFilter()
-        filtered_queryset = search_filter.filter_queryset(request, optimized_queryset, self)
+        searched_queryset = search_filter.filter_queryset(request, optimized_queryset, self)
 
         # 정렬
         ordering_filter = filters.OrderingFilter()
-        ordering_queryset = ordering_filter.filter_queryset(request, filtered_queryset, self)
+        ordering_queryset = ordering_filter.filter_queryset(request, searched_queryset, self)
 
         # 페이지네이션
         paginator = PageNumberPagination()
