@@ -62,7 +62,6 @@ class RecruitmentsListTestCase(APITestCase):
         StudyLecture.objects.bulk_create(study_lecture)
 
         user = []
-        const int user_num=5
         for i in range(5):
             user.append(
                 User(
