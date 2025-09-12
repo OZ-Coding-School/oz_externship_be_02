@@ -10,9 +10,8 @@ from django.db import transaction
 
 from apps.core.logger import logger
 from apps.lectures.models.categories import Category
-from apps.lectures.models.crawled_lectures import Lecture, PlatformChoices
 from apps.lectures.models.crawled_lecture_reviews import LectureReview
-
+from apps.lectures.models.crawled_lectures import Lecture, PlatformChoices
 
 
 class Command(BaseCommand):
@@ -95,7 +94,9 @@ class Command(BaseCommand):
                         logger.warning(f"페이지 크롤링 중 오류 발생: {res}")
 
             # 3. 모든 강의의 리뷰를 병렬로 가져오기 위한 작업 목록을 생성합니다.
-            course_id_map = {item.get("course", {}).get("id"): item for item in all_courses_raw if item.get("course", {}).get("id")}
+            course_id_map = {
+                item.get("course", {}).get("id"): item for item in all_courses_raw if item.get("course", {}).get("id")
+            }
             review_tasks = [self._fetch_reviews(client, course_id) for course_id in course_id_map.keys()]
 
             all_reviews_map = {}
@@ -129,7 +130,10 @@ class Command(BaseCommand):
                     "original_price": item.get("listPrice", {}).get("regularPrice", 0),
                     "discount_price": item.get("listPrice", {}).get("payPrice", 0),
                     "url_link": f"https://www.inflearn.com/course/{course_info.get('slug')}",
-                    "thumbnail_img_url": quote(course_info.get("thumbnailUrl"), safe=":/?&",),
+                    "thumbnail_img_url": quote(
+                        course_info.get("thumbnailUrl"),
+                        safe=":/?&",
+                    ),
                     "categories": [
                         cat.get("title")
                         for cat in course_info.get("metadata", {}).get("categories", [])
@@ -141,7 +145,9 @@ class Command(BaseCommand):
 
             return all_processed_courses
 
-    async def _fetch_page(self, client: httpx.AsyncClient, url: str, params: Dict[str, Union[str, int]]) -> List[Dict[str, Any]]:
+    async def _fetch_page(
+        self, client: httpx.AsyncClient, url: str, params: Dict[str, Union[str, int]]
+    ) -> List[Dict[str, Any]]:
         """특정 페이지의 강의 목록을 비동기적으로 가져옵니다."""
         try:
             # logger.info(f"{params.get('pageNumber')} 페이지 크롤링 중...") # 로그가 너무 많이 남으므로 주석 처리
@@ -157,7 +163,13 @@ class Command(BaseCommand):
     async def _fetch_reviews(self, client: httpx.AsyncClient, course_id: int) -> List[Dict[str, Any]]:
         """특정 강의의 리뷰를 비동기적으로 가져옵니다."""
         params: Dict[str, Union[str, int]] = {"pageNumber": 1, "pageSize": 4, "sort": "RECOMMEND", "lang": "ko"}
-        rating_map = {5: "5_OUT_OF_5_STARS", 4: "4_OUT_OF_5_STARS", 3: "3_OUT_OF_5_STARS", 2: "2_OUT_OF_5_STARS", 1: "1_OUT_OF_5_STARS"}
+        rating_map = {
+            5: "5_OUT_OF_5_STARS",
+            4: "4_OUT_OF_5_STARS",
+            3: "3_OUT_OF_5_STARS",
+            2: "2_OUT_OF_5_STARS",
+            1: "1_OUT_OF_5_STARS",
+        }
         try:
             response = await client.get(self.REVIEW_API_URL.format(course_id=course_id), params=params)
             response.raise_for_status()
@@ -187,9 +199,9 @@ class Command(BaseCommand):
 
         # 3. 삭제할 강의를 DB에서 제거합니다.
         if titles_to_delete:
-            deleted_count, _ = (
-                Lecture.objects.filter(platform=PlatformChoices.INFLEARN, title__in=titles_to_delete).delete()
-            )
+            deleted_count, _ = Lecture.objects.filter(
+                platform=PlatformChoices.INFLEARN, title__in=titles_to_delete
+            ).delete()
             logger.info(f"삭제된 강의 수: {deleted_count}개")
 
         # 4. 추가할 강의 데이터를 준비합니다.
@@ -224,9 +236,7 @@ class Command(BaseCommand):
                 logger.info(f"신규 강의 {len(lectures_to_create)}개 생성 시도 완료.")
 
                 # 5-2. bulk_create는 생성된 객체의 ID를 반환하지 않으므로, DB에서 다시 조회하여 ID를 확보합니다.
-                created_lectures_map = {
-                    lec.title: lec for lec in Lecture.objects.filter(title__in=titles_to_add)
-                }
+                created_lectures_map = {lec.title: lec for lec in Lecture.objects.filter(title__in=titles_to_add)}
                 logger.info(f"DB에서 ID가 할당된 신규 강의 {len(created_lectures_map)}개 확인.")
 
                 # 5-3. 카테고리를 효율적으로 처리합니다.
