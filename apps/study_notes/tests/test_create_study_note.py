@@ -3,7 +3,6 @@ from typing import Any, Optional
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile  # 테스트용 파일 생성
-from django.db import transaction
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -114,28 +113,40 @@ class TestStudyNoteAPI(TestCase):
     @patch("apps.study_notes.services.study_notes_services.S3Uploader.upload_file")
     def test_create_study_note_image_upload_rollback(self, mock_upload_file: Any) -> None:
         """
-        이미지 업로드 실패 시 StudyNote 전체 롤백 테스트
-        - DB에 Note, Image, Attachment가 남지 않아야 함
+        이미지 업로드 실패 시 전체 롤백 테스트
         """
-        # upload_file 호출 시 강제로 예외 발생
         mock_upload_file.side_effect = RuntimeError("이미지 업로드 실패")
-
         data = {
-            "title": "Test Note Rollback",
+            "title": "롤백 테스트",
             "content": "트랜잭션 롤백 확인",
             "images": [self.image_file],
             "attachments": [self.attachment_file],
         }
+        with self.assertRaises(RuntimeError) as exc:
+            self.client.post(self.url, data=data, format="multipart")
+        self.assertIn("업로드 실패", str(exc.exception))
+        self.assertFalse(StudyNote.objects.filter(title=data["title"]).exists())
+        self.assertFalse(StudyNoteImage.objects.exists())
+        self.assertFalse(StudyNoteAttachment.objects.exists())
 
-        # - S3Uploader.upload_file에서 RuntimeError 발생
-        try:
-            with transaction.atomic():
-                self.client.post(self.url, data=data, format="multipart")
-        except RuntimeError as e:
-            # 발생한 예외 메시지 확인
-            self.assertIn("이미지 업로드 실패", str(e))
-
-        # DB 롤백 확인
-        self.assertFalse(StudyNote.objects.filter(title=data["title"]).exists(), "StudyNote가 남아있으면 안됨")
-        self.assertFalse(StudyNoteImage.objects.exists(), "이미지가 남아있으면 안됨")
-        self.assertFalse(StudyNoteAttachment.objects.exists(), "첨부파일이 남아있으면 안됨")
+    @patch("apps.study_notes.services.study_notes_services.S3Uploader.upload_file")
+    def test_create_study_note_attachment_upload_rollback(self, mock_upload_file: Any) -> None:
+        """
+        첨부파일 업로드 실패 시 전체 롤백 테스트
+        """
+        mock_upload_file.side_effect = [
+            {"key": "image_key", "url": "https://mock_s3_url.com/image1.png"},  # 이미지 성공
+            RuntimeError("첨부파일 업로드 실패"),  # 첨부 실패
+        ]
+        data = {
+            "title": "첨부파일 롤백 테스트",
+            "content": "첨부파일 실패 시 롤백 확인",
+            "images": [self.image_file],
+            "attachments": [self.attachment_file],
+        }
+        with self.assertRaises(RuntimeError) as exc:
+            self.client.post(self.url, data=data, format="multipart")
+        self.assertIn("첨부파일 업로드 실패", str(exc.exception))
+        self.assertFalse(StudyNote.objects.filter(title=data["title"]).exists())
+        self.assertFalse(StudyNoteImage.objects.exists())
+        self.assertFalse(StudyNoteAttachment.objects.exists())
