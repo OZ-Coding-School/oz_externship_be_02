@@ -1,5 +1,6 @@
 import uuid
 from smtplib import SMTPException
+from typing import Any, Dict
 
 from django.conf import settings
 from django.core.cache import cache
@@ -15,7 +16,7 @@ class EmailVerificationService:
     def generate_verification_code(self) -> str:
         return Base62.uuid_encode(u=uuid.uuid4())
 
-    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> Response:
+    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> Dict[str, Any]:
 
         verification_code = self.generate_verification_code()
         cache_key = f"{purpose.value}-{email}"
@@ -40,20 +41,18 @@ class EmailVerificationService:
 
         try:
             send_mail(subject, message, from_email, recipient_list)
-            return Response({"detail": f"이메일로 인증번호가 발송되었습니다."}, status=status.HTTP_200_OK)
+            return {"detail": f"이메일로 인증번호가 발송되었습니다."}
         except SMTPException:
             cache.delete(cache_key)
-            return Response(
-                {"error": "이메일 발송 중 예외가 발생하였습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return {"error": "이메일 발송 중 예외가 발생하였습니다."}
 
-    def verify_code(self, email: str, purpose: VerificationPurpose, verification_code: str) -> Response:
+    def verify_code(self, email: str, purpose: VerificationPurpose, verification_code: str) -> Dict[str, Any]:
 
         cache_key = f"{purpose.value}-{email}"
         cache_verification_code = cache.get(cache_key)
 
         if cache_verification_code != verification_code:
-            return Response({"error": "인증번호가 일치하지 않습니다"}, status=status.HTTP_400_BAD_REQUEST)
+            return {"error": "인증번호가 일치하지 않습니다"}
 
         cache.set(cache_key, verification_code, timeout=300)
-        return Response({"detail": f"인증이 완료되었습니다"}, status=status.HTTP_200_OK)
+        return {"detail": f"인증이 완료되었습니다"}
