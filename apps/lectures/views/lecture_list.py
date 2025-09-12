@@ -1,4 +1,5 @@
 import json
+import logging
 
 import redis
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
@@ -11,6 +12,8 @@ from rest_framework.views import APIView
 from apps.lectures.models.categories import Category
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.serializers.crawled_lecture import LectureSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class LectureListView(APIView):
@@ -39,23 +42,30 @@ class LectureListView(APIView):
         description="무한 스크롤, 검색, 필터링, 정렬 기능을 지원하는 강의 목록 API",
     )
     def get(self, request: Request) -> Response:
+        lectures = None
+        redis_client = None
+
         try:
             redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
             cached_lectures = redis_client.get("lectures:list")
-        except redis.exceptions.ConnectionError:
-            return Response({"detail": "Redis connection error"}, status=500)
+            if cached_lectures:
+                try:
+                    lectures = json.loads(cached_lectures)
+                except json.JSONDecodeError:
+                    logger.warning("\nLectureLog: Redis cached data invalid, fallback to DB")
+        except redis.exceptions.ConnectionError as e:
+            logger.error("\nLectureLog: Redis connection failed, fallback to DB: %s", str(e))
 
-        if cached_lectures:
-            try:
-                lectures = json.loads(cached_lectures)
-            except json.JSONDecodeError:
-                return Response({"detail": "Invalid cached data"}, status=500)
-        else:
-            # 🔥 캐시 없을 경우 DB에서 불러오기
+        if lectures is None:
             queryset = Lecture.objects.all()
             serializer = self.serializer_class(queryset, many=True)
             lectures = serializer.data
-            redis_client.set("lectures:list", json.dumps(lectures))
+
+            if redis_client:
+                try:
+                    redis_client.set("lectures:list", json.dumps(lectures))
+                except redis.exceptions.ConnectionError:
+                    logger.warning("\nLectureLog: Failed to set lectures in Redis cache, skipping")
 
         # Filtering & Sorting
         lectures = self.filter_lectures(lectures, request)  # type: ignore
