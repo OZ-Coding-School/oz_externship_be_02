@@ -29,10 +29,37 @@ class StudyNoteService:
     ) -> StudyNote:
 
         uploaded_keys: List[str] = []  # 롤백 시 삭제할 key 모음
+        image_urls: List[str] = []
+        attachment_data: List[dict] = []
 
-        # 트랜젝션(이미지에서 오류나면 전체 롤백)
-        # 이미지 업로드
+        # S3 업로드 먼저 진행 (트랜잭션 밖)
+        try:
+            if images:
+                for img_file in images:
+                    s3_data = self.s3.upload_file(img_file)
+                    uploaded_keys.append(s3_data["key"])
+                    image_urls.append(s3_data["url"])
 
+            if attachments:
+                for attach_file in attachments:
+                    s3_data = self.s3.upload_file(attach_file)
+                    uploaded_keys.append(s3_data["key"])
+                    attachment_data.append(
+                        {"file_name": attach_file.name or "untitled", "url": s3_data["url"]}
+                    )
+
+        except Exception as e:
+            # 업로드 실패 시 이미 올라간 S3 객체 삭제
+            for key in uploaded_keys:
+                try:
+                    self.s3.delete_file(key)
+                except Exception as del_err:
+                    import logging
+                    logger = logging.getLogger("django")
+                    logger.warning(f"S3 객체 삭제 실패: {key}, error: {del_err}")
+            raise RuntimeError(f"S3 업로드 실패, 롤백 완료. Error: {e}")
+
+        # DB 트랜잭션 진행
         try:
             with transaction.atomic():
                 note = StudyNote.objects.create_note(
@@ -42,47 +69,32 @@ class StudyNoteService:
                     content=content,
                 )
 
-                # 이미지 업로드
-                if images:
-                    image_objs: List[StudyNoteImage] = []
-                    for img_file in images:
-                        try:
-                            s3_data = self.s3.upload_file(img_file)
-                            uploaded_keys.append(s3_data["key"])
-                            image_objs.append(StudyNoteImage(study_note=note, img_url=s3_data["url"]))
-                        except Exception as img_err:
-                            raise RuntimeError(f"이미지 업로드 실패: {img_file.name}, error: {img_err}")
+                # 이미지 DB 생성
+                if image_urls:
+                    image_objs = [StudyNoteImage(study_note=note, img_url=url) for url in image_urls]
                     StudyNoteImage.objects.bulk_create(image_objs)
 
-                # 첨부파일 업로드
-                if attachments:
-                    attachment_objs: List[StudyNoteAttachment] = []
-                    for attach_file in attachments:
-                        try:
-                            s3_data = self.s3.upload_file(attach_file)
-                            uploaded_keys.append(s3_data["key"])
-                            attachment_objs.append(
-                                StudyNoteAttachment(
-                                    study_note=note,
-                                    file_name=attach_file.name or "untitled",
-                                    file_url=s3_data["url"],
-                                )
-                            )
-                        except Exception as attach_err:
-                            raise RuntimeError(f"첨부파일 업로드 실패: {attach_file.name}, error: {attach_err}")
+                # 첨부파일 DB 생성
+                if attachment_data:
+                    attachment_objs = [
+                        StudyNoteAttachment(
+                            study_note=note,
+                            file_name=d["file_name"],
+                            file_url=d["url"]
+                        )
+                        for d in attachment_data
+                    ]
                     StudyNoteAttachment.objects.bulk_create(attachment_objs)
 
                 return note
 
         except Exception as e:
-            # 롤백 시 업로드된 S3 객체 삭제 (고아 객체 방지)
+            # DB 트랜잭션 실패 시 업로드된 S3 객체 삭제
             for key in uploaded_keys:
                 try:
                     self.s3.delete_file(key)
                 except Exception as del_err:
                     import logging
-
                     logger = logging.getLogger("django")
                     logger.warning(f"S3 객체 삭제 실패: {key}, error: {del_err}")
-
-            raise RuntimeError(f"StudyNote 생성 실패, 롤백 완료. Error: {e}")
+            raise RuntimeError(f"StudyNote DB 생성 실패, 롤백 완료. Error: {e}")
