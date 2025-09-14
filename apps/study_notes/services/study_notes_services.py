@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
@@ -30,7 +30,7 @@ class StudyNoteService:
 
         uploaded_keys: List[str] = []  # 롤백 시 삭제할 key 모음
         image_urls: List[str] = []
-        attachment_data: List[dict] = []
+        attachment_data: List[Dict[str, str]] = []
 
         # S3 업로드 먼저 진행 (트랜잭션 밖)
         try:
@@ -44,9 +44,7 @@ class StudyNoteService:
                 for attach_file in attachments:
                     s3_data = self.s3.upload_file(attach_file)
                     uploaded_keys.append(s3_data["key"])
-                    attachment_data.append(
-                        {"file_name": attach_file.name or "untitled", "url": s3_data["url"]}
-                    )
+                    attachment_data.append({"file_name": attach_file.name or "untitled", "url": s3_data["url"]})
 
         except Exception as e:
             # 업로드 실패 시 이미 올라간 S3 객체 삭제
@@ -55,6 +53,7 @@ class StudyNoteService:
                     self.s3.delete_file(key)
                 except Exception as del_err:
                     import logging
+
                     logger = logging.getLogger("django")
                     logger.warning(f"S3 객체 삭제 실패: {key}, error: {del_err}")
             raise RuntimeError(f"S3 업로드 실패, 롤백 완료. Error: {e}")
@@ -77,11 +76,7 @@ class StudyNoteService:
                 # 첨부파일 DB 생성
                 if attachment_data:
                     attachment_objs = [
-                        StudyNoteAttachment(
-                            study_note=note,
-                            file_name=d["file_name"],
-                            file_url=d["url"]
-                        )
+                        StudyNoteAttachment(study_note=note, file_name=d["file_name"], file_url=d["url"])
                         for d in attachment_data
                     ]
                     StudyNoteAttachment.objects.bulk_create(attachment_objs)
@@ -95,6 +90,7 @@ class StudyNoteService:
                     self.s3.delete_file(key)
                 except Exception as del_err:
                     import logging
+
                     logger = logging.getLogger("django")
                     logger.warning(f"S3 객체 삭제 실패: {key}, error: {del_err}")
             raise RuntimeError(f"StudyNote DB 생성 실패, 롤백 완료. Error: {e}")
