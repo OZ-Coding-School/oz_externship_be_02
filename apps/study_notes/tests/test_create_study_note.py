@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Optional
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile  # 테스트용 파일 생성
