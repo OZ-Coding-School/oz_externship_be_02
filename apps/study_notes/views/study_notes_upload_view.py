@@ -42,7 +42,7 @@ class StudyNoteUploadView(APIView):
             "attachments": request.FILES.getlist("attachments_file"),
         }
 
-        result: Dict[str, List[Union[str, Dict[str, str]]]] = {"images": [], "attachments": []}
+        result: Dict[str, List[Union[str, Dict[str, str]]]] = {"images": [], "attachments": [], "failed": []}
 
         for key, files in files_to_upload.items():
             for f in files:
@@ -57,6 +57,6 @@ class StudyNoteUploadView(APIView):
 
                     logger = logging.getLogger("django")
                     logger.warning(f"S3 업로드 실패: {f.name}, error: {e}")
-                    # 실패 파일은 결과에서 제외하고 로깅만
+                    result.setdefault("failed", []).append({"file": f.name, "reason": str(e)})
 
         return Response(result, status=status.HTTP_200_OK)
