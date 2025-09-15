@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 class VerificationPurpose(enum.StrEnum):
     SIGNUP = "signup"  # 회원가입
-    RESET_PASSWORD = "reset_passsword"  # 비밀번호 찾기
+    RESET_PASSWORD = "reset_password"  # 비밀번호 찾기
     RECOVER_ACCOUNT = "recover_account"  # 계정복구
     PROFILE_UPDATE = "profile_update"  # 회원정보 수정
     FIND_EMAIL = "find_email"  # 이메일 찾기
