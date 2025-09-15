@@ -4,7 +4,7 @@ from uuid import UUID
 from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import get_object_or_404
 from django.utils.datastructures import MultiValueDict
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -24,8 +24,14 @@ from apps.users.models import User
     request=StudyNoteSerializer,
     responses={
         201: StudyNoteSerializer,
-        400: "잘못된 요청입니다. 필수 필드가 누락되었거나 형식이 올바르지 않습니다.",
-        404: "해당 스터디 그룹을 찾을 수 없습니다.",
+        400: OpenApiResponse(
+            response={ "detail": "잘못된 요청입니다. 필수 필드가 누락되었거나 형식이 올바르지 않습니다." },
+            description="ValidationError 발생 시"
+        ),
+        404: OpenApiResponse(
+            response={ "detail": "해당 스터디 그룹을 찾을 수 없습니다." },
+            description="NotFoundError 발생 시"
+        ),
     },
 )
 class StudyNoteCreateView(APIView):
