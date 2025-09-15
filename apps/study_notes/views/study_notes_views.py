@@ -1,7 +1,9 @@
 from typing import Optional
 from uuid import UUID
 
+from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import get_object_or_404
+from django.utils.datastructures import MultiValueDict
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -36,14 +38,15 @@ class StudyNoteCreateView(APIView):
 
     def post(self, request: Request, group_uuid: UUID) -> Response:
         group = get_object_or_404(StudyGroup, uuid=group_uuid)
-        serializer = StudyNoteSerializer(data=request.data)
+        # request.data가 dict이면 그냥 list로 할당, QueryDict이면 setlist 사용
+        data: MultiValueDict[str, list[UploadedFile] | str] = MultiValueDict(request.data)
+        # 파일 추가
+        data.setlist("images_file", request.FILES.getlist("images_file"))
+        data.setlist("attachments_file", request.FILES.getlist("attachments_file"))
+        serializer = StudyNoteSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        images = request.FILES.getlist("images")
-        attachments = request.FILES.getlist("attachments")
-
         service = self.get_service() or self.service_class()
-
         assert isinstance(request.user, User)
 
         study_note = service.create_study_note(
@@ -51,8 +54,8 @@ class StudyNoteCreateView(APIView):
             study_group=group,
             title=serializer.validated_data["title"],
             content=serializer.validated_data["content"],
-            images=images,
-            attachments=attachments,
+            images=serializer.validated_data.get("images_file", []),
+            attachments=serializer.validated_data.get("attachments_file", []),
         )
 
         return Response(StudyNoteSerializer(study_note).data, status=status.HTTP_201_CREATED)
