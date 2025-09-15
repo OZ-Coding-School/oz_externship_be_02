@@ -1,3 +1,6 @@
+from typing import Sequence
+
+from django.core.files.uploadedfile import UploadedFile
 from rest_framework import serializers
 
 from apps.study_notes.models.study_notes import (
@@ -46,3 +49,25 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
             "updated_at",
         ]
         read_only_fields = ["id", "study_group", "author", "ai_summary", "created_at", "updated_at"]
+
+    # 이미지 유효성 검사
+    def validate_images_file(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
+        if len(files) > 5:
+            raise serializers.ValidationError("이미지는 최대 5개까지 업로드 가능합니다.")
+        for f in files:
+            if f.size is not None and f.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError(f"{f.name}: 이미지는 5MB 이하만 업로드 가능합니다.")
+            if f.content_type not in ["image/jpeg", "image/png"]:
+                raise serializers.ValidationError(f"{f.name}: JPEG, PNG만 업로드 가능합니다.")
+        return files
+
+    # 첨부파일 유효성 검사
+    def validate_attachments_file(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
+        if len(files) > 3:
+            raise serializers.ValidationError("첨부파일은 최대 3개까지 업로드 가능합니다.")
+        for f in files:
+            if f.size is not None and f.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError(f"{f.name}: 첨부파일은 5MB 이하만 업로드 가능합니다.")
+            if f.content_type not in ["application/pdf", "application/msword"]:
+                raise serializers.ValidationError(f"{f.name}: PDF, DOC만 업로드 가능합니다.")
+        return files
