@@ -57,7 +57,7 @@ class EmailVerificationServicesUnitTests(RedisTestClient):
         # result = self.service.verify_code(email, purpose=VerificationPurpose.SIGNUP, verification_code="wrong")
         url = reverse("email_verify_code")
         data = {"email": "test@example.com", "verification_code": "wrong"}
-        response= self.client.post(url, data, format="json")
+        response = self.client.post(url, data, format="json")
         # then
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, {"error": "인증번호가 일치하지 않습니다"})
@@ -133,7 +133,6 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, EmailVerificationMi
         urls = cls.get_password_reset_urls()
         cls.send_url = urls["send_url"]
         cls.verify_url = urls["verify_url"]
-
 
     def test_send_verification_email(self) -> None:
         """
