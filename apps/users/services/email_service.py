@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import send_mail
 from rest_framework import status
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 
 from apps.core.utils.base62 import Base62
@@ -16,7 +17,7 @@ class EmailVerificationService:
     def generate_verification_code(self) -> str:
         return Base62.uuid_encode(u=uuid.uuid4())
 
-    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> Dict[str, Any]:
+    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> bool:
 
         verification_code = self.generate_verification_code()
         cache_key = f"{purpose.value}-{email}"
@@ -41,18 +42,18 @@ class EmailVerificationService:
 
         try:
             send_mail(subject, message, from_email, recipient_list)
-            return {"detail": f"이메일로 인증번호가 발송되었습니다."}
         except SMTPException:
             cache.delete(cache_key)
-            return {"error": "이메일 발송 중 예외가 발생하였습니다."}
+            return False
+        return True
 
-    def verify_code(self, email: str, purpose: VerificationPurpose, verification_code: str) -> Dict[str, Any]:
+    def verify_code(self, purpose: VerificationPurpose, email: str, verification_code: str) -> bool:
 
-        cache_key = f"{purpose.value}-{email}"
+        cache_key = f"{purpose}-{email}"
         cache_verification_code = cache.get(cache_key)
 
         if cache_verification_code != verification_code:
-            return {"error": "인증번호가 일치하지 않습니다"}
+            return False
 
         cache.set(cache_key, verification_code, timeout=300)
-        return {"detail": f"인증이 완료되었습니다"}
+        return True
