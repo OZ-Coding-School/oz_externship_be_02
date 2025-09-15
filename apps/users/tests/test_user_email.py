@@ -6,15 +6,17 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
 from rest_framework.response import Response
+from rest_framework.test import APITestCase
 
-from apps.core.tests.mixins.test_user_mixins import TestUserMixin, EmailVerificationMixin
+from apps.core.tests.mixins.test_user_mixins import (
+    EmailVerificationMixin,
+    TestUserMixin,
+)
 from apps.core.utils.test_clients import RedisTestClient
 from apps.users.models import User
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.utils.enums import VerificationPurpose
-
 
 
 class EmailVerificationServicesUnitTests(RedisTestClient):
