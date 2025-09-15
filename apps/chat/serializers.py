@@ -11,3 +11,8 @@ class ChatMessageSerializer(serializers.ModelSerializer[ChatMessage]):
     class Meta:
         model = ChatMessage
         fields = ["study_group_name", "updated_at", "created_at", "is_read", "content"]
+
+        def get_sender_name(self, obj):
+            if obj.sender:
+                return obj.sender.nickname if hasattr(obj.sender, 'nickname') else obj.sender.username
+            return "알 수 없는 사용자"
