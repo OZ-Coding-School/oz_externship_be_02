@@ -10,6 +10,10 @@ from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 
 from apps.core.utils.base62 import Base62
+from apps.users.services.exceptions import (
+    EmailSendingFailedError,
+    EmailVerificationCodeFailedError,
+)
 from apps.users.utils.enums import VerificationPurpose
 
 
@@ -17,7 +21,7 @@ class EmailVerificationService:
     def generate_verification_code(self) -> str:
         return Base62.uuid_encode(u=uuid.uuid4())
 
-    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> bool:
+    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> None:
 
         verification_code = self.generate_verification_code()
         cache_key = f"{purpose.value}-{email}"
@@ -42,18 +46,16 @@ class EmailVerificationService:
 
         try:
             send_mail(subject, message, from_email, recipient_list)
-        except SMTPException:
+        except SMTPException as e:
             cache.delete(cache_key)
-            return False
-        return True
+            raise EmailSendingFailedError(f"이메일 발송 시스템에 문제가 발생하였습니다: {e}")
 
-    def verify_code(self, purpose: VerificationPurpose, email: str, verification_code: str) -> bool:
+    def verify_code(self, purpose: VerificationPurpose, email: str, verification_code: str) -> None:
 
         cache_key = f"{purpose}-{email}"
         cache_verification_code = cache.get(cache_key)
 
         if cache_verification_code != verification_code:
-            return False
+            raise EmailVerificationCodeFailedError("이메일 인증 코드가 일치하지 않습니다")
 
         cache.set(cache_key, verification_code, timeout=300)
-        return True

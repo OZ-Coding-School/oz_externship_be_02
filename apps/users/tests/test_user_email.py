@@ -22,7 +22,6 @@ from apps.users.utils.enums import VerificationPurpose
 class EmailVerificationServicesUnitTests(RedisTestClient):
     def setUp(self) -> None:
         self.service = EmailVerificationService()
-        self.email = "test@example.com"
 
     def test_generate_verification_code_func(self) -> None:
         verification_code = self.service.generate_verification_code()
@@ -60,7 +59,7 @@ class EmailVerificationServicesUnitTests(RedisTestClient):
         response = self.client.post(url, data, format="json")
         # then
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, {"error": "인증번호가 일치하지 않습니다"})
+        self.assertEqual(response.data, {"error": "이메일 인증 코드가 일치하지 않습니다"})
 
 
 class EmailVerificationServiceUnitTests(RedisTestClient, EmailVerificationMixin):
@@ -101,7 +100,7 @@ class EmailVerificationServiceUnitTests(RedisTestClient, EmailVerificationMixin)
         # 이메일 인증 이메일 전송 요청
         self.client.post(self.send_url, data)
         # 이메일 발송 시 사용한 인증번호를 캐시로 부터 가져오기
-        verification_code = cache.get(f"{VerificationPurpose.SIGNUP.value}-{self.test_email}")
+        verification_code = cache.get(f"{VerificationPurpose.SIGNUP.value}-{email}")
 
         response = self.client.post(
             self.verify_url, {"email": self.test_email, "verification_code": verification_code}, format="json"
@@ -112,12 +111,12 @@ class EmailVerificationServiceUnitTests(RedisTestClient, EmailVerificationMixin)
     def test_email_verify_code_failed(self) -> None:
         # given
         # 이메일 인증요청에 사용할 이메일
-        data = {"email": self.test_email}
+        data = {"email": (email := self.test_email)}
 
         # 이메일 인증 이메일 전송 요청
         self.client.post(self.send_url, data)
 
-        response = self.client.post(self.verify_url, {"email": self.test_email, "verification_code": "wrong code"})
+        response = self.client.post(self.verify_url, {"email": email, "verification_code": "wrong code"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
@@ -138,16 +137,16 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, EmailVerificationMi
         """
         비밀 번호 찾기 이메일 코드 전송
         """
-        data = {"email": self.test_email}
+        data = {"email": (email := self.test_email)}
         response = self.client.post(self.send_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mail.outbox[0].subject, "비밀번호 재설정 이메일 인증")
-        cache_key = f"{VerificationPurpose.RESET_PASSWORD.value}-{self.test_email}"
+        cache_key = f"{VerificationPurpose.RESET_PASSWORD.value}-{email}"
         verification_code = cache.get(cache_key)
         self.assertIsNotNone(verification_code)
 
-        response = self.client.post(self.verify_url, {"email": self.test_email, "code": verification_code})
+        response = self.client.post(self.verify_url, {"email": email, "code": verification_code})
         self.assertIn(verification_code, mail.outbox[0].body)
 
     def test_email_verify_code_success(self) -> None:
@@ -155,15 +154,15 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, EmailVerificationMi
         비밀번호 찾기 이메일 코드 검증
         :return:
         """
-        data = {"email": self.test_email}
+        data = {"email": (email := self.test_email)}
         self.client.post(self.send_url, data)
 
-        cache_key = f"{VerificationPurpose.RESET_PASSWORD.value}-{self.test_email}"
+        cache_key = f"{VerificationPurpose.RESET_PASSWORD.value}-{email}"
         verification_code = cache.get(cache_key)
 
         self.assertIsNotNone(verification_code)
 
-        response = self.client.post(self.verify_url, {"email": self.test_email, "verification_code": verification_code})
+        response = self.client.post(self.verify_url, {"email": email, "verification_code": verification_code})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(cache.get(cache_key))
 
@@ -171,10 +170,10 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, EmailVerificationMi
         """
         비밀번호 찾기 인증 실패 케이스
         """
-        data = {"email": self.test_email}
+        data = {"email": (email := self.test_email)}
         self.client.post(self.verify_url, data)
 
-        response = self.client.post(self.verify_url, {"email": self.test_email, "code": "wrong"})
+        response = self.client.post(self.verify_url, {"email": email, "code": "wrong"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
@@ -192,8 +191,7 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, EmailVerification
         """
         복구 이메일 인증 요청
         """
-        email = self.user.email
-        response = self.client.post(self.send_url, {"email": email})
+        response = self.client.post(self.send_url, {"email": (email := self.test_email)})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mail.outbox[0].subject, "탈퇴 계정 복구 이메일 인증")
 
@@ -210,8 +208,8 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, EmailVerification
         """
         계정 복구 이메인 인증 성공 케이스
         """
-        email = self.test_email
-        self.client.post(self.send_url, {"email": self.test_email})
+        data = {"email": (email := self.test_email)}
+        self.client.post(self.send_url, data)
         cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{email}"
         verification_code = cache.get(cache_key)
         self.assertIsNotNone(verification_code)
@@ -223,10 +221,10 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, EmailVerification
         self.assertTrue(cache.get(cache_key))
 
     def test_email_verify_code_failed(self) -> None:
-        email = self.test_email
-        self.client.post(self.send_url, {"email": self.test_email})
+        data = {"email": (email := self.test_email)}
+        self.client.post(self.send_url, data)
         response = self.client.post(self.verify_url, {"email": email, "verification_code": "wrong"})
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
-        self.assertEqual(response.data["error"], "인증번호가 일치하지 않습니다")
+        self.assertEqual(response.data["error"], "이메일 인증 코드가 일치하지 않습니다")
