@@ -11,10 +11,9 @@ from rest_framework.views import APIView
 from apps.applications.serializers.application_serializers import (
     ApplicationCreateSerializer,
 )
+from apps.applications.services import ApplicationService
 from apps.recruitments.models import Recruitment
 from apps.users.models import User
-
-from .models import Application
 
 
 class ApplicationAPIView(APIView):
@@ -28,7 +27,7 @@ class ApplicationAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request, recruitment_uuid: UUID) -> Response:
-        # 지원서 생성 요청(POST)을 처리.
+        """지원서 생성 요청(POST)을 처리한다."""
 
         # --- 1. 공고 객체 조회 --- #
         # URL로 받은 recruitment_uuid를 사용해 지원 대상 공고 객체를 조회.
@@ -54,20 +53,18 @@ class ApplicationAPIView(APIView):
             )
 
         # --- 3. 핵심 로직(지원서 생성) 호출 및 결과 처리 --- #
-        # 모든 검증을 통과하면, View가 직접 DB 로직을 처리하지 않고 Manager에게 로직을 위임한다.
+        # View는 Service 레이어에 로직 처리를 위임한다.
         # user, recruitment 객체와 유효성 검사를 마친 데이터(serializer.validated_data)를 전달한다.
         try:
-            # IsAuthenticated 권한 클래스에 의해 이 시점의 request.user는 항상 User 객체임이 보장된다..
+            # IsAuthenticated 권한 클래스에 의해 이 시점의 request.user는 항상 User 객체임이 보장된다.
+            # mypy에게 이 사실을 알려주기 위해 cast를 사용하여 타입을 명시적으로 지정한다.
             user = cast(User, request.user)
-            application = Application.objects.create_application(
-                user=user, recruitment=recruitment, **serializer.validated_data
-            )
-        # Manager의 create_application 메서드에서 중복 지원 시 IntegrityError를 발생시키기로 약속했으므로,
-        # 이 예외를 받아서, API 명세에 맞는 403 Forbidden 응답을 생성하여 반환한다.
-        except IntegrityError as e:
-            return Response(
-                {"error_code": "DUPLICATE_APPLICATION", "message": str(e)}, status=status.HTTP_403_FORBIDDEN
-            )
+            service = ApplicationService()
+            application = service.create_application(user=user, recruitment=recruitment, **serializer.validated_data)
+        # Service(내부적으로는 Manager)에서 중복 지원 시 IntegrityError를 발생시키기로 약속했으므로,
+        # 이 예외를 받아서, 409 Conflict 응답을 생성하여 반환한다.
+        except IntegrityError as e:  # <-- 데이터베이스의 UniqueConstraint 위반 시 발생하는 IntegrityError를 잡습니다.
+            return Response({"error_code": "DUPLICATE_APPLICATION", "message": str(e)}, status=status.HTTP_409_CONFLICT)
 
         # 모든 과정이 성공적으로 끝나면, 생성된 지원서의 ID를 포함하여 201 Created 응답을 반환한다.
         return Response(

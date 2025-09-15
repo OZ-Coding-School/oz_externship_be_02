@@ -85,7 +85,7 @@ class ApplicationAPITest(APITestCase):
         self.client.force_authenticate(user=self.applicant)
         response = self.client.post(self.url, self.valid_payload, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(response.data["error_code"], "DUPLICATE_APPLICATION")
 
     def test_create_application_for_non_existent_recruitment_fails(self) -> None:
