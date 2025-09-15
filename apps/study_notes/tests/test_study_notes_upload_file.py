@@ -56,7 +56,7 @@ class TestStudyNoteUploadAPI(TestCase):
     @patch("apps.study_notes.services.study_notes_services.S3Uploader", MockS3Uploader)
     def test_upload_success(self) -> None:
         """
-        이미지/첨부 정상 업로드
+        - 이미지/첨부 정상 업로드
         """
         data = {"images_file": [self.image_file], "attachments_file": [self.attachment_file]}
         response = self.client.post(self.url, data=data, format="multipart")
@@ -67,7 +67,7 @@ class TestStudyNoteUploadAPI(TestCase):
     @patch("apps.study_notes.services.study_notes_services.S3Uploader", MockS3Uploader)
     def test_upload_no_files(self) -> None:
         """
-        파일 없이 요청 시 빈 리스트 반환
+        - 파일 없이 요청 시 빈 리스트 반환
         """
         data: Dict[str, list[Any]] = {"images_file": [], "attachments_file": []}
         response = self.client.post(self.url, data=data, format="multipart")
@@ -98,7 +98,7 @@ class TestStudyNoteUploadAPI(TestCase):
     @patch("apps.study_notes.services.study_notes_services.S3Uploader.delete_file")
     def test_create_note_attachment_upload_fails(self, mock_delete: Any, mock_upload: Any) -> None:
         """
-        이미지 업로드 성공 후 첨부파일 업로드 실패
+        - 이미지 업로드 성공 후 첨부파일 업로드 실패
         - 이전 업로드된 이미지가 delete_file 호출로 제거되는지 확인
         - RuntimeError 발생
         """
@@ -121,3 +121,19 @@ class TestStudyNoteUploadAPI(TestCase):
         # 이미지 삭제 호출 확인
         mock_delete.assert_called_with("image_key")
         self.assertEqual(StudyNote.objects.count(), 0)
+
+    @patch("apps.study_notes.services.study_notes_services.S3Uploader.upload_file")
+    def test_upload_file_failure_logging_only(self, mock_upload_file: Any) -> None:
+        """
+        - 파일 업로드 중 예외 발생
+        - Response는 200
+        - 실패 파일은 결과에서 제외됨
+        """
+        mock_upload_file.side_effect = Exception("S3 업로드 실패")
+
+        dummy_file = SimpleUploadedFile("dummy.pdf", b"dummy content", content_type="application/pdf")
+
+        response = self.client.post(self.url, {"attachments_file": [dummy_file]}, format="multipart")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["attachments"], [])
