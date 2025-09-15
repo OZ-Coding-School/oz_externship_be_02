@@ -31,8 +31,8 @@ class RecruitmentsListTestCase(APITestCase):
 
     @classmethod
     def setUpTestData(cls) -> None:
-        study_group = []
-        study_group.append(
+        study_groups = []
+        study_groups.append(
             StudyGroup(
                 name="test group1",
                 max_headcount=5,
@@ -40,7 +40,7 @@ class RecruitmentsListTestCase(APITestCase):
                 end_at=timezone.now() + timedelta(days=1),
             )
         )
-        study_group.append(
+        study_groups.append(
             StudyGroup(
                 name="test group2",
                 max_headcount=5,
@@ -48,10 +48,10 @@ class RecruitmentsListTestCase(APITestCase):
                 end_at=timezone.now() + timedelta(days=1),
             )
         )
-        cls.study_groups = StudyGroup.objects.bulk_create(study_group)
+        cls.study_groups = StudyGroup.objects.bulk_create(study_groups)
 
-        lecture = []
-        lecture.append(
+        lectures = []
+        lectures.append(
             Lecture(
                 title="lecture 1",
                 instructor="instructor 1",
@@ -61,7 +61,7 @@ class RecruitmentsListTestCase(APITestCase):
                 url_link="https://www.test.com",
             )
         )
-        lecture.append(
+        lectures.append(
             Lecture(
                 title="lecture 2",
                 instructor="instructor 2",
@@ -71,7 +71,7 @@ class RecruitmentsListTestCase(APITestCase):
                 url_link="https://www.test.com",
             )
         )
-        lecture.append(
+        lectures.append(
             Lecture(
                 title="lecture 3",
                 instructor="instructor 3",
@@ -81,27 +81,27 @@ class RecruitmentsListTestCase(APITestCase):
                 url_link="https://www.test.com",
             )
         )
-        cls.lectures = Lecture.objects.bulk_create(lecture)
+        cls.lectures = Lecture.objects.bulk_create(lectures)
 
-        study_lecture = [
+        study_lectures = [
             StudyLecture(lecture=cls.lectures[0], study_group=cls.study_groups[0]),
             StudyLecture(lecture=cls.lectures[1], study_group=cls.study_groups[0]),
             StudyLecture(lecture=cls.lectures[2], study_group=cls.study_groups[1]),
         ]
-        StudyLecture.objects.bulk_create(study_lecture)
+        StudyLecture.objects.bulk_create(study_lectures)
 
-        category = [Category(name="category1"), Category(name="category2")]
-        cls.categories = Category.objects.bulk_create(category)
+        categories = [Category(name="category1"), Category(name="category2")]
+        cls.categories = Category.objects.bulk_create(categories)
 
-        lecture_category = [
+        lecture_categories = [
             LectureCategory(lecture=cls.lectures[0], category=cls.categories[0]),
             LectureCategory(lecture=cls.lectures[2], category=cls.categories[1]),
         ]
-        cls.lecture_categories = LectureCategory.objects.bulk_create(lecture_category)
+        cls.lecture_categories = LectureCategory.objects.bulk_create(lecture_categories)
 
-        user = []
+        users = []
         for i in range(5):
-            user.append(
+            users.append(
                 User(
                     email=f"testuser{i}@test.com",
                     password="itspassword",
@@ -112,13 +112,13 @@ class RecruitmentsListTestCase(APITestCase):
                     birthday=timezone.make_aware(datetime(2025, 9, 9)),
                 )
             )
-        cls.users = User.objects.bulk_create(user)
+        cls.users = User.objects.bulk_create(users)
 
         RECRUITMENT_CASE_1: Final = 10
         RECRUITMENT_CASE_2: Final = 5
-        recruitment = []
+        recruitments = []
         for i in range(RECRUITMENT_CASE_1):
-            recruitment.append(
+            recruitments.append(
                 Recruitment(
                     study_group=cls.study_groups[0],
                     author=cls.users[0],
@@ -130,7 +130,7 @@ class RecruitmentsListTestCase(APITestCase):
                 )
             )
         for i in range(RECRUITMENT_CASE_2):
-            recruitment.append(
+            recruitments.append(
                 Recruitment(
                     study_group=cls.study_groups[1],
                     author=cls.users[0],
@@ -140,20 +140,20 @@ class RecruitmentsListTestCase(APITestCase):
                     expected_headcount=5,
                 )
             )
-        cls.recruitments = Recruitment.objects.bulk_create(recruitment)
+        cls.recruitments = Recruitment.objects.bulk_create(recruitments)
 
-        tag = [Tag(name="tag1"), Tag(name="tag2"), Tag(name="tag3"), Tag(name="tag4")]
-        cls.tags = Tag.objects.bulk_create(tag)
+        tags = [Tag(name="tag1"), Tag(name="tag2"), Tag(name="tag3"), Tag(name="tag4")]
+        cls.tags = Tag.objects.bulk_create(tags)
 
-        recruitment_tag = []
+        recruitment_tags = []
         for i in range(RECRUITMENT_CASE_1):
             for j in range(3):
-                recruitment_tag.append(RecruitmentTag(tag=cls.tags[j], recruitment=cls.recruitments[i]))
+                recruitment_tags.append(RecruitmentTag(tag=cls.tags[j], recruitment=cls.recruitments[i]))
         for i in range(RECRUITMENT_CASE_2):
-            recruitment_tag.append(
+            recruitment_tags.append(
                 RecruitmentTag(tag=cls.tags[3], recruitment=cls.recruitments[i + RECRUITMENT_CASE_1])
             )
-        RecruitmentTag.objects.bulk_create(recruitment_tag)
+        RecruitmentTag.objects.bulk_create(recruitment_tags)
 
         recruitment_bookmarks = []
         for i in range(5):

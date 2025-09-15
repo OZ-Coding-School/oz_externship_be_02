@@ -60,6 +60,18 @@ class RecruitmentView(APIView):
                 required=False,
                 type=OpenApiTypes.STR,
             ),
+            OpenApiParameter(
+                name="tag",
+                description="해당 태그를 가진 공고만 필터링",
+                required=False,
+                type=OpenApiTypes.STR,
+            ),
+            OpenApiParameter(
+                name="category",
+                description="해당 카테고리를 가진 강의를 듣는 공고만 필터링",
+                required=False,
+                type=OpenApiTypes.STR,
+            ),
         ],
         responses={
             200: inline_serializer(
