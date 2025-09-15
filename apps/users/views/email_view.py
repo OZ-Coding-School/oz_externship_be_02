@@ -1,4 +1,5 @@
 from rest_framework import status
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -26,15 +27,13 @@ class SignUpEmailVerificationSendAPIView(APIView):
 
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.SIGNUP
-        result = email_service.send_verification_email(email, purpose)
-        if "detail" in result:
-            return Response(result, status=status.HTTP_200_OK)
-        else:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+        email_service.send_verification_email(email, purpose)
+        return Response({"detail": "인증에 성공했습니다"}, status=status.HTTP_200_OK)
 
 
 class SignUpEmailVerifiCationVerifyAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = (AllowAny,)
     """
     회원가입 이메일 전송 코드 검증
     """
@@ -43,15 +42,11 @@ class SignUpEmailVerifiCationVerifyAPIView(APIView):
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"]
         purpose = VerificationPurpose.SIGNUP
-        verification_code = serializer.validated_data["verification_code"]
 
-        result = email_service.verify_code(email, purpose, verification_code)
-        if "detail" in result:
-            return Response(result, status=status.HTTP_200_OK)
-        else:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        if not email_service.verify_code(purpose, **serializer.validated_data):
+            return Response({"error": "인증번호가 일치하지 않습니다"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "인증이 완료되었습니다"}, status=status.HTTP_200_OK)
 
 
 class PasswordResetEmailVerificationSendAPIView(APIView):
@@ -67,11 +62,8 @@ class PasswordResetEmailVerificationSendAPIView(APIView):
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RESET_PASSWORD
 
-        result = email_service.send_verification_email(email, purpose)
-        if "detail" in result:
-            return Response(result, status=status.HTTP_200_OK)
-        else:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        email_service.send_verification_email(email, purpose)
+        return Response({"detail": "인증에 완료되었습니다"}, status=status.HTTP_200_OK)
 
 
 class PassowrdResetEmailVerificationVerifyAPIView(APIView):
@@ -84,15 +76,10 @@ class PassowrdResetEmailVerificationVerifyAPIView(APIView):
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RESET_PASSWORD
-        verification_code = serializer.validated_data["verification_code"]
 
-        result = email_service.verify_code(email, purpose, verification_code)
-        if "detail" in result:
-            return Response(result, status=status.HTTP_200_OK)
-        else:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        email_service.verify_code(purpose=purpose, **serializer.validated_data)
+        return Response({"detail": "인증에 성공했습니다"}, status=status.HTTP_200_OK)
 
 
 class AccountRecoveryEmailVerificationSendAPIView(APIView):
@@ -109,10 +96,9 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
         purpose = VerificationPurpose.RECOVER_ACCOUNT
 
         result = email_service.send_verification_email(email, purpose)
-        if "detail" in result:
-            return Response(result, status=status.HTTP_200_OK)
-        else:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        if not result:
+            return Response({"error": "전송에 실패했습니다"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "인증 번호를 전송했습니다"}, status=status.HTTP_200_OK)
 
 
 class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
@@ -124,12 +110,10 @@ class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data["email"]
-        purpose = VerificationPurpose.RECOVER_ACCOUNT
-        verification_code = serializer.validated_data["verification_code"]
 
-        result = email_service.verify_code(email, purpose, verification_code)
-        if "detail" in result:
-            return Response(result, status=status.HTTP_200_OK)
-        else:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        purpose = VerificationPurpose.RECOVER_ACCOUNT
+
+        result = email_service.verify_code(purpose=purpose, **serializer.validated_data)
+        if not result:
+            return Response({"error": "인증번호가 일치하지 않습니다"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "인증에 성공했습니다"}, status=status.HTTP_200_OK)
