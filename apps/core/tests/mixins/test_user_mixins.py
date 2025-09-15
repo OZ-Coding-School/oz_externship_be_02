@@ -53,8 +53,9 @@ class TestUserMixin:
             "verify_url": reverse("phone_verify_code"),
         }
 
+
 class EmailVerificationMixin(TestUserMixin):
     test_email: ClassVar[str]
     send_url: ClassVar[str]
     verify_url: ClassVar[str]
-    user : ClassVar[User]
+    user: ClassVar[User]
