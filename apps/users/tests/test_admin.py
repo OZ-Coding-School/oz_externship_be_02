@@ -30,6 +30,87 @@ class UserPermissionSerializerTest(TestCase):
         self.assertIn("permission", serializer.errors)
 
 
+class UserPermissionRequestSerializerSaveTest(TestCase):
+    def setUp(self) -> None:
+        # 각 테스트에서 사용할 깨끗한 유저 객체를 생성합니다.
+        self.general_user = user_model.objects.create_user(
+            email="test_user@example.com",
+            password="testpassword",
+            name="테스트유저",
+            nickname="tester",
+            phone_number="01012345678",
+            birthday="2000-01-01",
+        )
+
+    def test_save_sets_admin_permission(self) -> None:
+        """'admin' 권한으로 변경 시 is_staff와 is_superuser가 True가 되는지 테스트"""
+        # 준비 (Arrange)
+        data = {"permission": "admin"}
+        serializer = UserPermissionRequestSerializer(
+            data=data,
+            context={"target_user": self.general_user},
+        )
+        self.assertTrue(serializer.is_valid())  # .save()를 호출하기 전 is_valid()는 필수
+
+        # 실행 (Act)
+        updated_user = serializer.save()
+
+        # 검증 (Assert)
+        self.assertTrue(updated_user.is_staff)
+        self.assertTrue(updated_user.is_superuser)
+
+        # DB에 실제 저장되었는지 한번 더 확인
+        self.general_user.refresh_from_db()
+        self.assertTrue(self.general_user.is_staff)
+        self.assertTrue(self.general_user.is_superuser)
+
+    def test_save_sets_staff_permission(self) -> None:
+        """'staff' 권한으로 변경 시 is_staff는 True, is_superuser는 False가 되는지 테스트"""
+        # 준비 (Arrange)
+        data = {"permission": "staff"}
+        serializer = UserPermissionRequestSerializer(
+            data=data,
+            context={"target_user": self.general_user},
+        )
+        self.assertTrue(serializer.is_valid())
+
+        # 실행 (Act)
+        updated_user = serializer.save()
+
+        # 검증 (Assert)
+        self.assertTrue(updated_user.is_staff)
+        self.assertFalse(updated_user.is_superuser)
+
+        self.general_user.refresh_from_db()
+        self.assertTrue(self.general_user.is_staff)
+        self.assertFalse(self.general_user.is_superuser)
+
+    def test_save_sets_general_permission(self) -> None:
+        """'general' 권한으로 변경 시 is_staff와 is_superuser가 False가 되는지 테스트"""
+        # 먼저 유저를 staff 상태로 변경
+        self.general_user.is_staff = True
+        self.general_user.save()
+
+        # 준비 (Arrange)
+        data = {"permission": "general"}
+        serializer = UserPermissionRequestSerializer(
+            data=data,
+            context={"target_user": self.general_user},
+        )
+        self.assertTrue(serializer.is_valid())
+
+        # 실행 (Act)
+        updated_user = serializer.save()
+
+        # 검증 (Assert)
+        self.assertFalse(updated_user.is_staff)
+        self.assertFalse(updated_user.is_superuser)
+
+        self.general_user.refresh_from_db()
+        self.assertFalse(self.general_user.is_staff)
+        self.assertFalse(self.general_user.is_superuser)
+
+
 class UserPermissionServiceTests(TestCase, TestUserMixin):
     # 비즈니스 로직 테스트
     def setUp(self) -> None:
