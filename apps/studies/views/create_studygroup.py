@@ -29,7 +29,8 @@ class CreateStudyGroupView(APIView):
         responses=CreateSuccessResponse,
     )
     def post(self, request: Request) -> Response:
-        serializer = StudyCreateSerializer(data=request.data)
+        input_data = {"study_group": request.data}
+        serializer = StudyCreateSerializer(data=input_data)
         if serializer.is_valid():
             # 저장과 동시에 객체화
             data = serializer.save(user=self.request.user)

@@ -48,17 +48,6 @@ class CreateStudyGroupTestFalse(TestCase):
                     "end_at": datetime(2025, 9, 30),
                 }
             },
-            # {
-            #     "create_data": {
-            #         "study_group": {
-            #             "name": "리더생성 테스트",
-            #             "introduction": "실패 테스트.",
-            #             "max_headcount": 3,
-            #             "start_at": datetime(2025, 9, 15),
-            #             "end_at": datetime(2025, 9, 30),
-            #         }
-            #     },
-            # },
         ]
 
         for case in fail_data:
@@ -91,11 +80,10 @@ class CreateStudyGroupTestSuccess(TestCase):
                         "name": "테스트 성공기원 1",
                         "introduction": "이미지 필수 아니여서 제외.",
                         "max_headcount": 3,
-                        "start_at": datetime(2025, 9, 15),
-                        "end_at": datetime(2025, 9, 30),
+                        "start_at": datetime(2025, 10, 15),
+                        "end_at": datetime(2025, 10, 30),
                     }
                 },
-                # "context": {"request": self.request},
             },
             {
                 "create_data": {
@@ -104,11 +92,10 @@ class CreateStudyGroupTestSuccess(TestCase):
                         "introduction": "스터디 그룹 프로필 이미지 추가.",
                         "max_headcount": 3,
                         "profile_img_url": "http://imgimgimgimg.png",  # 이미지 값 추가
-                        "start_at": datetime(2025, 9, 15),
-                        "end_at": datetime(2025, 9, 30),
+                        "start_at": datetime(2025, 10, 15),
+                        "end_at": datetime(2025, 10, 30),
                     }
                 },
-                # "context": {"request": self.request},
             },
         ]
 
@@ -153,40 +140,32 @@ class CreateStudyGroupAPITestFail(APITestCase):
         """
         fail_data = [
             {
-                "study_group": {
-                    "name": "API 실패 테스트 1",
-                    "introduction": "인원 초과",
-                    "max_headcount": 11,
-                    "start_at": "2025-09-15T00:00:00Z",
-                    "end_at": "2025-09-30T00:00:00Z",
-                }
+                "name": "API 실패 테스트 1",
+                "introduction": "인원 초과",
+                "max_headcount": 11,
+                "start_at": "2025-10-15T00:00:00Z",
+                "end_at": "2025-10-30T00:00:00Z",
             },
             {
-                "study_group": {
-                    "name": "API 실패 테스트 2",
-                    "introduction": "일정 설정 오류 - 시작날이 오늘 / 오늘 이후",
-                    "max_headcount": 6,
-                    "start_at": "2025-09-01T00:00:00Z",
-                    "end_at": "2025-09-30T00:00:00Z",
-                }
+                "name": "API 실패 테스트 2",
+                "introduction": "일정 설정 오류 - 시작날이 오늘 / 오늘 이후",
+                "max_headcount": 6,
+                "start_at": "2025-09-01T00:00:00Z",
+                "end_at": "2025-09-30T00:00:00Z",
             },
             {
-                "study_group": {
-                    "name": "API 실패 테스트 3",
-                    "introduction": "일정 설정 오류 - 끝나는 날짜가 시작날보다 이전",
-                    "max_headcount": 6,
-                    "start_at": "2025-09-30T00:00:00Z",
-                    "end_at": "2025-09-15T00:00:00Z",
-                }
+                "name": "API 실패 테스트 3",
+                "introduction": "일정 설정 오류 - 끝나는 날짜가 시작날보다 이전",
+                "max_headcount": 6,
+                "start_at": "2025-10-30T00:00:00Z",
+                "end_at": "2025-10-15T00:00:00Z",
             },
             {
-                "study_group": {
-                    "name": "API 실패 테스트 4",
-                    "introduction": "일정 설정 오류 - 스터디는 최소 5일 진행",
-                    "max_headcount": 6,
-                    "start_at": "2025-10-01T00:00:00Z",
-                    "end_at": "2025-10-03T00:00:00Z",
-                }
+                "name": "API 실패 테스트 4",
+                "introduction": "일정 설정 오류 - 스터디는 최소 5일 진행",
+                "max_headcount": 6,
+                "start_at": "2025-10-01T00:00:00Z",
+                "end_at": "2025-10-03T00:00:00Z",
             },
         ]
 
@@ -212,19 +191,16 @@ class CreateStudyGroupAPITest(APITestCase):
         :return:
         """
         success_data = {
-            "study_group": {
-                "name": "Python 개념 잡기",
-                "introduction": "Python 언어 기초를 공부, 프로그래머스 문제 풀기.",
-                "max_headcount": 5,
-                "profile_img_url": "http://imgimgimgimg.png",  # 이미지 값 추가
-                "start_at": "2025-09-15T00:00:00Z",
-                "end_at": "2025-09-30T00:00:00Z",
-            }
+            "name": "Python 개념 잡기",
+            "introduction": "Python 언어 기초를 공부, 프로그래머스 문제 풀기.",
+            "max_headcount": 5,
+            "profile_img_url": "http://imgimgimgimg.png",  # 이미지 값 추가
+            "start_at": "2025-10-15T00:00:00Z",
+            "end_at": "2025-10-30T00:00:00Z",
         }
 
         response = self.client.post(self.url, data=success_data, format="json")
-        self.assertEqual(response.status_code, 201)
-        # self.assertEqual(response.data["name"], "Python 개념 잡기")
+        self.assertEqual(response.data["name"], "Python 개념 잡기")
         self.assertEqual(StudyGroup.objects.count(), 1)
 
     def tearDown(self) -> None:
