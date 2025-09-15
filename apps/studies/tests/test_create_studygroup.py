@@ -7,7 +7,7 @@ from django.urls import reverse
 from rest_framework.test import APIRequestFactory, APITestCase
 
 from apps.studies.models import GroupMember, StudyGroup
-from apps.studies.serializers.study_group import StudyCreateSerializer
+from apps.studies.serializers.study_group import StudyGroupRequestSerializer
 from apps.users.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class CreateStudyGroupTestFalse(TestCase):
         ]
 
         for case in fail_data:
-            serializer = StudyCreateSerializer(data=case["study_group"])
+            serializer = StudyGroupRequestSerializer(data=case["study_group"])
             serializer.is_valid(raise_exception=False)
 
 
@@ -100,7 +100,7 @@ class CreateStudyGroupTestSuccess(TestCase):
         ]
 
         for case in success_data:
-            serializer = StudyCreateSerializer(
+            serializer = StudyGroupRequestSerializer(
                 data=case["create_data"],
             )
             self.assertTrue(serializer.is_valid())
@@ -174,7 +174,7 @@ class CreateStudyGroupAPITestFail(APITestCase):
             self.assertEqual(response.status_code, 400)
 
 
-class CreateStudyGroupAPITest(APITestCase):
+class CreateStudyGroupAPITestSuccess(APITestCase):
     """
     post 요청을 통해 스터디 그룹을 생성하는 테스트
     """

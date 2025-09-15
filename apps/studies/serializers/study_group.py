@@ -53,9 +53,9 @@ class StudyGroupSerializer(serializers.ModelSerializer[StudyGroup]):
         return attrs
 
 
-class StudyCreateSerializer(serializers.ModelSerializer[GroupMember]):
+class StudyGroupRequestSerializer(serializers.ModelSerializer[GroupMember]):
     """
-    스터디 그룹 멤버 Serializer
+    스터디 그룹 생성 관련 RequestSerializer
     """
 
     study_group = StudyGroupSerializer()  # 스터디 그룹 Serializer로 데이터 받아오기
@@ -80,7 +80,7 @@ class StudyCreateSerializer(serializers.ModelSerializer[GroupMember]):
         return study_group
 
 
-class CreateSuccessResponse(serializers.ModelSerializer[GroupMember]):
+class StudyGroupResponseSerializer(serializers.ModelSerializer[GroupMember]):
     """
     스터디 그룹 생성 성공 시, 응답 데이터 Serializer
     """
