@@ -68,7 +68,6 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
                 has_study_experience=True,
                 study_experience="학교 알고리즘 스터디",
                 status=Application.ApplicationStatus.PENDING,
-                created_at=timezone.now(),
             )
 
         # then: atomic 블록을 빠져나오면 on_commit 콜백이 실행됨
@@ -83,3 +82,82 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
         self.assertIn(self.recruitment.title, n.content)
 
         self.assertTrue(n.back_url_link.endswith(f"/recruitments/{self.recruitment.uuid}/applications"))
+
+    def test_notification_created_after_accept_status_change(self) -> None:
+        """
+        Application 상태가 PENDING -> ACCEPTED로 바뀌면
+        on_commit 이후 지원자에게 승인 알림이 생성되는지 검증
+        """
+        # PENDING으로 생성
+        with transaction.atomic():
+            app = Application.objects.create(
+                recruitment=self.recruitment,
+                user=self.applicant,
+                objective="파이썬 심화",
+                motivation="깊게 배우고 싶어서",
+                self_introduction="열심히 하겠습니다",
+                available_time="주중 저녁",
+                has_study_experience=False,
+                status=Application.ApplicationStatus.PENDING,
+            )
+
+        with transaction.atomic():
+            app.status = Application.ApplicationStatus.ACCEPTED
+            app.save(update_fields=["status"])
+
+        notifs = Notification.objects.filter(
+            user_id=self.applicant.id,
+            notification_type=Notification.NotificationType.APPLICATION_ACCEPT,
+        )
+        self.assertEqual(notifs.count(), 1)
+
+        n = notifs.first()
+        assert n is not None  # mypy
+        self.assertIn(self.recruitment.title, n.content)
+        self.assertEqual(n.back_url_link, "/applications/me")
+
+        # 같은 상태로 한 번 더 저장해도 추가 생성되지 않음(중복 방지)
+        with transaction.atomic():
+            app.status = Application.ApplicationStatus.ACCEPTED
+            app.save(update_fields=["status"])
+        self.assertEqual(notifs.count(), 1)
+
+    def test_notification_created_after_reject_status_change(self) -> None:
+        """
+        Application 상태가 PENDING -> REJECTED로 바뀌면
+        on_commit 이후 지원자에게 거절 알림이 생성되는지 검증
+        """
+        # PENDING으로 생성
+        with transaction.atomic():
+            app = Application.objects.create(
+                recruitment=self.recruitment,
+                user=self.applicant,
+                objective="파이썬 심화",
+                motivation="깊게 배우고 싶어서",
+                self_introduction="열심히 하겠습니다",
+                available_time="주중 저녁",
+                has_study_experience=False,
+                status=Application.ApplicationStatus.PENDING,
+            )
+
+        # 상태를 REJECTED로 변경 (created=False)
+        with transaction.atomic():
+            app.status = Application.ApplicationStatus.REJECTED
+            app.save(update_fields=["status"])
+
+        # 지원자에게 거절 알림 1건 생성
+        notifs = Notification.objects.filter(
+            user_id=self.applicant.id,
+            notification_type=Notification.NotificationType.APPLICATION_REJECT,
+        )
+        self.assertEqual(notifs.count(), 1)
+        n = notifs.first()
+        assert n is not None
+        self.assertIn(self.recruitment.title, n.content)
+        self.assertEqual(n.back_url_link, "/applications/me")
+
+        # 같은 상태로 한 번 더 저장해도 추가 생성되지 않음(중복 방지)
+        with transaction.atomic():
+            app.status = Application.ApplicationStatus.REJECTED
+            app.save(update_fields=["status"])
+        self.assertEqual(notifs.count(), 1)
