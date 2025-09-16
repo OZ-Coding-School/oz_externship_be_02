@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Optional
 
 from django.core.files.uploadedfile import UploadedFile
@@ -11,6 +12,8 @@ from apps.study_notes.models.study_notes import (
     StudyNoteImage,
 )
 from apps.users.models.user import User
+
+logger = logging.getLogger("django")
 
 
 class StudyNoteService:
@@ -48,14 +51,10 @@ class StudyNoteService:
 
         except Exception as e:
             # 업로드 실패 시 이미 올라간 S3 객체 삭제
-            for key in uploaded_keys:
-                try:
-                    self.s3.delete_file(key)
-                except Exception as del_err:
-                    import logging
-
-                    logger = logging.getLogger("django")
-                    logger.warning(f"S3 객체 삭제 실패: {key}, error: {del_err}")
+            try:
+                self.s3.delete_files(uploaded_keys)
+            except Exception as del_err:
+                logger.warning(f"S3 객체 삭제 실패: {uploaded_keys}, error: {del_err}")
             raise RuntimeError(f"S3 업로드 실패, 롤백 완료. Error: {e}")
 
         # DB 트랜잭션 진행
@@ -85,12 +84,8 @@ class StudyNoteService:
 
         except Exception as e:
             # DB 트랜잭션 실패 시 업로드된 S3 객체 삭제
-            for key in uploaded_keys:
-                try:
-                    self.s3.delete_file(key)
-                except Exception as del_err:
-                    import logging
-
-                    logger = logging.getLogger("django")
-                    logger.warning(f"S3 객체 삭제 실패: {key}, error: {del_err}")
+            try:
+                self.s3.delete_files(uploaded_keys)  # ✅ 수정: delete_file 반복 → delete_files 사용
+            except Exception as del_err:
+                logger.warning(f"S3 객체 삭제 실패: {uploaded_keys}, error: {del_err}")
             raise RuntimeError(f"StudyNote DB 생성 실패, 롤백 완료. Error: {e}")
