@@ -25,10 +25,10 @@ class StudyNoteAttachmentSerializer(serializers.ModelSerializer[StudyNoteAttachm
 class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
     images = StudyNoteImageSerializer(many=True, read_only=True)
     attachments = StudyNoteAttachmentSerializer(many=True, read_only=True)
-    images_file: serializers.ListField = serializers.ListField(
+    image_files: serializers.ListField = serializers.ListField(
         child=serializers.ImageField(), write_only=True, required=False
     )
-    attachments_file: serializers.ListField = serializers.ListField(
+    attachment_files: serializers.ListField = serializers.ListField(
         child=serializers.FileField(), write_only=True, required=False
     )
 
@@ -41,9 +41,9 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
             "title",
             "content",
             "images",
-            "images_file",
+            "image_files",
             "attachments",
-            "attachments_file",
+            "attachment_files",
             "ai_summary",
             "created_at",
             "updated_at",
@@ -51,7 +51,7 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
         read_only_fields = ["id", "study_group", "author", "ai_summary", "created_at", "updated_at"]
 
     # 이미지 유효성 검사
-    def validate_images_file(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
+    def validate_image_files(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
         if len(files) > 5:
             raise serializers.ValidationError("이미지는 최대 5개까지 업로드 가능합니다.")
         for f in files:
@@ -62,12 +62,22 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
         return files
 
     # 첨부파일 유효성 검사
-    def validate_attachments_file(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
+    def validate_attachment_files(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
+        allowed_types = [
+            "application/pdf",  # PDF
+            "application/msword",  # DOC
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # DOCX
+            "application/haansofthwp",  # HWP
+            "application/vnd.ms-powerpoint",  # PPT
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # PPTX
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # XLSX
+            "text/plain",  # TXT
+        ]
         if len(files) > 3:
             raise serializers.ValidationError("첨부파일은 최대 3개까지 업로드 가능합니다.")
         for f in files:
             if f.size is not None and f.size > 5 * 1024 * 1024:
                 raise serializers.ValidationError(f"{f.name}: 첨부파일은 5MB 이하만 업로드 가능합니다.")
-            if f.content_type not in ["application/pdf", "application/msword"]:
-                raise serializers.ValidationError(f"{f.name}: PDF, DOC만 업로드 가능합니다.")
+            if f.content_type not in allowed_types:
+                raise serializers.ValidationError(f"{f.name}: 지원하지 않는 파일 형식입니다.")
         return files

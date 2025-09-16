@@ -16,25 +16,25 @@ class TestStudyNoteSerializer(TestCase):
         files = [SimpleUploadedFile(f"img{i}.png", b"x", content_type="image/png") for i in range(6)]
         serializer = StudyNoteSerializer()
         with self.assertRaises(ValidationError):
-            serializer.validate_images_file(files)
+            serializer.validate_image_files(files)
 
     def test_validate_images_file_type(self) -> None:
         """JPEG/PNG 외 이미지 업로드 시 ValidationError 발생"""
         file = SimpleUploadedFile("img.gif", b"x", content_type="image/gif")
         serializer = StudyNoteSerializer()
         with self.assertRaises(ValidationError):
-            serializer.validate_images_file([file])
+            serializer.validate_image_files([file])
 
     def test_validate_attachments_file_large(self) -> None:
         """첨부파일 5MB 초과 시 ValidationError 발생"""
         big_file = SimpleUploadedFile("file.pdf", b"x" * (6 * 1024 * 1024), content_type="application/pdf")
         serializer = StudyNoteSerializer()
         with self.assertRaises(ValidationError):
-            serializer.validate_attachments_file([big_file])
+            serializer.validate_attachment_files([big_file])
 
     def test_validate_attachments_file_type(self) -> None:
         """PDF, DOC 외 첨부파일 업로드 시 ValidationError 발생"""
-        file = SimpleUploadedFile("file.txt", b"x", content_type="text/plain")
+        file = SimpleUploadedFile("file.exe", b"x", content_type="application/x-msdownload")
         serializer = StudyNoteSerializer()
         with self.assertRaises(ValidationError):
-            serializer.validate_attachments_file([file])
+            serializer.validate_attachment_files([file])
