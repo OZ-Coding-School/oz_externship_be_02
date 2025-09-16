@@ -5,7 +5,6 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from apps.lectures.models.categories import Category
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.models.lecture_categories import LectureCategory
 from apps.recruitments.models import RecruitmentBookmark
