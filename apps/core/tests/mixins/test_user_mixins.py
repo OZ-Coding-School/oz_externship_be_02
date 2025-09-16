@@ -54,8 +54,10 @@ class TestUserMixin:
         }
 
 
-class EmailVerificationMixin(TestUserMixin):
+class VerificationMixin(TestUserMixin):
     test_email: ClassVar[str]
     send_url: ClassVar[str]
     verify_url: ClassVar[str]
     user: ClassVar[User]
+    phone_number: ClassVar[str]
+    verification_code: ClassVar[str]
