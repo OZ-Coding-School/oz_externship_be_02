@@ -9,7 +9,6 @@ from apps.study_group_schedules.models import GroupSchedule
 
 
 class StudyGroupScheduleResponseSerializer(serializers.ModelSerializer[GroupSchedule]):
-    """스터디 그룹 Nested Serializer 사용"""
 
     study_group_uuid = serializers.UUIDField(source="study_group.uuid", read_only=True)
     study_group_name = serializers.CharField(source="study_group.name", read_only=True)
@@ -64,5 +63,32 @@ class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedu
 
         if start_time and end_time:
             self.validate_time_range(start_time, end_time)
+
+        return data
+
+
+class StudyGroupScheduleListQueryParamsSerializer(serializers.Serializer[GroupSchedule]):
+    """스터디 그룹 스케줄 목록 조회 쿼리 파라미터 시리얼라이저"""
+
+    start_date = serializers.DateField(required=False, help_text="조회 시작 날짜 (YYYY-MM-DD)")
+    end_date = serializers.DateField(required=False, help_text="조회 종료 날짜 (YYYY-MM-DD)")
+    ordering = serializers.ChoiceField(
+        choices=[
+            ("session_date", "날짜순"),
+            ("-session_date", "날짜 역순"),
+        ],
+        default="-session_date",
+        required=False,
+        help_text="정렬 옵션",
+    )
+
+    def validate(self, data: dict[str, Any]) -> dict[str, Any]:
+        """날짜 범위 검증"""
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+
+        if start_date and end_date:
+            if start_date > end_date:
+                raise serializers.ValidationError("시작 날짜는 종료 날짜보다 이전이어야 합니다.")
 
         return data
