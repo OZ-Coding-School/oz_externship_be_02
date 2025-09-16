@@ -9,7 +9,6 @@ from rest_framework.views import APIView
 from apps.users.models import User
 from apps.users.permissons import IsSuperUser
 from apps.users.serializers.admin_serializers import (
-    UserPermissionRequestSerializer,
     UserPermissionResponseSerializer,
     UserPermissionUpdateSerializer,
 )
