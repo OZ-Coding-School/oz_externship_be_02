@@ -21,11 +21,11 @@ class Lecture(UUIDBaseModel):
     average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
     duration = models.SmallIntegerField()
     difficulty = models.CharField(max_length=10, choices=DifficultyChoices.choices, default=DifficultyChoices.NORMAL)
-    description = models.TextField()
+    description = models.TextField(blank=True, null=True)
     platform = models.CharField(max_length=10, choices=PlatformChoices.choices)
     original_price = models.BigIntegerField(default=0)
     discount_price = models.BigIntegerField(default=0)
-    url_link = models.URLField(max_length=500)
+    url_link = models.URLField(max_length=500, blank=True)
     thumbnail_img_url = models.URLField(max_length=500, null=True, blank=True)
 
     categories = models.ManyToManyField(

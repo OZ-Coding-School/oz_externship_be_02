@@ -20,7 +20,7 @@ class LectureReview(BaseModel):
         null=False,
     )
     rating = models.CharField(max_length=20, choices=RatingChoices.choices, null=False, blank=False)
-    content = models.TextField()
+    content = models.TextField(blank=True)
 
     class Meta:
         db_table = "crawled_lecture_reviews"

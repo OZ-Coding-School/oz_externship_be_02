@@ -10,8 +10,8 @@ from rest_framework.response import Response
 from rest_framework.test import APITestCase
 
 from apps.core.tests.mixins.test_user_mixins import (
-    EmailVerificationMixin,
     TestUserMixin,
+    VerificationMixin,
 )
 from apps.core.utils.test_clients import RedisTestClient
 from apps.users.models import User
@@ -62,7 +62,7 @@ class EmailVerificationServicesUnitTests(RedisTestClient):
         self.assertEqual(response.data, {"error": "이메일 인증 코드가 일치하지 않습니다"})
 
 
-class EmailVerificationServiceUnitTests(RedisTestClient, EmailVerificationMixin):
+class EmailVerificationServiceUnitTests(RedisTestClient, VerificationMixin):
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -120,7 +120,7 @@ class EmailVerificationServiceUnitTests(RedisTestClient, EmailVerificationMixin)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-class PasswordResetEmailVerificationAPITest(RedisTestClient, EmailVerificationMixin):
+class PasswordResetEmailVerificationAPITest(RedisTestClient, VerificationMixin):
     """
     비밀번호 찾기 이메일 인증 테스틐 코드
     """
@@ -177,7 +177,7 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, EmailVerificationMi
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-class AccountRecoveryEmailVerificationAPITest(RedisTestClient, EmailVerificationMixin):
+class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin):
 
     @classmethod
     def setUpTestData(cls) -> None:
