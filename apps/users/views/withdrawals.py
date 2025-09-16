@@ -6,20 +6,23 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.users.serializers.email_verification_serializers import (
+    EmailVerifyCodeSerializer,
+)
 from apps.users.serializers.withdrawals import (
     WithdrawalRequestSerializer,
-    WithdrawalResponseSerializer, 
+    WithdrawalResponseSerializer,
 )
-from apps.users.services.withdrawals import create_withdrawal, recover_account
 from apps.users.services.email_service import EmailVerificationService
+from apps.users.services.withdrawals import create_withdrawal, recover_account
 from apps.users.utils.enums import VerificationPurpose
-from apps.users.serializers.email_verification_serializers import EmailVerifyCodeSerializer
 
 email_service = EmailVerificationService()
 
+
 class WithdrawalAPIView(APIView):
     def post(self, request: Request) -> Response:
-        assert request.user.is_authenticated # mypy 오류로 인한 검증 코드
+        assert request.user.is_authenticated  # mypy 오류로 인한 검증 코드
         request_serializer = WithdrawalRequestSerializer(data=request.data, context={"request": request})
         request_serializer.is_valid(raise_exception=True)
 
@@ -32,28 +35,31 @@ class WithdrawalAPIView(APIView):
 class AccountRecoveryAPIView(APIView):
     """
     탈퇴 계정 복구 요청 API
-    - 이메일과 인증 코드 검증
-    - 복구 성공 시 계정 활성화 및 탈퇴 요청 삭제
+    └ 이메일과 인증 코드 검증
+    └ 복구 성공 시 계정 활성화 및 탈퇴 요청 삭제
     """
 
     def post(self, request: Request) -> Response:
+
         # 1) 유효성 검증
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         # 2) 저장된 캐시 불러오기(enum.py)
         purpose = VerificationPurpose.RECOVER_ACCOUNT
-        
+
         try:
             # 3) 인증 코드 검증
-            email_service.verify_code(purpose, **serializer.validated_data) # 검증 코드 호출
+            email_service.verify_code(purpose, **serializer.validated_data)  # 검증 코드 호출
 
             # 4) 계정 복구
             user = recover_account(**serializer.validated_data)
 
             # 5) 성공 응답
             return Response({"detail": "계정이 복구되었습니다. 이제 로그인할 수 있습니다."}, status=status.HTTP_200_OK)
-        
+
         # 6) 실패 응답(오류 제어는 나중에)
         except Exception as e:
-            return Response({"detail": f"알 수 없는 오류가 발생했습니다. {str(e)}."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": f"알 수 없는 오류가 발생했습니다. {str(e)}."}, status=status.HTTP_400_BAD_REQUEST
+            )
