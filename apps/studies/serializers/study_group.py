@@ -1,28 +1,47 @@
-from datetime import datetime, timezone
 from typing import Any, Dict
 
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
-from rest_framework.relations import PrimaryKeyRelatedField
 
-from apps.studies.models import GroupMember, StudyGroup
-from apps.users.models.user import User
+from apps.core.utils import S3Uploader
+from apps.lectures.models import Lecture
+from apps.studies.models import GroupMember, StudyGroup, StudyLecture
 
 
-class StudyGroupSerializer(serializers.ModelSerializer[StudyGroup]):
+class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
     """
     스터디 그룹 Serializer
     """
 
+    lectures = serializers.PrimaryKeyRelatedField(many=True, queryset=Lecture.objects.all(), required=False)
+    profile_img = serializers.ImageField(required=False, write_only=True)
+
     class Meta:
         model = StudyGroup
-        fields = ["name", "introduction", "max_headcount", "profile_img_url", "start_at", "end_at"]
+        fields = [
+            "id",
+            "name",  # 스터디 그룹명
+            "introduction",  # 스터디 소개글
+            "max_headcount",  # 최대 인원 수
+            "profile_img_url",  # 스터디 그룹의 썸네일(프로필) 이미지
+            "profile_img",
+            "start_at",  # 스터디 시작일
+            "end_at",  # 스터디 종료일
+            "lectures",  # 스터디 그룹에서 수강할 강의
+            "created_at",
+        ]
+
+    def validate_lectures(self, value: list[int]) -> list[int]:
+        if len(value) > 5:
+            raise serializers.ValidationError({"lectures": "강의는 최대 5개까지 등록 가능합니다."})
+        return value
 
     def validate_max_headcount(self, value: int) -> int:
         """
         스터디 그룹 생성 시, 시작일, 종료일 조건 검증 -> `serializer.is_valid()` 실행 시, 자동으로 검증 함수 호출.
         **인원 수 검증 로직**
-        :param vslur: 유저가 입력한 스터디 그룹 최대 인원 수
+        :param value: 유저가 입력한 스터디 그룹 최대 인원 수
         """
         # 인원 수 검증
         if value > 10:
@@ -45,25 +64,12 @@ class StudyGroupSerializer(serializers.ModelSerializer[StudyGroup]):
         if start_at > end_at:
             raise serializers.ValidationError("스터디 종료일이 시작일보다 이전일 수 없습니다.")
         # 시작일이 과거일 경우
-        if start_at < datetime.now(tz=timezone.utc):
+        if start_at < timezone.now():
             raise serializers.ValidationError("스터디 시작일이 과거일 수 없습니다.")
         # 스터디 기간이 5일 미만인 경우
         if (end_at - start_at).days < 4:
             raise serializers.ValidationError("스터디 종료 날짜는 시작날 기준 최소 5일 이후여야 합니다. ")
         return attrs
-
-
-class StudyGroupRequestSerializer(serializers.ModelSerializer[GroupMember]):
-    """
-    스터디 그룹 생성 관련 RequestSerializer
-    """
-
-    study_group = StudyGroupSerializer()  # 스터디 그룹 Serializer로 데이터 받아오기
-    user: PrimaryKeyRelatedField[User] = serializers.PrimaryKeyRelatedField(read_only=True)  # 유저 데이터 가져오기
-
-    class Meta:
-        model = GroupMember
-        fields = ["study_group", "user", "is_leader"]
 
     def create(self, validated_data: Dict[str, Any]) -> Any:
         """
@@ -72,46 +78,24 @@ class StudyGroupRequestSerializer(serializers.ModelSerializer[GroupMember]):
         :param user:
         :return: study_group data
         """
-        with transaction.atomic():
-            study_group_data = validated_data.pop("study_group")
-            study_group = StudyGroup.objects.create(**study_group_data)
+        user = validated_data.pop("user")
 
-            GroupMember.objects.create(study_group=study_group, is_leader=True, **validated_data)
+        lectures = validated_data.pop("lectures")
+
+        img = validated_data.pop("profile_img")
+        s3_uploader = S3Uploader()
+        profile_img_url = s3_uploader.upload_file(file=img)
+        validated_data["profile_img_url"] = profile_img_url.get("url")
+
+        with transaction.atomic():
+            study_group = StudyGroup.objects.create(**validated_data)
+            study_lectures = [StudyLecture(lecture=i, study_group=study_group) for i in lectures]
+            StudyLecture.objects.bulk_create(study_lectures)
+            GroupMember.objects.create(study_group=study_group, is_leader=True, user=user)
+            study_group.refresh_from_db()
         return study_group
 
-
-class StudyGroupResponseSerializer(serializers.ModelSerializer[GroupMember]):
-    """
-    스터디 그룹 생성 성공 시, 응답 데이터 Serializer
-    """
-
-    created_by = serializers.SerializerMethodField()  # StudyGroup Model에 존재하지 않는 값.
-
-    class Meta:
-        model = StudyGroup
-        fields = [
-            "uuid",
-            "name",
-            "introduction",
-            "profile_img_url",
-            "start_at",
-            "end_at",
-            "max_headcount",
-            "created_by",  # created_by 필드 추가
-            "created_at",
-        ]
-
-    def get_created_by(self, obj: StudyGroup) -> Dict[str, str]:
-        """
-        `created_by` 생성 함수.
-        GroupMember에서 리더 데이터 조회 후, 필요한 데이터만 return
-        :param obj: StudyGroup
-        :return: created_by : user_uuid, user_nickname
-        """
-        leader = obj.groupmember_set.filter(is_leader=True, study_group=obj).first()
-        if leader is None:
-            return {"user_uuid": "", "user_nickname": ""}
-        return {
-            "uuid": str(leader.user.uuid),
-            "nickname": leader.user.nickname,
-        }
+    def to_representation(self, instance: StudyGroup) -> dict[str, Any]:
+        ret = super().to_representation(instance)
+        ret["lectures"] = list(instance.lectures.values_list("id", flat=True))
+        return ret
