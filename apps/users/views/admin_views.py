@@ -21,7 +21,6 @@ class UserPermissionUpdateAPIView(APIView):
     permission_classes = [IsSuperUser]
 
     def patch(self, request: Request, user_uuid: UUID) -> Response:
-        # [PATCH] 사용자 권한 수정
         # 1. 권한 변경 대상 유저 찾기
         target_user = get_object_or_404(User, uuid=user_uuid)
 
@@ -33,9 +32,9 @@ class UserPermissionUpdateAPIView(APIView):
         permission = request_serializer.validated_data["permission"]
         update_user = UserPermissionService.update_user_permission(user=target_user, permission=permission)
 
-        # 4. Response 시리얼라이저로 응답데이터 형성
-        response_serializer = UserPermissionResponseSerializer(update_user)
+        # 3. Response 시리얼라이저로 응답데이터 형성
+        response_serializer = UserPermissionResponseSerializer(updated_user)
         return Response(
-            {"message": "권한이 성공적으로 변경되었습니다.", "data": response_serializer.data},
+            {"detail": "권한이 성공적으로 변경되었습니다.", "data": response_serializer.data},
             status=status.HTTP_200_OK,
         )

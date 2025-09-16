@@ -1,9 +1,11 @@
+from typing import Any, Dict
+
 from rest_framework import serializers
 
 from apps.users.models import User, Withdrawals
 
 
-class UserPermissionRequestSerializer(serializers.ModelSerializer[User]):
+class UserPermissionUpdateSerializer(serializers.Serializer[Any]):
     PERMISSION_CHOICES = [
         ("general", "일반회원"),
         ("staff", "스태프"),
@@ -16,9 +18,39 @@ class UserPermissionRequestSerializer(serializers.ModelSerializer[User]):
         help_text="변경할 권한 (general: 일반회원, staff: 스태프, admin: 관리자)",
     )
 
-    class Meta:
-        model = User
-        fields = ["permission"]
+    def to_internal_value(self, data: Dict[str, Any]) -> Any:
+        """
+        입력 데이터를 내부 값으로 변환하기 전에 처리
+        """
+        # 'permission' 필드가 있으면 소문자로 변환
+        if "permission" in data and isinstance(data["permission"], str):
+            data["permission"] = data["permission"].lower()
+
+        return super().to_internal_value(data)
+
+    def update(self, instance: User, validated_data: Dict[str, Any]) -> User:
+        permission = validated_data.get("permission")
+        request = self.context.get("request")
+        # admin이 자기 자신의 권한을 더 낮은 권한으로 변경할 수 없도록 방지
+        if request and request.user == instance and instance.is_superuser and permission != "admin":
+            raise serializers.ValidationError({"error": "자신의 최고 관리자 권한은 해제할 수 없습니다."})
+
+        # admin은 최소 1명 이상 존재해야하므로 0명이 되지 않도록 방지
+        if instance.is_superuser and permission != "admin" and User.objects.filter(is_superuser=True).count() <= 1:
+            raise serializers.ValidationError({"error": "최소 한 명의 최고 관리자 시스템에 존재해야 합니다."})
+
+        if permission == "admin":
+            instance.is_staff = True
+            instance.is_superuser = True
+        elif permission == "staff":
+            instance.is_staff = True
+            instance.is_superuser = False
+        else:
+            instance.is_staff = False
+            instance.is_superuser = False
+
+        instance.save(update_fields=["is_staff", "is_superuser", "updated_at"])
+        return instance
 
 
 class UserPermissionResponseSerializer(serializers.ModelSerializer[User]):
@@ -32,7 +64,7 @@ class UserPermissionResponseSerializer(serializers.ModelSerializer[User]):
     class Meta:
         model = User
         fields = [
-            "id",
+            "uuid",
             "email",
             "name",
             "nickname",
