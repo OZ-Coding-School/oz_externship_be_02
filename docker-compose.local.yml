@@ -24,6 +24,38 @@ services:
       redis:
         condition: service_healthy
 
+  celery_worker:
+    container_name: celery_worker
+    env_file:
+      - envs/.local.env
+    build:
+      context: .
+    working_dir: /oz_externship
+    command: >
+      sh -c "celery -A config worker -l info"
+    volumes:
+      - .:/oz_externship
+    networks:
+      - ws
+    depends_on:
+      - django
+
+  celery_beat:
+    container_name: celery_beat
+    env_file:
+      - envs/.local.env
+    build:
+      context: .
+    working_dir: /oz_externship
+    command: >
+      sh -c "celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    volumes:
+      - .:/oz_externship
+    networks:
+      - ws
+    depends_on:
+      - django
+
   nginx:
     image: nginx:latest
     container_name: nginx
