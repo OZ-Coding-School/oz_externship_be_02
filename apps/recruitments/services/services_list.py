@@ -12,8 +12,3 @@ def active_get_query() -> RecruitmentListQuerySet:
 def filter_tag(queryset: RecruitmentListQuerySet, tag: str) -> RecruitmentListQuerySet:
     filtered_queryset = queryset.filter(tags__name=tag)
     return filtered_queryset
-
-
-def filter_category(queryset: RecruitmentListQuerySet, category: str) -> RecruitmentListQuerySet:
-    filtered_queryset = queryset.filter(study_group__lectures__categories__name=category).distinct()
-    return filtered_queryset

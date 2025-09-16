@@ -26,7 +26,6 @@ class RecruitmentsListTestCase(APITestCase):
     tags: list[Tag]
     users: list[User]
     recruitment_bookmarks: list[RecruitmentBookmark]
-    categories: list[Category]
     lecture_categories: list[LectureCategory]
 
     @classmethod
@@ -89,15 +88,6 @@ class RecruitmentsListTestCase(APITestCase):
             StudyLecture(lecture=cls.lectures[2], study_group=cls.study_groups[1]),
         ]
         StudyLecture.objects.bulk_create(study_lectures)
-
-        categories = [Category(name="category1"), Category(name="category2")]
-        cls.categories = Category.objects.bulk_create(categories)
-
-        lecture_categories = [
-            LectureCategory(lecture=cls.lectures[0], category=cls.categories[0]),
-            LectureCategory(lecture=cls.lectures[2], category=cls.categories[1]),
-        ]
-        cls.lecture_categories = LectureCategory.objects.bulk_create(lecture_categories)
 
         users = []
         for i in range(5):
@@ -209,10 +199,6 @@ class RecruitmentsListTestCase(APITestCase):
         res = self.client.get(url, data=query_params)
         self.assertEqual(res.data["count"], 5)
 
-        query_params = {"page": 1, "category": "category1"}
-        res = self.client.get(url, data=query_params)
-        self.assertEqual(res.data["count"], 10)
-
-        query_params = {"page": 1, "category": "없는 카테고리"}
+        query_params = {"page": 1, "tag": "없는 태그"}
         res = self.client.get(url, data=query_params)
         self.assertEqual(res.data["count"], 0)

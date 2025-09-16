@@ -13,7 +13,6 @@ from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
 from apps.recruitments.services.services_list import (
     active_get_query,
-    filter_category,
     filter_tag,
 )
 
@@ -66,12 +65,6 @@ class RecruitmentView(APIView):
                 required=False,
                 type=OpenApiTypes.STR,
             ),
-            OpenApiParameter(
-                name="category",
-                description="해당 카테고리를 가진 강의를 듣는 공고만 필터링",
-                required=False,
-                type=OpenApiTypes.STR,
-            ),
         ],
         responses={
             200: inline_serializer(
@@ -94,11 +87,6 @@ class RecruitmentView(APIView):
         tag = request.query_params.get("tag", None)
         if tag is not None and tag != "":
             optimized_queryset = filter_tag(optimized_queryset, tag)
-
-        # 'category' 파라미터 확인
-        category = request.query_params.get("category", None)
-        if category is not None and category != "":
-            optimized_queryset = filter_category(optimized_queryset, category)
 
         # 검색
         search_filter = filters.SearchFilter()
