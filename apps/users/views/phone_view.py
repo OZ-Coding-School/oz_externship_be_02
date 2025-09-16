@@ -1,12 +1,21 @@
+import logging
+
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.users.models import User
 from apps.users.serializers.phone_verification_serializers import (
+    PhonePasswordResetSerializer,
     PhoneVerificationSerializer,
     VerifyCodeSerializer,
+)
+from apps.users.services.exceptions import (
+    PhoneSendingFailedError,
+    PhoneVerificationCodeFailedError,
 )
 from apps.users.services.phone_service import TwilioAuthService
 
@@ -20,12 +29,12 @@ class SendVerificationCodeAPIView(APIView):
     def post(self, request: Request) -> Response:
         serializer = PhoneVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        phone_number = serializer.validated_data["phone_number"]
 
-        result = twilio_service.send_verification_code(phone_number)
-        if result.get("success"):
-            return Response({"detail": "인증번호가 전송되었습니다"}, status=status.HTTP_200_OK)
-        return Response({"error": "인증번호 전송에 실패했습니다"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            twilio_service.send_verification_code(phone_number=serializer.data["phone_number"])
+        except PhoneSendingFailedError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "휴대폰 인증번호가 전송되었습니다"}, status=status.HTTP_200_OK)
 
 
 class VerifyCodeAPIView(APIView):
@@ -35,10 +44,9 @@ class VerifyCodeAPIView(APIView):
     def post(self, request: Request) -> Response:
         serializer = VerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        phone_number = serializer.validated_data["phone_number"]
-        code = serializer.validated_data["verification_code"]
 
-        result = twilio_service.check_verification_code(phone_number, code)
-        if result.get("success"):
-            return Response({"detail": "인증되었습니다"}, status=status.HTTP_200_OK)
-        return Response({"error": "인증번호가 일치하지 않습니다"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            twilio_service.check_verification_code(**serializer.validated_data)
+        except PhoneVerificationCodeFailedError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "휴대폰 인증되었습니다"}, status=status.HTTP_200_OK)
