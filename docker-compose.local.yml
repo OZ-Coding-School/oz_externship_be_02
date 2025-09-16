@@ -48,7 +48,8 @@ services:
       context: .
     working_dir: /oz_externship
     command: >
-      sh -c "celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+      sh -c "python manage.py crawler_v2 &&
+             celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
     volumes:
       - .:/oz_externship
     networks:
