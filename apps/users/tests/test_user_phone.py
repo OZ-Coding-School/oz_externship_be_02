@@ -24,7 +24,7 @@ class PhoneVerificationTests(APITestCase, VerificationMixin):
         cls.send_url = urls["send_url"]
         cls.verify_url = urls["verify_url"]
 
-    @patch("apps.users.services.phone_service.TwilioAuthService.send_verification_code")
+    @patch("apps.users.views.phone_view.twilio_service.send_verification_code")
     def test_send_verification_code_success(self, mock_send: MagicMock) -> None:
         """
         휴대폰 인증번호 전송 성공 케이스
@@ -38,7 +38,7 @@ class PhoneVerificationTests(APITestCase, VerificationMixin):
         self.assertIn("detail", response.data)
         self.assertIn(response.data["detail"], "휴대폰 인증번호가 전송되었습니다")
 
-    @patch("apps.users.services.phone_service.TwilioAuthService.send_verification_code")
+    @patch("apps.users.views.phone_view.twilio_service.send_verification_code")
     def test_send_verification_code_fail(self, mock_send: MagicMock) -> None:
         """
         휴대폰 인증번호 전송 실패 케이스
