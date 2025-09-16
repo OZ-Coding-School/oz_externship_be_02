@@ -1,4 +1,8 @@
+from uuid import UUID
+
 from rest_framework import status
+from rest_framework.exceptions import NotFound
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,6 +10,8 @@ from rest_framework.views import APIView
 from apps.studies.serializers.review_serializers import (
     ReviewCreateRequestSerializer,
     ReviewCreateResponseSerializer,
+    ReviewListRequestSerializer,
+    ReviewListResponseSerializer,
 )
 
 
@@ -27,3 +33,21 @@ class ReviewCreateAPIView(APIView):
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class StudyGroupReviewListView(APIView):
+    """
+    [REQ-REVW-00] 스터디 그룹 리뷰 목록 조회 API
+    GET /api/v1/study-groups/reviews/{group_uuid}/
+    - 로그인한 사용자가 특정 스터디 그룹의 리뷰 목록을 조회한다.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, group_uuid: UUID, *args: object, **kwargs: object) -> Response:
+        req = ReviewListRequestSerializer(data={"group_uuid": group_uuid}, context={"request": request})
+        req.is_valid(raise_exception=True)
+
+        payload = req.build_payload()  # 여기서 이미 404 처리됨
+        res = ReviewListResponseSerializer(payload, context={"request": request})
+        return Response(res.data)
