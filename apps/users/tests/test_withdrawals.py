@@ -81,7 +81,10 @@ class UserRecoveryJWTAPITest(APITestCase, EmailVerificationMixin):
         cache.set(cache_key, 123456, timeout=300)  # 5분 동안 유효
 
     def test_account_withdrawal_request(self) -> None:
-        # 1) 먼저 탈퇴 요청을 생성
+        # EmailVerificationMixin을 통해 인증 코드 미리 세팅
+        self._set_verification_code(self.user.email, "123456", VerificationPurpose.RECOVER_ACCOUNT)
+
+        # 1) 탈퇴 요청을 생성
         data = {
             "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             "reason_detail": "개인정보/보안/우려",
@@ -96,9 +99,6 @@ class UserRecoveryJWTAPITest(APITestCase, EmailVerificationMixin):
             "email": self.user.email,
             "verification_code": "123456",  # 테스트용 코드
         }
-
-        # EmailVerificationMixin을 통해 인증 코드 미리 세팅: 코드는 123456으로 고정
-        self._set_verification_code(self.user.email, "123456", VerificationPurpose.RECOVER_ACCOUNT)
 
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
