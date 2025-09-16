@@ -46,9 +46,10 @@ class TestKakaoLogin(APITestCase):
 
     @patch("apps.users.services.social_user.cache.set")
     def test_successful_login_flow(self, mock_cache_set: Mock) -> None:
-        with patch("apps.users.services.social_user.requests.post") as mock_post, patch(
-            "apps.users.services.social_user.requests.get"
-        ) as mock_get:
+        with (
+            patch("apps.users.services.social_user.requests.post") as mock_post,
+            patch("apps.users.services.social_user.requests.get") as mock_get,
+        ):
             mock_post.return_value.json.return_value = self.token_response
             mock_post.return_value.raise_for_status = lambda: None
             mock_get.return_value.json.return_value = self.user_response
@@ -87,9 +88,10 @@ class TestKakaoLogin(APITestCase):
             provider_id="12345",
         )
 
-        with patch("apps.users.services.social_user.requests.post") as mock_post, patch(
-            "apps.users.services.social_user.requests.get"
-        ) as mock_get:
+        with (
+            patch("apps.users.services.social_user.requests.post") as mock_post,
+            patch("apps.users.services.social_user.requests.get") as mock_get,
+        ):
             mock_post.return_value.json.return_value = self.token_response
             mock_post.return_value.raise_for_status = lambda: None
             mock_get.return_value.json.return_value = self.user_response
@@ -104,9 +106,10 @@ class TestKakaoLogin(APITestCase):
     @patch("apps.users.services.social_user.cache.set")
     def test_cache_set_called(self, mock_cache_set: Mock) -> None:
         """Redis 캐시 저장 로직이 호출되는지 검증"""
-        with patch("apps.users.services.social_user.requests.post") as mock_post, patch(
-            "apps.users.services.social_user.requests.get"
-        ) as mock_get:
+        with (
+            patch("apps.users.services.social_user.requests.post") as mock_post,
+            patch("apps.users.services.social_user.requests.get") as mock_get,
+        ):
             mock_post.return_value.json.return_value = self.token_response
             mock_post.return_value.raise_for_status = lambda: None
             mock_get.return_value.json.return_value = self.user_response
@@ -123,9 +126,7 @@ class TestKakaoLogin(APITestCase):
     @patch("apps.users.services.social_user.requests.get")
     def test_user_info_missing_id(self, mock_get: Mock) -> None:
         """카카오 응답에 id 누락 → 실패 처리"""
-        mock_get.return_value.json.return_value = {
-            "kakao_account": {"email": "test@example.com"}
-        }
+        mock_get.return_value.json.return_value = {"kakao_account": {"email": "test@example.com"}}
         mock_get.return_value.raise_for_status = lambda: None
 
         with patch("apps.users.services.social_user.requests.post") as mock_post:
