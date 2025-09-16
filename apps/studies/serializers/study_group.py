@@ -1,0 +1,101 @@
+from typing import Any, Dict
+
+from django.db import transaction
+from django.utils import timezone
+from rest_framework import serializers
+
+from apps.core.utils import S3Uploader
+from apps.lectures.models import Lecture
+from apps.studies.models import GroupMember, StudyGroup, StudyLecture
+
+
+class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
+    """
+    스터디 그룹 Serializer
+    """
+
+    lectures = serializers.PrimaryKeyRelatedField(many=True, queryset=Lecture.objects.all(), required=False)
+    profile_img = serializers.ImageField(required=False, write_only=True)
+
+    class Meta:
+        model = StudyGroup
+        fields = [
+            "id",
+            "name",  # 스터디 그룹명
+            "introduction",  # 스터디 소개글
+            "max_headcount",  # 최대 인원 수
+            "profile_img_url",  # 스터디 그룹의 썸네일(프로필) 이미지
+            "profile_img",
+            "start_at",  # 스터디 시작일
+            "end_at",  # 스터디 종료일
+            "lectures",  # 스터디 그룹에서 수강할 강의
+            "created_at",
+        ]
+
+    def validate_lectures(self, value: list[int]) -> list[int]:
+        if len(value) > 5:
+            raise serializers.ValidationError({"lectures": "강의는 최대 5개까지 등록 가능합니다."})
+        return value
+
+    def validate_max_headcount(self, value: int) -> int:
+        """
+        스터디 그룹 생성 시, 시작일, 종료일 조건 검증 -> `serializer.is_valid()` 실행 시, 자동으로 검증 함수 호출.
+        **인원 수 검증 로직**
+        :param value: 유저가 입력한 스터디 그룹 최대 인원 수
+        """
+        # 인원 수 검증
+        if value > 10:
+            raise serializers.ValidationError("인원 수 초과 되었습니다.")
+        return value
+
+    def validate(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        **시작일 / 종료일 관련 검증 로직**
+        - 종료일은 시작일 이후여야 한다.
+        - 시작일은 오늘 / 오늘 이후여야한다.
+        - 스터디 기간은 최소 5일.
+        :param attrs: 유저가 입력한 시작일 / 종료일
+        """
+        # 날짜 검증
+        start_at = attrs["start_at"]
+        end_at = attrs["end_at"]
+
+        # 종료일이 시작일 이전일 경우
+        if start_at > end_at:
+            raise serializers.ValidationError("스터디 종료일이 시작일보다 이전일 수 없습니다.")
+        # 시작일이 과거일 경우
+        if start_at < timezone.now():
+            raise serializers.ValidationError("스터디 시작일이 과거일 수 없습니다.")
+        # 스터디 기간이 5일 미만인 경우
+        if (end_at - start_at).days < 4:
+            raise serializers.ValidationError("스터디 종료 날짜는 시작날 기준 최소 5일 이후여야 합니다. ")
+        return attrs
+
+    def create(self, validated_data: Dict[str, Any]) -> Any:
+        """
+        스터디 그룹 생성과 함께 GroupMember에 리더 멤버 등록
+        :param validated_data: study_group 데이터
+        :param user:
+        :return: study_group data
+        """
+        user = validated_data.pop("user")
+
+        lectures = validated_data.pop("lectures")
+
+        img = validated_data.pop("profile_img")
+        s3_uploader = S3Uploader()
+        profile_img_url = s3_uploader.upload_file(file=img)
+        validated_data["profile_img_url"] = profile_img_url.get("url")
+
+        with transaction.atomic():
+            study_group = StudyGroup.objects.create(**validated_data)
+            study_lectures = [StudyLecture(lecture=i, study_group=study_group) for i in lectures]
+            StudyLecture.objects.bulk_create(study_lectures)
+            GroupMember.objects.create(study_group=study_group, is_leader=True, user=user)
+            study_group.refresh_from_db()
+        return study_group
+
+    def to_representation(self, instance: StudyGroup) -> dict[str, Any]:
+        ret = super().to_representation(instance)
+        ret["lectures"] = list(instance.lectures.values_list("id", flat=True))
+        return ret

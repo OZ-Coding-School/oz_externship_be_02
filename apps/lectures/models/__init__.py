@@ -7,11 +7,11 @@ from .lecture_search_logs import LectureSearchLog
 from .user_prefer_categories import UserPreferCategory
 
 __all__ = [
-    "Category",
     "Lecture",
-    "LectureReview",
     "LectureBookmark",
     "LectureCategory",
+    "LectureReview",
     "LectureSearchLog",
+    "Category",
     "UserPreferCategory",
 ]
