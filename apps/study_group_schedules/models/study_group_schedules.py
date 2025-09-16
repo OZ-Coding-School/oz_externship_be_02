@@ -3,6 +3,7 @@ from django.db import models
 from apps.core.models import BaseModel
 from apps.studies.models.group_members import GroupMember
 from apps.studies.models.study_groups import StudyGroup
+from apps.study_group_schedules.managers import StudyGroupScheduleManager
 
 
 class GroupSchedule(BaseModel):
@@ -16,6 +17,10 @@ class GroupSchedule(BaseModel):
     end_time = models.TimeField()  # 스터디 종료 시간
 
     participants = models.ManyToManyField(GroupMember, through="study_group_schedules.ScheduleParticipant")
+
+    # Manager 추가
+    objects = models.Manager()  # 기본 manager
+    schedules = StudyGroupScheduleManager()  # 커스텀 manager
 
     class Meta:
         db_table = "group_schedules"
