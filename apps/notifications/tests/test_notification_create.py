@@ -114,7 +114,7 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
         n = notifs.first()
         assert n is not None  # mypy
         self.assertIn(self.recruitment.title, n.content)
-        self.assertEqual(n.back_url_link, "/applications/me")
+        self.assertEqual(n.back_url_link, "/my-page/applications")
 
         # 같은 상태로 한 번 더 저장해도 추가 생성되지 않음(중복 방지)
         with transaction.atomic():
@@ -154,7 +154,7 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
         n = notifs.first()
         assert n is not None
         self.assertIn(self.recruitment.title, n.content)
-        self.assertEqual(n.back_url_link, "/applications/me")
+        self.assertEqual(n.back_url_link, "/my-page/applications")
 
         # 같은 상태로 한 번 더 저장해도 추가 생성되지 않음(중복 방지)
         with transaction.atomic():

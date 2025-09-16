@@ -51,7 +51,11 @@ def notify_status_change_to_applicant(instance: Application, created: bool, **kw
         def accept_application() -> None:
             NotificationCreateApplicationService.notification_application_accept_by_id(app_id)
 
+        def join_study_group() -> None:
+            NotificationCreateApplicationService.notification_group_members_join_by_id(app_id)
+
         transaction.on_commit(accept_application)
+        transaction.on_commit(join_study_group)
 
     if curr == Application.ApplicationStatus.REJECTED:
 
