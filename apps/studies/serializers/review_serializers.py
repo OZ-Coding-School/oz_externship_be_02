@@ -1,8 +1,10 @@
 from typing import Any, Dict
-from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework import serializers
-from rest_framework.validators import UniqueTogetherValidator
+
 from django.db.models import QuerySet
+from rest_framework import serializers
+from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.validators import UniqueTogetherValidator
+
 from apps.studies.models.study_groups import StudyGroup
 from apps.studies.models.study_reviews import StudyReview
 from apps.users.models.user import User
