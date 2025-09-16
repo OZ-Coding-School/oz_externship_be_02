@@ -1,28 +1,26 @@
 import logging
-from datetime import date, datetime
-from typing import Any, Dict, List
+from datetime import datetime
+from typing import Any, Dict, List, cast
 
-from django.test import TestCase
+import boto3
+from django.conf import settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
-from rest_framework.test import APIRequestFactory, APITestCase
+from moto import mock_aws
+from rest_framework import status
+from rest_framework.test import APITestCase
 
-from apps.studies.models import GroupMember, StudyGroup
-from apps.studies.serializers.study_group import StudyGroupRequestSerializer
-from apps.users.models.user import User
+from apps.core.tests.mixins.test_user_mixins import TestUserMixin
+from apps.core.utils import create_temp_image
+from apps.lectures.models import Lecture
+from apps.lectures.models.crawled_lectures import DifficultyChoices, PlatformChoices
+from apps.studies.models import GroupMember, StudyGroup, StudyLecture
+from apps.studies.serializers.study_group import StudyGroupCreateSerializer
 
 logger = logging.getLogger(__name__)
 
-user_data = {
-    "name": "kimshineday",
-    "nickname": "김빛날",
-    "email": "kimshineday@testemail.com",
-    "phone_number": "01000000000",
-    "gender": "F",
-    "birthday": date(2000, 1, 1),
-}
 
-
-class CreateStudyGroupTestFalse(TestCase):
+class CreateStudyGroupTestFalse(TestCase, TestUserMixin):
     """
     * test 실패
         - 스터디 그룹 생성 시, 잘못된 데이터 입력. 누락된 값이 있을 경우.
@@ -31,9 +29,7 @@ class CreateStudyGroupTestFalse(TestCase):
     """
 
     def setUp(self) -> None:
-        self.factory = APIRequestFactory()
-        self.request = self.factory.post("/fakefakefake/")
-        self.request.user = User.objects.create(**user_data)
+        self.user = self._create_test_user()
 
     def test_create_fail(self) -> None:
         fail_data: List[Dict[str, Any]] = [
@@ -43,7 +39,7 @@ class CreateStudyGroupTestFalse(TestCase):
                     "name": "테스트",
                     "introduction": "스터디그룹 생성 테스트 진행 중",
                     "max_headcount": 4,
-                    "profile_img_url": "http://imgimgimgimg.png",
+                    "profile_img": create_temp_image(),
                     "start_at": datetime(2025, 9, 28),
                     "end_at": datetime(2025, 9, 30),
                 }
@@ -51,11 +47,18 @@ class CreateStudyGroupTestFalse(TestCase):
         ]
 
         for case in fail_data:
-            serializer = StudyGroupRequestSerializer(data=case["study_group"])
-            serializer.is_valid(raise_exception=False)
+            serializer = StudyGroupCreateSerializer(data=case["study_group"])
+            self.assertFalse(serializer.is_valid())
 
 
-class CreateStudyGroupTestSuccess(TestCase):
+@override_settings(
+    AWS_S3_BUCKET_NAME="test-bucket",
+    AWS_S3_ACCESS_KEY_ID="fake",  # 아무 값이나 가능
+    AWS_S3_SECRET_ACCESS_KEY="fake",
+    AWS_S3_REGION="ap-northeast-2",
+)
+@mock_aws
+class CreateStudyGroupTestSuccess(TestCase, TestUserMixin):
     """
     데이터 입력.
     test_create_group2 : 이미지 url 생략
@@ -67,46 +70,62 @@ class CreateStudyGroupTestSuccess(TestCase):
         가상 user data 생성
         """
         # 스터디 그룹 생성 시, 생성자를 그룹 리더로 저장하기 위해 시리얼라이저에서 그룹 데이터 저장 후에 멤버 저장 로직까지 구현완료
-        # serializer 에서 유저 데이터를 request.user로 가져오는데, 이를 위해서 테스트용 request 객체 생성하는 APIRequestFactory 모듈을 사용함.
-        self.factory = APIRequestFactory()
-        self.request = self.factory.post("/fakefakefake/")
-        self.request.user = User.objects.create(**user_data)
+        self.lecture = Lecture.objects.create(
+            title="test lecture",
+            instructor="김인직",
+            average_rating=4.23,
+            duration=20,
+            difficulty=DifficultyChoices.NORMAL,
+            description="testtest",
+            platform=PlatformChoices.INFLEARN,
+            original_price=40000,
+            discount_price=32000,
+            url_link="https://ozcoding.site/lectures/1",
+        )
+        self.user = self._create_test_user()
+        # moto의 가짜 S3 클라이언트 생성
+        self.s3 = boto3.client(
+            "s3",
+            region_name=settings.AWS_S3_REGION,
+            aws_access_key_id=settings.AWS_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_S3_SECRET_ACCESS_KEY,
+        )
+        # 실제 코드와 동일한 버킷명으로 생성
+        self.s3.create_bucket(
+            Bucket=settings.AWS_S3_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": settings.AWS_S3_REGION},
+        )
 
     def test_create_success(self) -> None:  # 테스트 성공, 이미지 url 생략
         success_data = [
             {
-                "create_data": {
-                    "study_group": {
-                        "name": "테스트 성공기원 1",
-                        "introduction": "이미지 필수 아니여서 제외.",
-                        "max_headcount": 3,
-                        "start_at": datetime(2025, 10, 15),
-                        "end_at": datetime(2025, 10, 30),
-                    }
-                },
+                "name": "테스트 성공기원 1",
+                "introduction": "이미지 필수 아니여서 제외.",
+                "max_headcount": 3,
+                "profile_img": create_temp_image(),
+                "start_at": datetime(2025, 10, 15),
+                "end_at": datetime(2025, 10, 30),
+                "lectures": [self.lecture.id],
             },
             {
-                "create_data": {
-                    "study_group": {
-                        "name": "테스트 성공기원 2",
-                        "introduction": "스터디 그룹 프로필 이미지 추가.",
-                        "max_headcount": 3,
-                        "profile_img_url": "http://imgimgimgimg.png",  # 이미지 값 추가
-                        "start_at": datetime(2025, 10, 15),
-                        "end_at": datetime(2025, 10, 30),
-                    }
-                },
+                "name": "테스트 성공기원 2",
+                "introduction": "스터디 그룹 프로필 이미지 추가.",
+                "max_headcount": 3,
+                "profile_img": create_temp_image(),
+                "start_at": datetime(2025, 10, 15),
+                "end_at": datetime(2025, 10, 30),
+                "lectures": [self.lecture.id],
             },
         ]
 
-        for case in success_data:
-            serializer = StudyGroupRequestSerializer(
-                data=case["create_data"],
+        for data in success_data:
+            serializer = StudyGroupCreateSerializer(
+                data=data,
             )
-            self.assertTrue(serializer.is_valid())
+            self.assertTrue(serializer.is_valid(raise_exception=True))
 
             # 데이터 객체 생성
-            check = serializer.save(user=self.request.user)
+            serializer.save(user=self.user)
 
     def tearDown(self) -> None:
         """
@@ -119,7 +138,7 @@ class CreateStudyGroupTestSuccess(TestCase):
         logger.debug(f"Members: {all_members}")
 
 
-class CreateStudyGroupAPITestFail(APITestCase):
+class CreateStudyGroupAPITestFail(APITestCase, TestUserMixin):
     """
     post 요청을 통해 스터디 그룹 생성하지 못하는 테스트
     """
@@ -129,7 +148,7 @@ class CreateStudyGroupAPITestFail(APITestCase):
         가상 user data 생성
         """
         self.url = reverse("create_study_group")  # 라우터 설정
-        self.user = User.objects.create(**user_data)  # 가상 유저 데이터 생성
+        self.user = self._create_test_user()
         self.client.force_authenticate(user=self.user)  # 유저 로그인
 
     def test_post_fail(self) -> None:
@@ -169,20 +188,51 @@ class CreateStudyGroupAPITestFail(APITestCase):
             },
         ]
 
-        for case in fail_data:
-            response = self.client.post(self.url, data=case, format="json")
+        for data in fail_data:
+            response = self.client.post(self.url, data=data)
             self.assertEqual(response.status_code, 400)
 
 
-class CreateStudyGroupAPITestSuccess(APITestCase):
+@mock_aws
+@override_settings(
+    AWS_S3_BUCKET_NAME="test-bucket",
+    AWS_S3_ACCESS_KEY_ID="fake",
+    AWS_S3_SECRET_ACCESS_KEY="fake",
+    AWS_S3_REGION="ap-northeast-2",
+)
+class CreateStudyGroupAPITestSuccess(APITestCase, TestUserMixin):
     """
     post 요청을 통해 스터디 그룹을 생성하는 테스트
     """
 
     def setUp(self) -> None:
         self.url = reverse("create_study_group")  # 라우터 설정
-        self.user = User.objects.create(**user_data)  # 가상 유저 데이터 생성
+        self.user = self._create_test_user()
         self.client.force_authenticate(user=self.user)  # 유저 로그인
+        self.lecture = Lecture.objects.create(
+            title="test lecture",
+            instructor="김인직",
+            average_rating=4.23,
+            duration=20,
+            difficulty=DifficultyChoices.NORMAL,
+            description="testtest",
+            platform=PlatformChoices.INFLEARN,
+            original_price=40000,
+            discount_price=32000,
+            url_link="https://ozcoding.site/lectures/1",
+        )
+        # moto의 가짜 S3 클라이언트 생성
+        self.s3 = boto3.client(
+            "s3",
+            region_name=settings.AWS_S3_REGION,
+            aws_access_key_id=settings.AWS_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_S3_SECRET_ACCESS_KEY,
+        )
+        # 실제 코드와 동일한 버킷명으로 생성
+        self.s3.create_bucket(
+            Bucket=settings.AWS_S3_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": settings.AWS_S3_REGION},
+        )
 
     def test_post_success(self) -> None:
         """
@@ -194,21 +244,20 @@ class CreateStudyGroupAPITestSuccess(APITestCase):
             "name": "Python 개념 잡기",
             "introduction": "Python 언어 기초를 공부, 프로그래머스 문제 풀기.",
             "max_headcount": 5,
-            "profile_img_url": "http://imgimgimgimg.png",  # 이미지 값 추가
+            "profile_img": create_temp_image(),  # 이미지 값 추가
             "start_at": "2025-10-15T00:00:00Z",
             "end_at": "2025-10-30T00:00:00Z",
+            "lectures": [self.lecture.id],
         }
 
-        response = self.client.post(self.url, data=success_data, format="json")
+        response = self.client.post(self.url, data=success_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["name"], "Python 개념 잡기")
         self.assertEqual(StudyGroup.objects.count(), 1)
-
-    def tearDown(self) -> None:
-        """
-        test db에 저장된 데이터 확인
-        :return:  data
-        """
-        all_groups = StudyGroup.objects.all().values()
-        all_members = GroupMember.objects.all().values()
-        logger.debug(f"Groups: {all_groups}")
-        logger.debug(f"Members: {all_members}")
+        created_study_group = cast(StudyGroup, StudyGroup.objects.filter(id=response.data["id"]).first())
+        self.assertIsNotNone(created_study_group.profile_img_url)
+        self.assertEqual(created_study_group.lectures.count(), 1)
+        created_member = cast(
+            GroupMember, GroupMember.objects.filter(user=self.user, study_group_id=response.data["id"]).first()
+        )
+        self.assertTrue(created_member.is_leader)
