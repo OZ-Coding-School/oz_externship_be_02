@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from apps.studies.models import StudyGroup, StudyReview
@@ -120,3 +121,95 @@ class TestStudyReviewCreateAPI(APITestCase):
         # 수정: "detail" 키와 메시지 내용 확인
         self.assertIn("detail", response.data)
         self.assertIn("종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다.", response.data["detail"])
+
+
+class TestStudyGroupReviewListAPI(APITestCase):
+    """
+    [REQ-REVW-00] 스터디 그룹 리뷰 목록 조회 API
+
+    검증 포인트
+    - 성공: 200 OK + 응답 구조/필드/포맷
+    - 실패: 리뷰 없음 -> 404 Bad Request
+    - 실패: 잘못된 group_uuid -> 404 Not Found
+    - 실패: 비인증 -> 401 Unauthorized
+    """
+
+    def setUp(self) -> None:
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="test@test.com",
+            password="1234",
+            birthday="2000-01-01",
+            name="테스트유저",
+            nickname="tester",
+            phone_number="01000000001",
+        )
+        self.study_group = StudyGroup.objects.create(
+            name="테스트 그룹",
+            introduction="소개",
+            max_headcount=5,
+            start_at=timezone.now() - timedelta(days=10),
+            end_at=timezone.now() - timedelta(days=1),
+            status=StudyGroup.StatusChoices.ENDED,
+        )
+        self.url = reverse("study-group-review-list", kwargs={"group_uuid": self.study_group.uuid})
+
+    def test_success_review_list(self) -> None:
+        # 성공 케이스: 스터디 그룹 리뷰 목록 조회
+        self.client.force_authenticate(self.user)
+
+        # 첫 번째 리뷰 (기본 self.user)
+        StudyReview.objects.create(
+            user=self.user,
+            study_group=self.study_group,
+            content="정말 유익한 스터디였습니다.",
+            star_rating=5,
+        )
+
+        # 두 번째 리뷰
+        user2 = User.objects.create_user(
+            email="other@test.com",
+            password="1234",
+            name="다른유저",
+            nickname="other",
+            birthday="2001-01-01",
+            phone_number="01000000002",
+        )
+        StudyReview.objects.create(
+            user=user2,
+            study_group=self.study_group,
+            content="좋았지만 시간이 조금 촉박했어요.",
+            star_rating=4,
+        )
+
+        resp = self.client.get(self.url, format="json")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("reviews", resp.data)
+        self.assertEqual(len(resp.data["reviews"]), 2)
+
+    def test_fail_review_list_no_reviews(self) -> None:
+        # 실패: 리뷰가 없는 경우 (400)
+        # - detail 메시지가 명세서와 정확히 일치해야 한다.
+        self.client.force_authenticate(self.user)
+
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn("detail", resp.data)
+        self.assertEqual(resp.data["detail"], "해당 스터디 그룹에 대한 리뷰가 존재하지 않습니다.")
+
+    def test_fail_review_list_invalid_uuid(self) -> None:
+        # 실패: 존재하지 않는 그룹 uuid (404)
+        self.client.force_authenticate(self.user)
+
+        bad_url = reverse(
+            "study-group-review-list",
+            kwargs={"group_uuid": "11111111-1111-1111-1111-111111111111"},
+        )
+        resp = self.client.get(bad_url)
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_fail_review_list_unauthenticated(self) -> None:
+        # 실패: 비인증 사용자 (401)
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
