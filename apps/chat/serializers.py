@@ -12,7 +12,10 @@ class ChatMessageSerializer(serializers.ModelSerializer[ChatMessage]):
         model = ChatMessage
         fields = ["study_group_name", "updated_at", "created_at", "is_read", "content"]
 
-        def get_sender_name(self, obj):
-            if obj.sender:
-                return obj.sender.nickname if hasattr(obj.sender, 'nickname') else obj.sender.username
-            return "알 수 없는 사용자"
+
+    def get_study_group_name(self, obj): # 스터디 그룹 이름 조회
+        return obj.study_group.name
+
+    def get_is_read(self, obj): # 읽음처리 어떻게 할지 의논해야함
+        return False
+
