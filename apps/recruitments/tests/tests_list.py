@@ -6,7 +6,6 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.lectures.models.crawled_lectures import Lecture
-from apps.lectures.models.lecture_categories import LectureCategory
 from apps.recruitments.models import RecruitmentBookmark
 from apps.recruitments.models.recruitment_tags import RecruitmentTag
 from apps.recruitments.models.recruitments import Recruitment
@@ -25,7 +24,6 @@ class RecruitmentsListTestCase(APITestCase):
     tags: list[Tag]
     users: list[User]
     recruitment_bookmarks: list[RecruitmentBookmark]
-    lecture_categories: list[LectureCategory]
 
     @classmethod
     def setUpTestData(cls) -> None:
