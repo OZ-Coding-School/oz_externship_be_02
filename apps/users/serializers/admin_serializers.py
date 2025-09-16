@@ -92,3 +92,42 @@ class UserPermissionResponseSerializer(serializers.ModelSerializer[User]):
             "general": "일반회원",
         }
         return permission_map.get(permission, "일반회원")
+
+
+# 회원 목록 조회 시리얼라이저
+class UserAdminListSerializer(serializers.ModelSerializer[User]):
+    permission = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    withdrawals_request_date = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "uuid",
+            "email",
+            "nickname",
+            "name",
+            "birthday",
+            "permission",
+            "status",
+            "created_at",
+            "withdrawals_request_date",
+        ]
+
+    def get_permission(self, obj: User) -> str:
+        if obj.is_superuser:
+            return "admin"
+        if obj.is_staff:
+            return "staff"
+        return "general"
+
+    def get_status(self, obj: User) -> str:
+        if hasattr(obj, "withdrawals") and obj.withdrawals:
+            return "탈퇴진행중"
+        return "활성화" if obj.is_active else "비활성화"
+
+    # Withdrawals 객체가 존재하면, 해당 객체의 생성일(탈퇴요청일) 반환
+    def get_withdrawals_request_date(self, obj: User) -> str | None:
+        if hasattr(obj, "withdrawals") and obj.withdrawals:
+            return obj.withdrawals.created_at.isoformat()
+        return None

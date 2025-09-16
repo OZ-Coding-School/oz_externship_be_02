@@ -45,29 +45,29 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
             birthday="1992-01-01",
             is_active=True,
         )
-        # self.inactive_user = user_model.objects.create_user(
-        #     email="inactive@test.com",
-        #     password="pw",
-        #     name="비활성유저",
-        #     nickname="inactive",
-        #     phone_number="010-3333-3333",
-        #     birthday="1993-01-01",
-        #     is_active=False,
-        # )
-        # self.withdrawn_user = user_model.objects.create_user(
-        #     email="withdrawn@test.com",
-        #     password="pw",
-        #     name="탈퇴유저",
-        #     nickname="withdrawn",
-        #     phone_number="010-4444-4444",
-        #     birthday="1994-01-01",
-        #     is_active=True,
-        # )
+        self.inactive_user = user_model.objects.create_user(
+            email="inactive@test.com",
+            password="pw",
+            name="비활성유저",
+            nickname="inactive",
+            phone_number="010-3333-3333",
+            birthday="1993-01-01",
+            is_active=False,
+        )
+        self.withdrawn_user = user_model.objects.create_user(
+            email="withdrawn@test.com",
+            password="pw",
+            name="탈퇴유저",
+            nickname="withdrawn",
+            phone_number="010-4444-4444",
+            birthday="1994-01-01",
+            is_active=True,
+        )
 
-        # Withdrawals.objects.create(
-        #     user=self.withdrawn_user, reason="OTHER", reason_detail="test", due_date="2025-12-31"
-        # )
-        # self.list_url = reverse("admin_user:users-list")
+        Withdrawals.objects.create(
+            user=self.withdrawn_user, reason="OTHER", reason_detail="test", due_date="2025-12-31"
+        )
+        self.list_url = reverse("admin_user:users-list")
 
     # 권한 수정 API 테스트
     # 슈퍼유저가 일반유저의 권한을 staff으로 변경하는 기능 테스트
@@ -90,3 +90,46 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
         url = reverse("admin_user:user_permissions", kwargs={"user_uuid": self.active_user.uuid})
         response = self.client.patch(url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # 회원 목록 조회 API 테스트
+    # 스태프가 회원 목록을 성공적으로 조회하는지 테스트
+    def test_user_list_success_as_staff(self) -> None:
+        self.client.force_authenticate(user=self.staff_user)
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 5)  # 전체 유저 수
+        self.assertEqual(len(response.data["results"]), 5)
+
+    # 일반 유저가 회원 목록 조회 시 403 에러가 발생하는지 테스트
+    def test_user_list_fail_for_general_user(self) -> None:
+        self.client.force_authenticate(user=self.active_user)
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # 권한(permission)으로 필터링이 잘 되는지 테스트
+    def test_user_list_filter_by_permission(self) -> None:
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.list_url, {"permission": "staff"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["email"], self.staff_user.email)
+
+    # 상태(status)로 필터링이 잘 되는지 테스트
+    def test_user_list_filter_by_status(self) -> None:
+        self.client.force_authenticate(user=self.superuser)
+
+        response = self.client.get(self.list_url, {"status": "withdrawn"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["email"], self.withdrawn_user.email)
+
+    # 닉네임으로 검색이 잘 되는지 테스트
+    def test_user_list_search(self) -> None:
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.list_url, {"search": "active_us"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["email"], self.active_user.email)
