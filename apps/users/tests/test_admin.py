@@ -11,6 +11,7 @@ user_model = User
 class UserAdminAPITest(APITestCase, TestUserMixin):
     superuser: "User"
     staff_user: "User"
+
     # Mixin을 사용하지 않고 모든 유저를 직접 생성하여 고유성을 보장합니다.
     @classmethod
     def setUpTestData(cls) -> None:
