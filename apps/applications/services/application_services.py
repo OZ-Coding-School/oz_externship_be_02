@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+from django.db import IntegrityError
 
 from apps.applications.models import Application
 from apps.recruitments.models import Recruitment
 from apps.users.models import User
-
-if TYPE_CHECKING:
-    from ..models import Application
 
 
 class ApplicationService:
@@ -22,6 +21,10 @@ class ApplicationService:
         **validated_data: Any,
     ) -> Application:
 
-        # Manager를 통해 실제 DB 로직을 수행하고, 서비스는 그 흐름을 제어한다.
+        # 서비스 계층에서 중복 지원 여부를 먼저 확인한다.
+        if Application.objects.has_applied(user=user, recruitment=recruitment):
+            raise IntegrityError("이미 해당 공고에 지원한 이력이 있습니다.")
+
+        # 중복이 아닐 경우, Manager의 생성 메서드를 호출한다.
         application = Application.objects.create_application(user=user, recruitment=recruitment, **validated_data)
         return application
