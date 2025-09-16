@@ -9,7 +9,6 @@ from rest_framework.views import APIView
 
 from apps.users.models import User
 from apps.users.serializers.phone_verification_serializers import (
-    PhonePasswordResetSerializer,
     PhoneVerificationSerializer,
     VerifyCodeSerializer,
 )
