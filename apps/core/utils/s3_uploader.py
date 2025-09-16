@@ -19,16 +19,16 @@ class S3Uploader:
     S3에 파일을 업로드하는 클래스
     """
 
-    def __init__(self) -> None:
+    def __init__(self, region: str = settings.AWS_S3_REGION, bucket: str = settings.AWS_S3_BUCKET_NAME) -> None:
         """
         S3 클라이언트 초기화
         boto3 S3 클라이언트 생성
         region, bucket, access_key, secret_key를 받아 내부 변수에 저장
         """
-        self.bucket_name = settings.AWS_S3_BUCKET_NAME
+        self.bucket_name = bucket
         self.s3_client = boto3.client(
             "s3",
-            region_name=settings.AWS_S3_REGION,
+            region_name=region,
             aws_access_key_id=settings.AWS_S3_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_S3_SECRET_ACCESS_KEY,
         )
@@ -66,11 +66,10 @@ class S3Uploader:
         """
         S3에 파일 업로드 (예외 처리 포함)
         """
-        file_name = str(file.name)
-        ext = file_name.split(".")[-1]
-        key = str(uuid.uuid4()) + "." + ext
+        key = file.name if isinstance(file, UploadedFile) else str(uuid.uuid4())
+        key = cast(str, key)
         self.s3_safe_call(func=self.s3_client.upload_fileobj, Fileobj=file, Bucket=self.bucket_name, Key=key)
-        return {"url": f"https://{self.bucket_name}.s3.{settings.AWS_S3_REGION}.amazonaws.com/{key}", "key": key}
+        return {"url": f"s3://{self.bucket_name}/{key}", "key": key}
 
     def file_exists(self, key: str) -> bool:
         self.s3_safe_call(func=self.s3_client.head_object, Bucket=self.bucket_name, Key=key)
