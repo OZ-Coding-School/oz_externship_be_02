@@ -5,3 +5,13 @@ from .lecture_bookmarks import LectureBookmark
 from .lecture_categories import LectureCategory
 from .lecture_search_logs import LectureSearchLog
 from .user_prefer_categories import UserPreferCategory
+
+__all__ = [
+    "Category",
+    "Lecture",
+    "LectureReview",
+    "LectureBookmark",
+    "LectureCategory",
+    "LectureSearchLog",
+    "UserPreferCategory",
+]
