@@ -9,9 +9,10 @@ user_model = User
 
 
 class UserAdminAPITest(APITestCase, TestUserMixin):
-    def setUp(self) -> None:
-        # Mixin을 사용하지 않고 모든 유저를 직접 생성하여 고유성을 보장합니다.
-        self.superuser = user_model.objects.create_superuser(
+    # Mixin을 사용하지 않고 모든 유저를 직접 생성하여 고유성을 보장합니다.
+    @classmethod
+    def setUpTestData(cls):
+        cls.superuser = user_model.objects.create_superuser(
             email="superuser@test.com",
             password="pw",
             name="최고관리자",
@@ -20,7 +21,7 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
             birthday="1990-01-01",
             is_active=True,
         )
-        self.staff_user = user_model.objects.create_user(
+        cls.staff_user = user_model.objects.create_user(
             email="staff@test.com",
             password="pw",
             name="스태프",
@@ -30,6 +31,8 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
             is_staff=True,
             is_active=True,
         )
+
+    def setUp(self) -> None:
         self.active_user = user_model.objects.create_user(
             email="active@test.com",
             password="pw",
@@ -39,29 +42,29 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
             birthday="1992-01-01",
             is_active=True,
         )
-        self.inactive_user = user_model.objects.create_user(
-            email="inactive@test.com",
-            password="pw",
-            name="비활성유저",
-            nickname="inactive",
-            phone_number="010-3333-3333",
-            birthday="1993-01-01",
-            is_active=False,
-        )
-        self.withdrawn_user = user_model.objects.create_user(
-            email="withdrawn@test.com",
-            password="pw",
-            name="탈퇴유저",
-            nickname="withdrawn",
-            phone_number="010-4444-4444",
-            birthday="1994-01-01",
-            is_active=True,
-        )
+        # self.inactive_user = user_model.objects.create_user(
+        #     email="inactive@test.com",
+        #     password="pw",
+        #     name="비활성유저",
+        #     nickname="inactive",
+        #     phone_number="010-3333-3333",
+        #     birthday="1993-01-01",
+        #     is_active=False,
+        # )
+        # self.withdrawn_user = user_model.objects.create_user(
+        #     email="withdrawn@test.com",
+        #     password="pw",
+        #     name="탈퇴유저",
+        #     nickname="withdrawn",
+        #     phone_number="010-4444-4444",
+        #     birthday="1994-01-01",
+        #     is_active=True,
+        # )
 
-        Withdrawals.objects.create(
-            user=self.withdrawn_user, reason="OTHER", reason_detail="test", due_date="2025-12-31"
-        )
-        self.list_url = reverse("admin_user:users-list")
+        # Withdrawals.objects.create(
+        #     user=self.withdrawn_user, reason="OTHER", reason_detail="test", due_date="2025-12-31"
+        # )
+        # self.list_url = reverse("admin_user:users-list")
 
     # 권한 수정 API 테스트
     # 슈퍼유저가 일반유저의 권한을 staff으로 변경하는 기능 테스트
