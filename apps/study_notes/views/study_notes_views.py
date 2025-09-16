@@ -4,7 +4,8 @@ from uuid import UUID
 from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import get_object_or_404
 from django.utils.datastructures import MultiValueDict
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -25,11 +26,19 @@ from apps.users.models import User
     responses={
         201: StudyNoteSerializer,
         400: OpenApiResponse(
-            response={"detail": "잘못된 요청입니다. 필수 필드가 누락되었거나 형식이 올바르지 않습니다."},
+            response=OpenApiTypes.OBJECT,
             description="ValidationError 발생 시",
+            examples=[
+                OpenApiExample(
+                    "ValidationError 예시",
+                    value={"detail": "잘못된 요청입니다. 필수 필드가 누락되었거나 형식이 올바르지 않습니다."},
+                )
+            ],
         ),
         404: OpenApiResponse(
-            response={"detail": "해당 스터디 그룹을 찾을 수 없습니다."}, description="NotFoundError 발생 시"
+            response=OpenApiTypes.OBJECT,
+            description="NotFoundError 발생 시",
+            examples=[OpenApiExample("NotFoundError 예시", value={"detail": "해당 스터디 그룹을 찾을 수 없습니다."})],
         ),
     },
 )
@@ -46,8 +55,8 @@ class StudyNoteCreateView(APIView):
         # request.data가 dict이면 그냥 list로 할당, QueryDict이면 setlist 사용
         data: MultiValueDict[str, list[UploadedFile] | str] = MultiValueDict(request.data)
         # 파일 추가
-        data.setlist("images_file", request.FILES.getlist("images_file"))
-        data.setlist("attachments_file", request.FILES.getlist("attachments_file"))
+        data.setlist("image_files", request.FILES.getlist("images_file"))
+        data.setlist("attachment_files", request.FILES.getlist("attachments_file"))
         serializer = StudyNoteSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
@@ -59,8 +68,7 @@ class StudyNoteCreateView(APIView):
             study_group=group,
             title=serializer.validated_data["title"],
             content=serializer.validated_data["content"],
-            images=serializer.validated_data.get("images_file", []),
-            attachments=serializer.validated_data.get("attachments_file", []),
+            images=serializer.validated_data.get("image_files", []),
+            attachments=serializer.validated_data.get("attachment_files", []),
         )
-
         return Response(StudyNoteSerializer(study_note).data, status=status.HTTP_201_CREATED)
