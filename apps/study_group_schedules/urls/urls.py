@@ -9,4 +9,6 @@ app_name = "study_group_schedules"
 urlpatterns: List[URLPattern] = [
     # POST /api/v1/schedules
     path("", views.StudyGroupScheduleCreateView.as_view(), name="create_schedule"),
+    # GET /api/v1/schedules/<uuid:study_group_id>
+    path("list/<uuid:study_group_id>", views.StudyGroupScheduleListView.as_view(), name="schedule_list"),
 ]
