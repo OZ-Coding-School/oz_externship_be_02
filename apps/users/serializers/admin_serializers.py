@@ -1,11 +1,9 @@
-from typing import Any, cast
-
 from rest_framework import serializers
 
-from apps.users.models import User
+from apps.users.models import User, Withdrawals
 
 
-class UserPermissionRequestSerializer(serializers.Serializer[Any]):
+class UserPermissionRequestSerializer(serializers.ModelSerializer[User]):
     PERMISSION_CHOICES = [
         ("general", "일반회원"),
         ("staff", "스태프"),
@@ -20,25 +18,7 @@ class UserPermissionRequestSerializer(serializers.Serializer[Any]):
 
     class Meta:
         model = User
-        fields = ["is_staff", "is_superuser"]
-
-    def save(self, **kwargs: Any) -> User:
-        target_user = cast(User, self.context["target_user"])
-        permission = self.validated_data["permission"]
-
-        if permission == "admin":
-            target_user.is_staff = True
-            target_user.is_superuser = True
-        elif permission == "staff":
-            target_user.is_staff = True
-            target_user.is_superuser = False
-        else:
-            target_user.is_staff = False
-            target_user.is_superuser = False
-
-        target_user.save(update_fields=["is_staff", "is_superuser", "updated_at"])
-
-        return target_user
+        fields = ["permission"]
 
 
 class UserPermissionResponseSerializer(serializers.ModelSerializer[User]):
