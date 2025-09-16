@@ -1,12 +1,23 @@
-from rest_framework import serializers
+    from __future__ import annotations
+
+    from typing import TypedDict
+
+    from rest_framework import serializers
 
 
-# 요청 데이터 (lecture_id만 필요)
-class BookmarkToggleRequestSerializer(serializers.Serializer):
-    lecture_id = serializers.IntegerField()
+    class BookmarkToggleRequest(TypedDict):
+        lecture_id: int
 
 
-# 응답 데이터 (lecture_id랑 북마크 여부만 리턴)
-class BookmarkToggleResponseSerializer(serializers.Serializer):
-    lecture_id = serializers.IntegerField()
-    bookmarked = serializers.BooleanField()
+    class BookmarkToggleResponse(TypedDict):
+        lecture_id: int
+        bookmarked: bool
+
+
+    class BookmarkToggleRequestSerializer(serializers.Serializer[BookmarkToggleRequest]):
+        lecture_id = serializers.IntegerField()
+
+
+    class BookmarkToggleResponseSerializer(serializers.Serializer[BookmarkToggleResponse]):
+        lecture_id = serializers.IntegerField()
+        bookmarked = serializers.BooleanField()
