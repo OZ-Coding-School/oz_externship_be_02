@@ -1,12 +1,18 @@
 import io  # 가짜 파일을 만들기 위해 사용
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from moto import mock_aws  # 가짜 버킷을 만들기 위해 사용
 from rest_framework.exceptions import APIException
 
 from apps.core.utils.s3_uploader import S3Uploader
 
 
+@override_settings(
+    AWS_S3_BUCKET_NAME="test-bucket",
+    AWS_S3_ACCESS_KEY_ID="fake",  # 아무 값이나 가능
+    AWS_S3_SECRET_ACCESS_KEY="fake",
+    AWS_S3_REGION="ap-northeast-2",
+)
 @mock_aws
 class TestS3Uploader(TestCase):
     """
@@ -20,7 +26,7 @@ class TestS3Uploader(TestCase):
         """
         bucket = "test-bucket"
         region = "ap-northeast-2"
-        self.s3_uploader = S3Uploader(bucket=bucket, region=region)
+        self.s3_uploader = S3Uploader()
         self.s3_uploader.s3_client.create_bucket(
             Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": region}
         )
