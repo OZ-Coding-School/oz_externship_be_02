@@ -28,7 +28,7 @@ class StudyNoteServiceTest(TestCase):
 
     def setUp(self) -> None:
         # S3 가짜 클라이언트 + 버킷
-        self.s3_uploader = S3Uploader(bucket=settings.AWS_S3_BUCKET_NAME)
+        self.s3_uploader = S3Uploader()
         self.s3_client = boto3.client(
             "s3",
             region_name=settings.AWS_S3_REGION,
