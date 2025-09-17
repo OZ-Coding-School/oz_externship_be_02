@@ -1,8 +1,13 @@
-from datetime import date
+from __future__ import annotations
+
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 from django.db.models import QuerySet
+
+from apps.study_group_schedules.enums import ScheduleOrdering
+from apps.study_group_schedules.models import GroupSchedule
 
 if TYPE_CHECKING:
     from apps.study_group_schedules.models import GroupSchedule
@@ -13,7 +18,7 @@ def get_user_accessible_schedules(
     study_group_uuid: str | UUID | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
-    ordering: str = "-session_date",
+    ordering: str = ScheduleOrdering.DATE_DESC,
 ) -> QuerySet["GroupSchedule"]:
     """
     사용자가 접근 가능한 스케줄 목록을 가져오는 서비스 함수
@@ -28,7 +33,6 @@ def get_user_accessible_schedules(
     Returns:
         최적화된 스케줄 QuerySet
     """
-    from apps.study_group_schedules.models import GroupSchedule
 
     # 기본 쿼리셋: 사용자가 속한 스터디 그룹의 스케줄만
     queryset = GroupSchedule.objects.select_related("study_group").filter(study_group__members__id=user_id)
@@ -46,48 +50,51 @@ def get_user_accessible_schedules(
         queryset = queryset.filter(session_date__lte=end_date)
 
     # 정렬
-    if ordering == "session_date":
-        queryset = queryset.order_by("session_date", "start_time")
-    elif ordering == "-session_date":
-        queryset = queryset.order_by("-session_date", "-start_time")
+    if ordering == ScheduleOrdering.DATE_ASC:
+        queryset = queryset.order_by(ScheduleOrdering.DATE_ASC, ScheduleOrdering.TIME_ASC)
+    elif ordering == ScheduleOrdering.DATE_DESC:
+        queryset = queryset.order_by(ScheduleOrdering.DATE_DESC, ScheduleOrdering.TIME_DESC)
     else:
         # 기본값: 날짜 역순
-        queryset = queryset.order_by("-session_date", "-start_time")
+        queryset = queryset.order_by(ScheduleOrdering.DATE_DESC, ScheduleOrdering.TIME_DESC)
 
     return queryset
 
 
-def get_upcoming_schedules_for_user(user_id: int) -> QuerySet["GroupSchedule"]:
-    """사용자의 다가오는 스케줄 목록 조회"""
-    from apps.study_group_schedules.models import GroupSchedule
+def get_upcoming_schedules_for_user(user_id: int, days_ahead: int = 3) -> QuerySet["GroupSchedule"]:
+    """사용자의 다가오는 스케줄 목록 조회 (기본 3일 이내)"""
+    today = date.today()
+    end_date = today + timedelta(days=days_ahead)
 
     return (
         GroupSchedule.objects.select_related("study_group")
         .filter(study_group__members__id=user_id)
-        .filter(session_date__gte=date.today())
-        .order_by("session_date", "start_time")
+        .filter(session_date__gte=today)
+        .filter(session_date__lte=end_date)
+        .order_by(ScheduleOrdering.DATE_ASC, ScheduleOrdering.TIME_ASC)
     )
 
 
 def get_today_schedules_for_user(user_id: int) -> QuerySet["GroupSchedule"]:
     """사용자의 오늘 스케줄 목록 조회"""
-    from apps.study_group_schedules.models import GroupSchedule
 
     return (
         GroupSchedule.objects.select_related("study_group")
         .filter(study_group__members__id=user_id)
         .filter(session_date=date.today())
-        .order_by("start_time")
+        .order_by(ScheduleOrdering.TIME_ASC)
     )
 
 
-def get_study_group_upcoming_schedules(study_group_id: int) -> QuerySet["GroupSchedule"]:
-    """특정 스터디 그룹의 다가오는 스케줄 목록 조회"""
-    from apps.study_group_schedules.models import GroupSchedule
+def get_study_group_upcoming_schedules(study_group_id: int, days_ahead: int = 3) -> QuerySet["GroupSchedule"]:
+    """특정 스터디 그룹의 다가오는 스케줄 목록 조회 (기본 3일 이내)"""
+    today = date.today()
+    end_date = today + timedelta(days=days_ahead)
 
     return (
         GroupSchedule.objects.select_related("study_group")
         .filter(study_group_id=study_group_id)
-        .filter(session_date__gte=date.today())
-        .order_by("session_date", "start_time")
+        .filter(session_date__gte=today)
+        .filter(session_date__lte=end_date)
+        .order_by(ScheduleOrdering.DATE_ASC, ScheduleOrdering.TIME_ASC)
     )
