@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.users.views.email_verification_view  import (
+from apps.users.views.email_verification_view import (
     AccountRecoveryEmailVerificationSendAPIView,
     AccountRecoveryEmailVerificationVerifyAPIView,
     PassowrdResetEmailVerificationVerifyAPIView,
@@ -10,7 +10,7 @@ from apps.users.views.email_verification_view  import (
 )
 from apps.users.views.phone_verification_view import SendVerificationCodeAPIView, VerifyCodeAPIView
 from apps.users.views.auth_view import UserSignupAPIView
-from apps.users.views.withdrawals_view import WithdrawalAPIView
+from apps.users.views.withdrawals import WithdrawalAPIView
 
 urlpatterns = [
     path("auth/email/send-code", SignUpEmailVerificationSendAPIView.as_view(), name="email_send_code"),
