@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -151,5 +152,5 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
             "access": jwt_tokens["access"],
             "refresh": jwt_tokens["refresh"],
             "is_new_user": created,
-            "user": UserResponseSerializer(user).data,
+            "user": user,
         }

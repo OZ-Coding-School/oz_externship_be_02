@@ -11,3 +11,4 @@ media/
 static/
 staticfiles/
 logs/
+.gitmessage.txt

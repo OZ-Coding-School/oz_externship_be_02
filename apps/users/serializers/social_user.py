@@ -31,4 +31,4 @@ class KakaoLoginResponseSerializer(serializers.Serializer[dict[str, object]]):
     access = serializers.CharField()  # JWT 토큰
     refresh = serializers.CharField()  # JWT 토큰
     is_new_user = serializers.BooleanField()  # 신규유저 여부
-    user = UserResponseSerializer()
+    user = serializers.JSONField()

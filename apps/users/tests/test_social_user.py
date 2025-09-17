@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 from django.urls import reverse
 from rest_framework import status
@@ -81,6 +81,9 @@ class TestKakaoLogin(APITestCase):
             nickname="testuser",
             is_active=True,
             birthday="2000-01-01",
+            name="testuser",
+            phone_number="010-1234-5678",
+            gender="male",
         )
         SocialUser.objects.create(
             user=user,
@@ -99,13 +102,15 @@ class TestKakaoLogin(APITestCase):
 
             response = self.client.get(self.url, {"code": "dummy_code"})
 
+            if response.status_code == status.HTTP_400_BAD_REQUEST:
+                print(response.data)
+
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertFalse(response.data["is_new_user"])  # 신규 아님
             self.assertEqual(User.objects.filter(email="test@example.com").count(), 1)
 
     @patch("apps.users.services.social_user.cache.set")
     def test_cache_set_called(self, mock_cache_set: Mock) -> None:
-        """Redis 캐시 저장 로직이 호출되는지 검증"""
         with (
             patch("apps.users.services.social_user.requests.post") as mock_post,
             patch("apps.users.services.social_user.requests.get") as mock_get,
@@ -117,15 +122,15 @@ class TestKakaoLogin(APITestCase):
 
             self.client.get(self.url, {"code": "dummy_code"})
 
+            user = User.objects.get(email="test@example.com")
             mock_cache_set.assert_any_call(
-                "kakao_access_token:1",  # user.id는 1번째라 가정
+                f"kakao_access_token:{user.id}",
                 "fake_access_token",
                 timeout=21599,
             )
 
     @patch("apps.users.services.social_user.requests.get")
     def test_user_info_missing_id(self, mock_get: Mock) -> None:
-        """카카오 응답에 id 누락 → 실패 처리"""
         mock_get.return_value.json.return_value = {"kakao_account": {"email": "test@example.com"}}
         mock_get.return_value.raise_for_status = lambda: None
 
