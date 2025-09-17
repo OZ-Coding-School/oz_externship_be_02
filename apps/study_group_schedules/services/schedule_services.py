@@ -66,11 +66,7 @@ def get_upcoming_schedules_for_user(user_id: int, days_ahead: int = 3) -> QueryS
 
     return (
         GroupSchedule.objects.select_related("study_group")
-        .filter(
-            study_group__members__id=user_id,
-            session_date__gte=today,
-            session_date__lte=end_date
-            )
+        .filter(study_group__members__id=user_id, session_date__gte=today, session_date__lte=end_date)
         .order_by(ScheduleOrdering.DATE_ASC, ScheduleOrdering.TIME_ASC)
     )
 
@@ -80,10 +76,7 @@ def get_today_schedules_for_user(user_id: int) -> QuerySet["GroupSchedule"]:
 
     return (
         GroupSchedule.objects.select_related("study_group")
-        .filter(
-            study_group__members__id=user_id,
-            session_date=date.today()
-                )
+        .filter(study_group__members__id=user_id, session_date=date.today())
         .order_by(ScheduleOrdering.TIME_ASC)
     )
 
@@ -95,10 +88,6 @@ def get_study_group_upcoming_schedules(study_group_id: int, days_ahead: int = 3)
 
     return (
         GroupSchedule.objects.select_related("study_group")
-        .filter(
-            study_group_id=study_group_id,
-            session_date__gte=today,
-            session_date__lte=end_date
-        )
+        .filter(study_group_id=study_group_id, session_date__gte=today, session_date__lte=end_date)
         .order_by(ScheduleOrdering.DATE_ASC, ScheduleOrdering.TIME_ASC)
     )
