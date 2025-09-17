@@ -129,7 +129,7 @@ class TestStudyGroupReviewListAPI(APITestCase):
 
     검증 포인트
     - 성공: 200 OK + 응답 구조/필드/포맷
-    - 실패: 리뷰 없음 -> 404 Bad Request
+    - 성공: 리뷰 없음 -> 200 OK + 빈 리스트
     - 실패: 잘못된 group_uuid -> 404 Not Found
     - 실패: 비인증 -> 401 Unauthorized
     """
@@ -158,7 +158,6 @@ class TestStudyGroupReviewListAPI(APITestCase):
         # 성공 케이스: 스터디 그룹 리뷰 목록 조회
         self.client.force_authenticate(self.user)
 
-        # 첫 번째 리뷰 (기본 self.user)
         StudyReview.objects.create(
             user=self.user,
             study_group=self.study_group,
@@ -166,7 +165,6 @@ class TestStudyGroupReviewListAPI(APITestCase):
             star_rating=5,
         )
 
-        # 두 번째 리뷰
         user2 = User.objects.create_user(
             email="other@test.com",
             password="1234",
@@ -188,15 +186,14 @@ class TestStudyGroupReviewListAPI(APITestCase):
         self.assertIn("reviews", resp.data)
         self.assertEqual(len(resp.data["reviews"]), 2)
 
-    def test_fail_review_list_no_reviews(self) -> None:
-        # 실패: 리뷰가 없는 경우 (400)
-        # - detail 메시지가 명세서와 정확히 일치해야 한다.
+    def test_success_review_list_no_reviews(self) -> None:
+        # 성공: 리뷰가 없는 경우 -> 200 OK + 빈 리스트
         self.client.force_authenticate(self.user)
 
         resp = self.client.get(self.url)
-        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn("detail", resp.data)
-        self.assertEqual(resp.data["detail"], "해당 스터디 그룹에 대한 리뷰가 존재하지 않습니다.")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertIn("reviews", resp.data)
+        self.assertEqual(len(resp.data["reviews"]), 0)
 
     def test_fail_review_list_invalid_uuid(self) -> None:
         # 실패: 존재하지 않는 그룹 uuid (404)
