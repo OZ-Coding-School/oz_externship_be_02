@@ -10,6 +10,7 @@ from apps.users.services.exceptions import (
     PhoneVerificationCodeFailedError,
 )
 
+
 class UserSignupAPIView(APIView):
     permission_classes = (AllowAny,)
 
@@ -18,4 +19,6 @@ class UserSignupAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return Response({"detail": "회원가입이 완료되었습니다", "user": serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"detail": "회원가입이 완료되었습니다", "user": serializer.data}, status=status.HTTP_201_CREATED
+        )

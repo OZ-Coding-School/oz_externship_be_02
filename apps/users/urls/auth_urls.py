@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.users.views.auth_view import UserSignupAPIView
 from apps.users.views.email_verification_view import (
     AccountRecoveryEmailVerificationSendAPIView,
     AccountRecoveryEmailVerificationVerifyAPIView,
@@ -8,8 +9,10 @@ from apps.users.views.email_verification_view import (
     SignUpEmailVerificationSendAPIView,
     SignUpEmailVerifiCationVerifyAPIView,
 )
-from apps.users.views.phone_verification_view import SendVerificationCodeAPIView, VerifyCodeAPIView
-from apps.users.views.auth_view import UserSignupAPIView
+from apps.users.views.phone_verification_view import (
+    SendVerificationCodeAPIView,
+    VerifyCodeAPIView,
+)
 from apps.users.views.withdrawals import WithdrawalAPIView
 
 urlpatterns = [
