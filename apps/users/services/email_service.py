@@ -58,4 +58,16 @@ class EmailVerificationService:
         if cache_verification_code != verification_code:
             raise EmailVerificationCodeFailedError("이메일 인증 코드가 일치하지 않습니다")
 
-        cache.set(cache_key, verification_code, timeout=300)
+        cache.delete(cache_key)
+        # 검증이 완료됐다는 cache.set(f"is_verified_email_{email}") -> 여기서 캐시 검증됬다는 값 비교하는 로직 추가
+
+        # 인증 완료 상태 저장
+        verified_key = f"is_verified_email_{email}_{verification_code}"
+        cache.set(verified_key, True, timeout=600)
+
+    def is_verified(self, email: str, verification_code: str) -> bool:
+        """
+        이메일 검증된 상태인지 확인
+        """
+        verified_key = f"is_verified_email_{email}_{verification_code}"
+        return cache.get(verified_key) is True
