@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Any, BinaryIO, Callable
+from typing import Any, BinaryIO, Callable, cast
 
 import boto3  # AWS 와 통신을 하기 위한 라이브러리
 from botocore.exceptions import ClientError  # S3 에러 처리
@@ -81,3 +81,13 @@ class S3Uploader:
         """
         self.s3_safe_call(func=self.s3_client.delete_object, Bucket=self.bucket_name, Key=key)
         return True
+
+    def delete_files(self, keys: list[str]) -> None:
+        """
+        다중 삭제 추가
+        S3에 파일들을 한번에 삭제
+        """
+        if not keys:
+            return
+        objects = [{"Key": key} for key in keys]
+        self.s3_safe_call(func=self.s3_client.delete_objects, Bucket=self.bucket_name, Delete={"Objects": objects})
