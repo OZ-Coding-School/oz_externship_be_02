@@ -164,7 +164,9 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, VerificationMixin):
 
         response = self.client.post(self.verify_url, {"email": email, "verification_code": verification_code})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(cache.get(cache_key))
+        self.assertIsNone(cache.get(cache_key))
+        verified_key = f"is_verified_email_{email}_{verification_code}"
+        self.assertTrue(cache.get(verified_key))
 
     def test_email_verify_code_failed(self) -> None:
         """
@@ -218,7 +220,10 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("detail", response.data)
         self.assertEqual(response.data["detail"], "인증에 성공했습니다")
-        self.assertTrue(cache.get(cache_key))
+        self.assertIsNone(cache.get(cache_key))
+
+        verified_key = f"is_verified_email_{email}_{verification_code}"
+        self.assertTrue(cache.get(verified_key))
 
     def test_email_verify_code_failed(self) -> None:
         data = {"email": (email := self.test_email)}
