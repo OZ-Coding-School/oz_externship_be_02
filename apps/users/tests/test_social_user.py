@@ -39,6 +39,12 @@ class TestKakaoLogin(APITestCase):
             },
         }
 
+    def mock_kakao_api(self, mock_post: Mock, mock_get: Mock) -> None:
+        mock_post.return_value.json.return_value = self.token_response
+        mock_post.return_value.raise_for_status = lambda: None
+        mock_get.return_value.json.return_value = self.user_response
+        mock_get.return_value.raise_for_status = lambda: None
+
     def test_missing_code_returns_400(self) -> None:
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -50,10 +56,7 @@ class TestKakaoLogin(APITestCase):
             patch("apps.users.services.social_user.requests.post") as mock_post,
             patch("apps.users.services.social_user.requests.get") as mock_get,
         ):
-            mock_post.return_value.json.return_value = self.token_response
-            mock_post.return_value.raise_for_status = lambda: None
-            mock_get.return_value.json.return_value = self.user_response
-            mock_get.return_value.raise_for_status = lambda: None
+            self.mock_kakao_api(mock_post, mock_get)
 
             response = self.client.get(self.url, {"code": "dummy_code"})
 
@@ -95,10 +98,7 @@ class TestKakaoLogin(APITestCase):
             patch("apps.users.services.social_user.requests.post") as mock_post,
             patch("apps.users.services.social_user.requests.get") as mock_get,
         ):
-            mock_post.return_value.json.return_value = self.token_response
-            mock_post.return_value.raise_for_status = lambda: None
-            mock_get.return_value.json.return_value = self.user_response
-            mock_get.return_value.raise_for_status = lambda: None
+            self.mock_kakao_api(mock_post, mock_get)
 
             response = self.client.get(self.url, {"code": "dummy_code"})
 
@@ -115,10 +115,7 @@ class TestKakaoLogin(APITestCase):
             patch("apps.users.services.social_user.requests.post") as mock_post,
             patch("apps.users.services.social_user.requests.get") as mock_get,
         ):
-            mock_post.return_value.json.return_value = self.token_response
-            mock_post.return_value.raise_for_status = lambda: None
-            mock_get.return_value.json.return_value = self.user_response
-            mock_get.return_value.raise_for_status = lambda: None
+            self.mock_kakao_api(mock_post, mock_get)
 
             self.client.get(self.url, {"code": "dummy_code"})
 
@@ -141,3 +138,23 @@ class TestKakaoLogin(APITestCase):
             response = self.client.get(self.url, {"code": "dummy_code"})
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertIn("잘못된 요청", response.data["message"])
+
+    @patch("apps.users.services.social_user.requests.post")
+    @patch("apps.users.services.social_user.requests.get")
+    def test_email_already_used(self, mock_get: Mock, mock_post: Mock) -> None:
+        User.objects.create(
+            email="test@example.com",
+            nickname="normaluser",
+            is_active=True,
+            birthday="2000-02-02",
+            name="normaluser",
+            phone_number="010-2234-5678",
+            gender="male",
+        )
+
+        self.mock_kakao_api(mock_post, mock_get)
+
+        response = self.client.get(self.url, {"code": "dummy_code"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("이미 가입된 이메일입니다.", response.data["message"])

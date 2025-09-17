@@ -1,14 +1,13 @@
-from datetime import datetime
 from typing import Any
 
 import requests
 from django.conf import settings
 from django.core.cache import cache
-from rest_framework.exceptions import APIException
+from django.db import transaction
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.users.models import SocialUser, User
-from apps.users.serializers.social_user import UserResponseSerializer
 
 
 class KakaoService:  # 카카오 로그인 로직 담당 클래스
@@ -85,26 +84,34 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
             )
             return social_user.user, False
         except SocialUser.DoesNotExist:
-            # 유저를 먼저 생성
-            user = User(
-                email=email,
-                nickname=nickname,
-                phone_number=phone_number,
-                name=name,
-                birthday=birthday,
-                gender=gender,
-                profile_img_url=profile_image,
-                is_active=True,
-            )
-            user.set_unusable_password()
-            user.save()
-            # 이후에 소셜유저 생성
-            SocialUser.objects.create(
-                user=user,
-                provider=SocialUser.ProviderChoices.KAKAO,
-                provider_id=kakao_id,
-            )
-            return user, True
+            pass
+
+            if email:
+                existing_email = User.objects.filter(email=email).exists()
+                if existing_email:
+                    raise ValidationError("이미 가입된 이메일입니다.")
+
+            with transaction.atomic():
+                # 유저를 먼저 생성
+                user = User(
+                    email=email,
+                    nickname=nickname,
+                    phone_number=phone_number,
+                    name=name,
+                    birthday=birthday,
+                    gender=gender,
+                    profile_img_url=profile_image,
+                    is_active=True,
+                )
+                user.set_unusable_password()
+                user.save()
+                # 이후에 소셜유저 생성
+                SocialUser.objects.create(
+                    user=user,
+                    provider=SocialUser.ProviderChoices.KAKAO,
+                    provider_id=kakao_id,
+                )
+                return user, True
 
     def generate_tokens(self, user: User) -> dict[str, str]:  # JWT 토큰 발급
         refresh = RefreshToken.for_user(user)
