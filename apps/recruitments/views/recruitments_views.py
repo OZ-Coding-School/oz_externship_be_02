@@ -8,9 +8,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..serializers.recruitments_serializers import (
-    RecruitmentDetailSerializer,
-)
+from ..serializers.recruitments_correction import RecruitmentUpdateSerializer
+from ..serializers.recruitments_detail import RecruitmentDetailSerializer
 from ..services.recruitments_services import get_recruitment_detail, update_recruitment
 
 
@@ -42,7 +41,7 @@ class RecruitmentDetailView(APIView):
             recruitment = get_recruitment_detail(recruitment_uuid=recruitment_uuid)
         except ObjectDoesNotExist as e:
             return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
-        serializer = RecruitmentDetailSerializer(recruitment)
+        serializer = RecruitmentDetailSerializer(recruitment, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -63,27 +62,20 @@ class RecruitmentDetailView(APIView):
         ],
     )
     def patch(self, request: Request, recruitment_uuid: UUID) -> Response:
-
-        # 1단계: 로그인 여부 확인
-        if not request.user.is_authenticated:
-            return Response(
-                {"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED  # <-- 비로그인 시 401 에러
-            )
-
         try:
-            recruitment_to_update = get_recruitment_detail(recruitment_uuid=recruitment_uuid)
+            recruitment_to_update = get_recruitment_detail(recruitment_uuid)
         except ObjectDoesNotExist as e:
             return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
 
-        # 2단계: 작성자 본인 여부 확인
         if request.user != recruitment_to_update.author:
-            return Response(
-                {"error": "이 공고를 수정할 권한이 없습니다."},
-                status=status.HTTP_403_FORBIDDEN,  # <-- 작성자 아니면 403
-            )
+            return Response({"error": "이 공고를 수정할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
 
-        # 모든 권한 검사를 통과한 경우 실행
-        updated_recruitment = update_recruitment(recruitment=recruitment_to_update, data=request.data)
+        serializer = RecruitmentUpdateSerializer(instance=recruitment_to_update, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
-        response_serializer = RecruitmentDetailSerializer(updated_recruitment)
+        updated_recruitment = update_recruitment(
+            instance=recruitment_to_update, validated_data=serializer.validated_data
+        )
+
+        response_serializer = RecruitmentDetailSerializer(updated_recruitment, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
