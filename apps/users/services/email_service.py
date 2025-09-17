@@ -48,7 +48,7 @@ class EmailVerificationService:
             send_mail(subject, message, from_email, recipient_list)
         except SMTPException as e:
             cache.delete(cache_key)
-            raise EmailSendingFailedError(f"이메일 발송 시스템에 문제가 발생하였습니다: {e}")
+            raise EmailSendingFailedError(f"이메일 발송에 실패했습니다: {e}")
 
     def verify_code(self, purpose: VerificationPurpose, email: str, verification_code: str) -> None:
 
