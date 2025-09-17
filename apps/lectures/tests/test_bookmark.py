@@ -1,3 +1,6 @@
+from typing import cast
+from urllib.parse import parse_qs, urlparse
+
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -6,9 +9,18 @@ from apps.lectures.models.lecture_bookmarks import LectureBookmark
 from apps.users.models.user import User
 
 
+def _extract_cursor(url: str | None) -> str | None:
+    if not url:
+        return None
+    parsed = urlparse(url)
+    qs = parse_qs(parsed.query)
+    vals = qs.get("cursor")
+    return vals[0] if vals else None
+
+
 class TestBookmarkView(APITestCase):
     def setUp(self) -> None:
-        # 사용자 생성,인증
+        # 사용자 생성, 인증
         self.user = User.objects.create_user(
             email="test@naver.com",
             password="password123",
@@ -20,7 +32,7 @@ class TestBookmarkView(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        # 강의 생성 (Lecture는 UUIDBaseModel을 상속 → uuid 필드 사용)
+        # 강의 생성
         self.lecture = Lecture.objects.create(
             title="테스트 강의",
             instructor="효종",
@@ -34,7 +46,6 @@ class TestBookmarkView(APITestCase):
             thumbnail_img_url="https://example.com/thumb1.jpg",
         )
 
-        # URL 컨버터가 <uuid:lecture_uuid> 라서 pk가 아닌 uuid를 사용
         base = "/api/v1/lectures"
         self.lecture_uuid_str = str(self.lecture.uuid)
         self.add_url = f"{base}/{self.lecture_uuid_str}/bookmark"
@@ -96,15 +107,16 @@ class TestBookmarkView(APITestCase):
     def test_list_bookmarks_empty_returns_200(self) -> None:
         res = self.client.get(self.list_url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data.get("count"), 0)
-        self.assertEqual(res.data.get("results"), [])
+        self.assertIn("results", res.data)
+        self.assertEqual(res.data["results"], [])
+        self.assertIsNone(res.data.get("next"))
 
     def test_list_bookmarks_basic_fields_and_transform(self) -> None:
         lec = Lecture.objects.create(
             title="파이썬 심화",
             instructor="Alice",
             duration=125,
-            difficulty="normal",  # 응답에서 MIDDLE로 변환
+            difficulty="normal",
             description="심화",
             platform="Inflearn",
             original_price=20000,
@@ -116,8 +128,7 @@ class TestBookmarkView(APITestCase):
 
         res = self.client.get(self.list_url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data.get("count"), 1)
-        self.assertEqual(len(res.data.get("results")), 1)
+        self.assertEqual(len(res.data.get("results", [])), 1)
 
         item = res.data["results"][0]
         self.assertEqual(item["title"], "파이썬 심화")
@@ -146,15 +157,21 @@ class TestBookmarkView(APITestCase):
             )
             LectureBookmark.objects.create(user=self.user, lecture=lec)
 
-        res1 = self.client.get(self.list_url)  # page=1
+        res1 = self.client.get(self.list_url, data={"page_size": "10"})
         self.assertEqual(res1.status_code, status.HTTP_200_OK)
-        self.assertEqual(res1.data.get("count"), 12)
-        self.assertEqual(len(res1.data.get("results")), 10)
+        self.assertEqual(len(res1.data.get("results", [])), 10)
+        self.assertIsNotNone(res1.data.get("next"))
 
-        res2 = self.client.get(self.list_url, data={"page": 2})
+        next_url = cast(str | None, res1.data.get("next"))
+        self.assertIsNotNone(next_url)
+        cursor = _extract_cursor(next_url)
+        self.assertIsNotNone(cursor)
+        cursor_str = cast(str, cursor)
+
+        res2 = self.client.get(self.list_url, data={"cursor": cursor_str, "page_size": "10"})
         self.assertEqual(res2.status_code, status.HTTP_200_OK)
-        self.assertEqual(res2.data.get("count"), 12)
-        self.assertEqual(len(res2.data.get("results")), 2)
+        self.assertEqual(len(res2.data.get("results", [])), 2)
+        self.assertIsNotNone(res2.data.get("previous"))
 
     def test_list_bookmarks_search(self) -> None:
         lec1 = Lecture.objects.create(
@@ -187,13 +204,13 @@ class TestBookmarkView(APITestCase):
         # 제목 검색
         res_title = self.client.get(self.list_url, data={"search": "django"})
         self.assertEqual(res_title.status_code, status.HTTP_200_OK)
-        self.assertEqual(res_title.data.get("count"), 1)
+        self.assertEqual(len(res_title.data.get("results", [])), 1)
         self.assertEqual(res_title.data["results"][0]["title"], "Django 입문")
 
         # 강사 검색
         res_instructor = self.client.get(self.list_url, data={"search": "bob"})
         self.assertEqual(res_instructor.status_code, status.HTTP_200_OK)
-        self.assertEqual(res_instructor.data.get("count"), 1)
+        self.assertEqual(len(res_instructor.data.get("results", [])), 1)
         self.assertEqual(res_instructor.data["results"][0]["instructor"], "Bob")
 
     def test_list_requires_authentication(self) -> None:
