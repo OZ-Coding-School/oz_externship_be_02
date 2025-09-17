@@ -61,3 +61,5 @@ class VerificationMixin(TestUserMixin):
     user: ClassVar[User]
     phone_number: ClassVar[str]
     verification_code: ClassVar[str]
+    signup_data: ClassVar[dict[str, Any]]
+    url: ClassVar[str]
