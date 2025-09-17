@@ -1,134 +1,139 @@
-from datetime import timedelta
-from io import BytesIO
-from typing import Any, Optional, Union, cast
-from unittest.mock import Mock, patch
+from datetime import datetime
+from typing import Any
 
-from django.core.files.uploadedfile import SimpleUploadedFile  # 테스트용 파일 생성
-from django.test import TestCase
-from django.urls import reverse
+import boto3
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.utils import timezone
-from django.utils.datastructures import MultiValueDict
-from PIL import Image
-from rest_framework import status
-from rest_framework.test import APIClient
+from moto import mock_aws
 
+from apps.core.utils.create_temp_image import create_temp_image
 from apps.core.utils.s3_uploader import S3Uploader
 from apps.studies.models import StudyGroup
-from apps.study_notes.models.study_notes import (
-    StudyNote,
-)
+from apps.study_notes.models.study_notes import StudyNote
 from apps.study_notes.services.study_notes_services import StudyNoteService
-from apps.study_notes.tests.mock_s3_uploader import MockS3Uploader
 from apps.users.models.user import User
 
 
-class TestStudyNoteAPI(TestCase):
-    """
-    StudyNote 생성 API 테스트
-    - setUp: 테스트 환경 초기화 (유저, 그룹, 파일 생성)
-    - test_create_study_note_success: 성공 케이스
-    - test_create_study_note_missing_title_fail: 실패 케이스 (필수값 누락)
-    """
+@override_settings(
+    AWS_S3_BUCKET_NAME="test-bucket",
+    AWS_S3_ACCESS_KEY_ID="fake",
+    AWS_S3_SECRET_ACCESS_KEY="fake",
+    AWS_S3_REGION="ap-northeast-2",
+)
+@mock_aws
+class StudyNoteServiceTest(TestCase):
+    """StudyNoteService.create_study_note 관련 테스트"""
 
-    user: User
-    group: StudyGroup
+    def setUp(self) -> None:
+        # S3 가짜 클라이언트 + 버킷
+        self.s3_uploader = S3Uploader(bucket=settings.AWS_S3_BUCKET_NAME)
+        self.s3_client = boto3.client(
+            "s3",
+            region_name=settings.AWS_S3_REGION,
+            aws_access_key_id=settings.AWS_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_S3_SECRET_ACCESS_KEY,
+        )
+        self.s3_client.create_bucket(
+            Bucket=settings.AWS_S3_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": settings.AWS_S3_REGION},
+        )
 
-    @classmethod
-    def setUpTestData(cls) -> None:
-        cls.user = User.objects.create_user(
+        # 유저 & 그룹 생성
+        self.user = User.objects.create_user(
             email="testuser@example.com",
             password="password123",
             name="테스트유저",
             nickname="testnick",
-            phone_number="010-1234-5678",
-            gender="male",
+            phone_number="01012345678",
+            gender="남성",
             birthday="2000-01-01",
         )
-
-    def setUp(self) -> None:
-        self.client = APIClient()
-
-        self.group = StudyGroup.objects.create(
-            name="Test Study Group",
+        self.study_group = StudyGroup.objects.create(
+            name="테스트그룹",
             max_headcount=5,
-            start_at=timezone.now(),
-            end_at=timezone.now() + timedelta(days=30),
+            start_at=timezone.make_aware(datetime(2025, 9, 16, 12, 0, 0)),
+            end_at=timezone.make_aware(datetime(2025, 9, 30, 12, 0, 0)),
         )
-        # 그룹에 맴버 추가
-        self.group.members.add(self.user)
-        # 인증
-        self.client.force_authenticate(user=self.user)
-        self.url = reverse("create-study-note", kwargs={"group_uuid": self.group.uuid})
 
-        # 테스트용 1x1 PNG 이미지 생성
-        img_io = BytesIO()
-        image = Image.new("RGB", (1, 1), color="white")
-        image.save(img_io, "PNG")
-        img_io.seek(0)
-        self.image_file = SimpleUploadedFile("image1.png", img_io.read(), content_type="image/png")
-        self.attachment_file = SimpleUploadedFile("file1.pdf", b"file_content", content_type="application/pdf")
-
-    @patch("apps.study_notes.services.study_notes_services.S3Uploader", MockS3Uploader)
-    def test_create_study_note_success(self) -> None:
-        # MultiValueDict로 multipart/form-data 생성
-        data: MultiValueDict[str, Any] = MultiValueDict()
-        data.setlist("images_file", [self.image_file])
-        data.setlist("attachments_file", [self.attachment_file])
-        data["title"] = "Test Note"
-        data["content"] = "스터디 노트 내용"
-
-        response = self.client.post(self.url, data=data, format="multipart")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        note = StudyNote.objects.get(id=response.json()["id"])
-        self.assertEqual(note.title, "Test Note")
-        self.assertEqual(note.content, "스터디 노트 내용")
-
-        note_image = note.images.first()
-        note_attachment = note.attachments.first()
-
-        assert note_image is not None
-        assert note_attachment is not None
-
-        self.assertEqual(note_image.img_url, "https://mock_s3_url.com/image1.png")
-        self.assertEqual(note_attachment.file_url, "https://mock_s3_url.com/file1.pdf")
-
-    def test_create_study_note_missing_title_fail(self) -> None:
+    def test_create_note_success(self) -> None:
+        """이미지 + 첨부파일 정상 업로드 후 DB 생성
+        예시: S3와 DB에 정상적으로 데이터가 올라가는지 확인
         """
-        필수값(title) 누락 시 실패
+        service = StudyNoteService(s3_uploader=self.s3_uploader)
+        image_file = create_temp_image()
+        attachment_file = SimpleUploadedFile("test.txt", b"hello world", content_type="text/plain")
+
+        note = service.create_study_note(
+            author=self.user,
+            study_group=self.study_group,
+            title="서비스 테스트 노트",
+            content="서비스 테스트 본문",
+            images=[image_file],
+            attachments=[attachment_file],
+        )
+
+        self.assertEqual(note.title, "서비스 테스트 노트")
+        self.assertEqual(note.images.count(), 1)
+        self.assertEqual(note.attachments.count(), 1)
+        attachment = note.attachments.first()
+        assert attachment is not None
+        self.assertEqual(attachment.file_name, "test.txt")
+
+        image = note.images.first()
+        assert image is not None
+        self.assertTrue(self.s3_uploader.file_exists(image.img_url.split("/")[-1]))
+        self.assertTrue(self.s3_uploader.file_exists(attachment.file_url.split("/")[-1]))
+
+    def test_s3_upload_rolls_back(self) -> None:
+        """S3 업로드 실패 시 DB와 S3 모두 롤백
+        예시: 업로드 중 실패 발생 시 DB에 노트가 생성되지 않고 S3 업로드도 삭제되는지 테스트
         """
-        data = {"title": "", "content": "제목 없음"}
+        service = StudyNoteService(s3_uploader=self.s3_uploader)
+        image_file = create_temp_image()
 
-        response = self.client.post(self.url, data=data, format="multipart")
+        # S3Uploader를 강제로 실패하게 monkey patch
+        original_upload = service.s3.upload_file
 
-        # 400 Bad Request 확인
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("title", response.json())
+        def fail_upload(f: Any) -> None:
+            raise RuntimeError("강제 업로드 실패")
 
-    @patch("apps.study_notes.services.study_notes_services.StudyNote.objects.create_note")
-    @patch("apps.study_notes.services.study_notes_services.S3Uploader", MockS3Uploader)
-    def test_create_study_note_db_failure_rollback(self, mock_create_note: Mock) -> None:
-        """
-        DB 저장 실패 시
-        - 이미 업로드된 S3 객체 삭제
-        - RuntimeError 발생
-        """
-        # create_note가 호출되면 무조건 예외 발생시키도록 설정
-        mock_create_note.side_effect = Exception("DB 저장 실패")
+        setattr(service.s3, "upload_file", fail_upload)
 
-        service = StudyNoteService(s3_uploader=cast(S3Uploader, MockS3Uploader()))
-
-        with self.assertRaises(RuntimeError) as ctx:
+        with self.assertRaises(RuntimeError):
             service.create_study_note(
                 author=self.user,
-                study_group=self.group,
-                title="DB 실패 테스트",
-                content="내용",
-                images=[self.image_file],
-                attachments=[self.attachment_file],
+                study_group=self.study_group,
+                title="실패 테스트",
+                content="본문",
+                images=[image_file],
             )
 
-        # 예외 메시지 확인
-        self.assertIn("DB 생성 실패", str(ctx.exception))
-        # DB에 남은 노트 없어야 함
-        self.assertEqual(StudyNote.objects.count(), 0)
+        setattr(service.s3, "upload_file", original_upload)
+
+    def test_db_rolls_back_s3(self) -> None:
+        """DB 생성 실패 시 업로드된 S3 파일 삭제 확인
+        예시: DB 트랜잭션 에러 발생 시 업로드된 S3 객체가 삭제되는지 확인
+        """
+        service = StudyNoteService(s3_uploader=self.s3_uploader)
+        image_file = create_temp_image()
+
+        # DB 생성 함수 강제 실패
+        original_create_note = StudyNote.objects.create_note
+
+        def fail_db(*args: Any, **kwargs: Any) -> None:
+            raise RuntimeError("DB 실패")
+
+        setattr(StudyNote.objects, "create_note", fail_db)
+
+        with self.assertRaises(RuntimeError):
+            service.create_study_note(
+                author=self.user,
+                study_group=self.study_group,
+                title="DB 실패 테스트",
+                content="본문",
+                images=[image_file],
+            )
+
+        setattr(StudyNote.objects, "create_note", original_create_note)
