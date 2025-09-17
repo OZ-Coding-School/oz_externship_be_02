@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, timedelta
+from unittest.mock import MagicMock, patch
 
 from django.urls import reverse
 from django.utils import timezone
@@ -7,11 +8,12 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.lectures.models.crawled_lectures import Lecture
+from apps.recruitments.models import RecruitmentImage
 from apps.recruitments.models.recruitment_attachments import RecruitmentAttachment
 from apps.recruitments.models.recruitment_tags import RecruitmentTag
 from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.models.tags import Tag
-from apps.recruitments.serializers.recruitments_serializers import (
+from apps.recruitments.serializers.recruitments_detail import (
     RecruitmentDetailSerializer,
 )
 from apps.studies.models.study_groups import StudyGroup
@@ -54,6 +56,7 @@ class RecruitmentDetailViewTest(APITestCase):
         # 생성한 강의를 스터디 그룹에 연결
         study_group.lectures.add(lecture)
 
+        self.initial_content = "테스트 내용입니다. ![유지될 이미지](https://s3.test.com/kept_image.jpg) ![삭제될 이미지](https://s3.test.com/orphan_image.jpg)"
         self.recruitment = Recruitment.objects.create(
             study_group=study_group,
             author=self.author,
@@ -73,11 +76,18 @@ class RecruitmentDetailViewTest(APITestCase):
             file_name="study_plan.pdf",
         )
 
+        RecruitmentImage.objects.create(recruitment=self.recruitment, img_url="https://s3.test.com/kept_image.jpg")
+        RecruitmentImage.objects.create(recruitment=self.recruitment, img_url="https://s3.test.com/orphan_image.jpg")
+
         self.recruitment.bookmark_users.add(self.other_user)
 
     def test_get_recruitment_detail_success(self) -> None:
         # GIVEN
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        context = {"request": self.client.request().wsgi_request}
+        serializer = RecruitmentDetailSerializer(
+            instance=self.recruitment, context={"requests": self.client.request().wsgi_request}
+        )
         expected_data = RecruitmentDetailSerializer(instance=self.recruitment).data
         # WHEN
         response = self.client.get(url)
@@ -94,7 +104,8 @@ class RecruitmentDetailViewTest(APITestCase):
         # THEN
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_update_recruitment_success(self) -> None:
+    @patch("apps.recruitments.services.recruitments_services.S3Uploader")
+    def test_update_recruitment_success(self, mock_s3_uploader: MagicMock) -> None:
         self.client.force_authenticate(user=self.author)
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
         update_data = {
@@ -109,8 +120,8 @@ class RecruitmentDetailViewTest(APITestCase):
         self.assertEqual(len(response.data["tags"]), 2)
         self.assertIn("Python", [tag["name"] for tag in response.data["tags"]])
 
-    def test_update_recruitment_with_attachments_success(self) -> None:
-        # GIVEN
+    @patch("apps.recruitments.services.recruitments_services.S3Uploader")
+    def test_update_recruitment_with_attachments_success(self, mock_s3_uploader: MagicMock) -> None:
         self.client.force_authenticate(user=self.author)
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
         update_data = {
@@ -130,12 +141,35 @@ class RecruitmentDetailViewTest(APITestCase):
         self.assertEqual(response.data["attachments"][0]["file_name"], "new_file_1.pdf")
         self.assertEqual(self.recruitment.attachments.all().count(), 2)
 
-        # 다른 사용자가 수정 시도 시 403 에러
+    @patch("apps.recruitments.services.recruitments_services.S3Uploader")
+    def test_update_recruitment_cleans_up_orphan_images_in_content(self, mock_s3_uploader: MagicMock) -> None:
+        # GIVEN: S3S3Uploader의 인스턴스와 delete_file 메서드를 mock 객체로 만듦
+        mock_s3_instance = mock_s3_uploader.return_value
+        self.client.force_authenticate(user=self.author)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        new_content = "내용이 수정되었습니다. ![유지될 이미지](https://s3.test.com/kept_image.jpg)"
+        update_data = {"content": new_content}
+        # WHEN
+        response = self.client.patch(url, data=update_data, format="json")
+        # THEN
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # DB에서 orphan_image.jpg 삭제 확인
+        orphan_image_exists = RecruitmentImage.objects.filter(img_url="https://s3.test.com/orphan_image.jpg").exists()
+        self.assertFalse(orphan_image_exists, "이미지가 DB에서 삭제되지 않았습니다.")
+
+        # 유지되어야 할 이미지는 DB에 남아있는지 확인
+        kept_image_exists = RecruitmentImage.objects.filter(img_url="https://s3.test.com/kept_image.jpg").exists()
+        self.assertTrue(kept_image_exists, "유지되어야 할 이미지가 삭제됐습니다.")
+
+        # S3 삭제 함수가 올바른 키 값으로 '한 번' 호출되었는지 확인
+        s3_key_to_delete = "orphan_image.jpg"
+        mock_s3_instance.delete_file.assert_called_once_with(key=s3_key_to_delete)
 
     def test_update_recruitment_permission_denied(self) -> None:
+        # 작성자가 아닌 다른 사용자가 수정 시도할 때 403에러 반환
         self.client.force_authenticate(user=self.other_user)
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
         update_data = {"title": "잘못된 사용자"}
-
         response = self.client.patch(url, data=update_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
