@@ -38,9 +38,12 @@ class TwilioAuthService:
         verified_key = f"is_verified_phone_{phone_number}_{code}"
         cache.set(verified_key, True, timeout=600)
 
-    def is_verified(self, phone_number: str, code: str) -> bool:
+
+class PhoneVerificationService:
+    @staticmethod
+    def is_verified(phone_number: str, verification_code: str) -> bool:
         """
         번호 + 코드 검증 완료 상태 확인
         """
-        verified_key = f"is_verified_phone_{phone_number}_{code}"
+        verified_key = f"is_verified_phone_{phone_number}_{verification_code}"
         return cache.get(verified_key) is True

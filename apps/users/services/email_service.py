@@ -18,7 +18,8 @@ from apps.users.utils.enums import VerificationPurpose
 
 
 class EmailVerificationService:
-    def generate_verification_code(self) -> str:
+    @staticmethod
+    def generate_verification_code() -> str:
         return Base62.uuid_encode(u=uuid.uuid4())
 
     def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> None:
@@ -50,7 +51,8 @@ class EmailVerificationService:
             cache.delete(cache_key)
             raise EmailSendingFailedError(f"이메일 발송에 실패했습니다: {e}")
 
-    def verify_code(self, purpose: VerificationPurpose, email: str, verification_code: str) -> None:
+    @staticmethod
+    def verify_code(purpose: VerificationPurpose, email: str, verification_code: str) -> None:
 
         cache_key = f"{purpose}-{email}"
         cache_verification_code = cache.get(cache_key)
@@ -65,7 +67,8 @@ class EmailVerificationService:
         verified_key = f"is_verified_email_{email}_{verification_code}"
         cache.set(verified_key, True, timeout=600)
 
-    def is_verified(self, email: str, verification_code: str) -> bool:
+    @staticmethod
+    def is_verified(email: str, verification_code: str) -> bool:
         """
         이메일 검증된 상태인지 확인
         """
