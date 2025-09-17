@@ -24,3 +24,15 @@ class GroupSchedule(BaseModel):
 
     class Meta:
         db_table = "group_schedules"
+        indexes = [
+            # 스터디 그룹별 스케줄 조회
+            models.Index(fields=["study_group", "session_date"]),
+            # 날짜 기반 필터링 및 정렬
+            models.Index(fields=["session_date"]),
+            # 스터디 그룹별 날짜순 정렬된 스케줄 목록 조회
+            models.Index(fields=["study_group", "session_date", "start_time"]),
+            # 생성일 기준 정렬
+            models.Index(fields=["-created_at"]),
+            # 복합 조건: 스터디 그룹 + 날짜 범위 필터링
+            models.Index(fields=["study_group", "session_date", "-created_at"]),
+        ]
