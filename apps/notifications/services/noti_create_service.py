@@ -2,7 +2,7 @@ from django.db import transaction
 
 from apps.applications.models.applications import Application
 from apps.notifications.models import Notification
-from apps.studies.models import StudyGroup
+from apps.studies.models import GroupMember
 
 
 class NotificationCreateApplicationService:
@@ -89,21 +89,18 @@ class NotificationCreateApplicationService:
         new_user = app.user
 
         # 그룹에 참여중인 멤버들
-        accepted_user_ids = set(
-            Application.objects.filter(
-                recruitment__study_group=group.id, status=Application.ApplicationStatus.ACCEPTED
-            ).values_list("user_id", flat=True)
-        )
+        accepted_user_ids = set(GroupMember.objects.filter(study_group=group.id).values_list("user_id", flat=True))
 
-        if new_user.id in accepted_user_ids:
-            accepted_user_ids.remove(new_user.id)
+        accepted_user_ids.discard(new_user.id)
+        if not accepted_user_ids:
+            return 0
 
         notifications = [
             Notification(
                 user_id=uid,
                 content=f"{group.name}에 {new_user.nickname} 님이 참여했습니다. 환영해주세요!",
                 notification_type=Notification.NotificationType.STUDY_JOIN,
-                back_url_link=f"{group.id}",
+                back_url_link=f"/study-groups/{group.id}/chat",
             )
             for uid in accepted_user_ids
         ]
