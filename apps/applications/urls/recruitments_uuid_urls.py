@@ -1,6 +1,6 @@
 from django.urls import path
 
-from ..application_views import ApplicationAPIView
+from ..views.application_views import ApplicationAPIView
 
 urlpatterns = [
     # name="application-create"는 Django 내에서 이 URL 경로에 대한 별칭을 지정하는 것으로,
