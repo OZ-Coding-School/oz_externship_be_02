@@ -4,11 +4,15 @@ from rest_framework import serializers
 
 from apps.users.models import User
 from apps.users.services.email_service import EmailVerificationService
-from apps.users.services.phone_service import TwilioAuthService, PhoneVerificationService
+from apps.users.services.phone_service import (
+    PhoneVerificationService,
+    TwilioAuthService,
+)
 
 twilio_service = TwilioAuthService()
 email_service = EmailVerificationService()
 phone_service = PhoneVerificationService()
+
 
 class UserSignupSerializer(serializers.ModelSerializer[User]):
     email_verification_code = serializers.CharField(write_only=True)
@@ -25,7 +29,7 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
             "birthday",
             "gender",
             "email_verification_code",
-            "phone_verification_code"
+            "phone_verification_code",
         ]
         extra_kwargs = {"password": {"write_only": True}}
 
@@ -57,7 +61,7 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         """
         이메일 인증 코드 검증
         """
-        email = self.initial_data.get('email')
+        email = self.initial_data.get("email")
         if not email:
             raise serializers.ValidationError("이메일 주소가 필요합니다.")
 
@@ -70,7 +74,7 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         """
         휴대폰 인증 코드 검증
         """
-        phone_number = self.initial_data.get('phone_number')
+        phone_number = self.initial_data.get("phone_number")
         if not phone_number:
             raise serializers.ValidationError("휴대폰 번호가 필요합니다.")
 
