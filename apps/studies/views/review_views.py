@@ -1,12 +1,13 @@
 from uuid import UUID
 
 from rest_framework import status
-from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.studies.models.study_groups import StudyGroup
+from apps.studies.models.study_reviews import StudyReview
 from apps.studies.serializers.review_serializers import (
     ReviewCreateRequestSerializer,
     ReviewCreateResponseSerializer,
@@ -45,9 +46,14 @@ class StudyGroupReviewListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request, group_uuid: UUID, *args: object, **kwargs: object) -> Response:
+        # 요청 검증
         req = ReviewListRequestSerializer(data={"group_uuid": group_uuid}, context={"request": request})
         req.is_valid(raise_exception=True)
 
-        payload = req.build_payload()  # 여기서 이미 404 처리됨
+        group: StudyGroup = req.context["study_group"]
+
+        qs = StudyReview.objects.filter(study_group=group).order_by("-created_at")
+        payload = {"study_group_id": group.id, "reviews": qs}
+
         res = ReviewListResponseSerializer(payload, context={"request": request})
         return Response(res.data)

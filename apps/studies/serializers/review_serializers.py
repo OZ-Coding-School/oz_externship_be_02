@@ -85,20 +85,6 @@ class ReviewListRequestSerializer(serializers.Serializer[Dict[str, Any]]):
         self.context["study_group"] = group
         return value
 
-    def get_queryset(self) -> QuerySet[StudyReview]:
-        # 검증된 StudyGroup에 속한 리뷰 목록을 최신순으로 조회, 없으면 404 반환
-        group: StudyGroup = self.context["study_group"]
-        qs = StudyReview.objects.filter(study_group=group).order_by("-created_at")
-        if not qs.exists():
-            raise NotFound("해당 스터디 그룹에 대한 리뷰가 존재하지 않습니다.")
-        return qs
-
-    def build_payload(self) -> Dict[str, Any]:
-        # 응답에 필요한 데이터(study_group_id, reviews) 구성
-        group: StudyGroup = self.context["study_group"]
-        reviews = self.get_queryset()
-        return {"study_group_id": group.id, "reviews": reviews}
-
 
 class ReviewListItemSerializer(serializers.ModelSerializer[StudyReview]):
     """
