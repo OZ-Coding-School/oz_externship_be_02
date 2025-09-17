@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from apps.applications.application_views import ApplicationAPIView
+from apps.applications.views.application_views import ApplicationAPIView
 from apps.recruitments.views.recruitments_views import RecruitmentDetailView
 from apps.recruitments.views.views_list import RecruitmentView
 
