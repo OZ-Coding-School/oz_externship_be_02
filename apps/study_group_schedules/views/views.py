@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.studies.models import StudyGroup
+from apps.study_group_schedules.enums import ScheduleOrdering
 from apps.study_group_schedules.models import GroupSchedule
 from apps.study_group_schedules.serializers import (
     StudyGroupScheduleCreateSerializer,
@@ -88,7 +89,7 @@ class StudyGroupScheduleListView(ListAPIView[GroupSchedule]):
         study_group_uuid = self.kwargs.get("study_group_id")  # URL에서 가져옴
         start_date = self.validated_query_params.get("start_date")
         end_date = self.validated_query_params.get("end_date")
-        ordering = self.validated_query_params.get("ordering", "-session_date")
+        ordering = self.validated_query_params.get("ordering", ScheduleOrdering.default())
 
         # 서비스를 통해 사용자가 접근 가능한 스케줄 조회
         try:
@@ -100,6 +101,6 @@ class StudyGroupScheduleListView(ListAPIView[GroupSchedule]):
                 ordering=ordering,
             )
             return queryset
-        except Exception:
-            # 접근 권한이 없거나 스터디 그룹이 존재하지 않는 경우 빈 쿼리셋 반환
+        except ValueError:
+            # UUID 형식 오류인 경우 빈 쿼리셋 반환
             return GroupSchedule.objects.none()
