@@ -56,19 +56,23 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
         - 스터디 기간은 최소 5일.
         :param attrs: 유저가 입력한 시작일 / 종료일
         """
+        instance = getattr(self, "instance", None)
         # 날짜 검증
-        start_at = attrs["start_at"]
-        end_at = attrs["end_at"]
+        start_at = attrs.get("start_at", getattr(instance, "start_at", None))
+        end_at = attrs.get("end_at", getattr(instance, "end_at", None))
 
-        # 종료일이 시작일 이전일 경우
-        if start_at > end_at:
-            raise serializers.ValidationError("스터디 종료일이 시작일보다 이전일 수 없습니다.")
-        # 시작일이 과거일 경우
-        if start_at < timezone.now():
-            raise serializers.ValidationError("스터디 시작일이 과거일 수 없습니다.")
-        # 스터디 기간이 5일 미만인 경우
-        if (end_at - start_at).days < 4:
-            raise serializers.ValidationError("스터디 종료 날짜는 시작날 기준 최소 5일 이후여야 합니다. ")
+        if start_at is not None:
+            # 종료일이 시작일 이전일 경우
+            if start_at > end_at:
+                raise serializers.ValidationError("스터디 종료일이 시작일보다 이전일 수 없습니다.")
+            # 스터디 기간이 5일 미만인 경우
+            if (end_at - start_at).days < 4:
+                raise serializers.ValidationError("스터디 종료 날짜는 시작날 기준 최소 5일 이후여야 합니다. ")
+        if start_at is not None and end_at is not None:
+            # 시작일이 과거일 경우
+            if start_at < timezone.now():
+                raise serializers.ValidationError("스터디 시작일이 과거일 수 없습니다.")
+
         return attrs
 
     def create(self, validated_data: Dict[str, Any]) -> Any:
@@ -82,10 +86,11 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
 
         lectures = validated_data.pop("lectures")
 
-        img = validated_data.pop("profile_img")
-        s3_uploader = S3Uploader()
-        profile_img_url = s3_uploader.upload_file(file=img)
-        validated_data["profile_img_url"] = profile_img_url.get("url")
+        if "profile_img" in validated_data:
+            img = validated_data.pop("profile_img")
+            s3_uploader = S3Uploader()
+            profile_img_url = s3_uploader.upload_file(file=img)
+            validated_data["profile_img_url"] = profile_img_url.get("url")
 
         with transaction.atomic():
             study_group = StudyGroup.objects.create(**validated_data)
@@ -94,6 +99,31 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
             GroupMember.objects.create(study_group=study_group, is_leader=True, user=user)
             study_group.refresh_from_db()
         return study_group
+
+    def update(self, instance: StudyGroup, validated_data: Dict[str, Any]) -> Any:
+        """
+        등록된 스터디 그룹을 수정.
+        :param instance: 기존 객체
+        :param validated_data: 검증 끝난 데이터
+        :return:
+        """
+        if "profile_img" in validated_data:
+            img = validated_data.pop("profile_img")
+            s3_uploader = S3Uploader()
+            profile_img_url = s3_uploader.upload_file(file=img)
+            validated_data["profile_img_url"] = profile_img_url.get("url")
+
+        instance.name = validated_data.get("name", instance.name)
+        instance.introduction = validated_data.get("introduction", instance.introduction)
+        instance.max_headcount = validated_data.get("max_headcount", instance.max_headcount)
+        instance.profile_img_url = validated_data.get("profile_img_url", instance.profile_img_url)
+        instance.start_at = validated_data.get("start_at", instance.start_at)
+        instance.end_at = validated_data.get("end_at", instance.end_at)
+        lectures = validated_data.get("lectures")
+        if lectures is not None:
+            instance.lectures.set(lectures)
+        instance.save()
+        return instance
 
     def to_representation(self, instance: StudyGroup) -> dict[str, Any]:
         ret = super().to_representation(instance)
