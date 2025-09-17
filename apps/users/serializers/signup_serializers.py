@@ -4,15 +4,15 @@ from rest_framework import serializers
 
 from apps.users.models import User
 from apps.users.services.email_service import EmailVerificationService
-from apps.users.services.exceptions import PhoneVerificationCodeFailedError
-from apps.users.services.phone_service import TwilioAuthService
-from apps.users.utils.enums import VerificationPurpose
+from apps.users.services.phone_service import TwilioAuthService, PhoneVerificationService
 
 twilio_service = TwilioAuthService()
 email_service = EmailVerificationService()
-
+phone_service = PhoneVerificationService()
 
 class UserSignupSerializer(serializers.ModelSerializer[User]):
+    email_verification_code = serializers.CharField(write_only=True)
+    phone_verification_code = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
@@ -24,6 +24,8 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
             "phone_number",
             "birthday",
             "gender",
+            "email_verification_code",
+            "phone_verification_code"
         ]
         extra_kwargs = {"password": {"write_only": True}}
 
@@ -51,40 +53,33 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
             raise serializers.ValidationError("이미 사용 중인 휴대폰 번호입니다.")
         return value
 
-    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+    def validate_email_verification_code(self, value: str) -> str:
         """
-        이메일, 휴대폰 인증코드 검증 + 최종 인증 여부
+        이메일 인증 코드 검증
         """
-        email = attrs["email"]
-        phone_number = attrs["phone_number"]
+        email = self.initial_data.get('email')
+        if not email:
+            raise serializers.ValidationError("이메일 주소가 필요합니다.")
 
-        # 인증 코드 가져오기
-        phone_code = self.initial_data.get("phone_verification_code")
-        email_code = self.initial_data.get("email_verification_code")
+        if not email_service.is_verified(email, value):
+            raise serializers.ValidationError("이메일 인증 코드가 올바르지 않거나 만료되었습니다.")
 
-        # 휴대폰 검증 코드
-        if not phone_code:
-            raise serializers.ValidationError({"phone_number": "휴대폰 인증 코드가 필요합니다"})
+        return value
 
-        try:
-            twilio_service.check_verification_code(phone_number=phone_number, code=phone_code)
-        except PhoneVerificationCodeFailedError as e:
-            raise serializers.ValidationError({"phone_number": str(e)})
+    def validate_phone_verification_code(self, value: str) -> str:
+        """
+        휴대폰 인증 코드 검증
+        """
+        phone_number = self.initial_data.get('phone_number')
+        if not phone_number:
+            raise serializers.ValidationError("휴대폰 번호가 필요합니다.")
 
-        # 이메일 검증 코드
-        if not email_code:
-            raise serializers.ValidationError("이메일 인증 코드가 필요합니다")
-        email_service.verify_code(purpose=VerificationPurpose.SIGNUP, email=email, verification_code=email_code)
+        if not phone_service.is_verified(phone_number=phone_number, verification_code=value):
+            raise serializers.ValidationError("휴대폰 인증 코드가 올바르지 않거나 만료되었습니다.")
 
-        # 인증 여부 확인
-        if not email_service.is_verified(email, email_code):
-            raise serializers.ValidationError({"email": " 이메일 인증이 완료되지 않았습니다"})
-
-        return attrs
+        return value
 
     def create(self, validated_data: dict[str, Any]) -> User:
-        password = validated_data.pop("password")
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
+        validated_data.pop("email_verification_code", None)
+        validated_data.pop("phone_verification_code", None)
+        return User.objects.create_user(**validated_data)
