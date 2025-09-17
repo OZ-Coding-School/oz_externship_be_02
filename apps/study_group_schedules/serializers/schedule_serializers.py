@@ -5,6 +5,7 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 
 from apps.studies.models.study_groups import StudyGroup
+from apps.study_group_schedules.enums import ScheduleOrdering
 from apps.study_group_schedules.models import GroupSchedule
 
 
@@ -73,11 +74,8 @@ class StudyGroupScheduleListQueryParamsSerializer(serializers.Serializer[GroupSc
     start_date = serializers.DateField(required=False, help_text="조회 시작 날짜 (YYYY-MM-DD)")
     end_date = serializers.DateField(required=False, help_text="조회 종료 날짜 (YYYY-MM-DD)")
     ordering = serializers.ChoiceField(
-        choices=[
-            ("session_date", "날짜순"),
-            ("-session_date", "날짜 역순"),
-        ],
-        default="-session_date",
+        choices=ScheduleOrdering.choices(),
+        default=ScheduleOrdering.default(),
         required=False,
         help_text="정렬 옵션",
     )
