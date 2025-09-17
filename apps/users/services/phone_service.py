@@ -24,6 +24,7 @@ class TwilioAuthService:
             raise PhoneSendingFailedError(f"휴대폰 인증번호 발송 실패 {e}")
 
     # 인증번호 검증
+
     def check_verification_code(self, phone_number: str, code: str) -> None:
         try:
             verification_check = self.client.verify.v2.services(self.service_sid).verification_checks.create(
@@ -33,3 +34,13 @@ class TwilioAuthService:
             raise PhoneVerificationCodeFailedError(f"휴대폰 인증에 실패했습니다 {e}")
         if verification_check.status != "approved":
             raise PhoneVerificationCodeFailedError("휴대폰 인증번호가 일치하지 않습니다")
+
+        verified_key = f"is_verified_phone_{phone_number}_{code}"
+        cache.set(verified_key, True, timeout=600)
+
+    def is_verified(self, phone_number: str, code: str) -> bool:
+        """
+        번호 + 코드 검증 완료 상태 확인
+        """
+        verified_key = f"is_verified_phone_{phone_number}_{code}"
+        return cache.get(verified_key) is True
