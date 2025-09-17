@@ -5,6 +5,7 @@ from typing import Any, TypedDict
 from rest_framework import serializers
 
 from apps.lectures.models.crawled_lectures import Lecture
+from apps.lectures.models.lecture_bookmarks import LectureBookmark
 
 
 class BookmarkToggleRequest(TypedDict):
@@ -31,10 +32,10 @@ def _minutes_to_hhmm(minutes: int) -> str:
     return f"{hours:02d}:{mins:02d}"
 
 
-# 북마크 목록 조회(REQ-LECT-006)
-class BookmarkListItemSerializer(serializers.ModelSerializer[Lecture]):
+# Lecture 목록
+class LectureSerializer(serializers.ModelSerializer[Lecture]):
     duration_hhmm = serializers.SerializerMethodField()
-    difficulty = serializers.SerializerMethodField()  # 변환 필드
+    difficulty = serializers.SerializerMethodField()
 
     class Meta:
         model = Lecture
@@ -56,3 +57,17 @@ class BookmarkListItemSerializer(serializers.ModelSerializer[Lecture]):
     def get_difficulty(self, obj: Lecture) -> str:
         raw = (obj.difficulty or "").upper()
         return "MIDDLE" if raw == "NORMAL" else raw
+
+
+# 북마크 목록
+class LectureBookmarkListSerializer(serializers.ModelSerializer[LectureBookmark]):
+    lecture = LectureSerializer(read_only=True)
+
+    class Meta:
+        model = LectureBookmark
+        fields = ("lecture",)
+
+    def to_representation(self, instance: LectureBookmark) -> dict[str, Any]:
+        rep = super().to_representation(instance)
+        lecture_rep = rep.get("lecture", {})
+        return dict(lecture_rep)
