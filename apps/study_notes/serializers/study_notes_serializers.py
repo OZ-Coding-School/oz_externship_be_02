@@ -3,6 +3,7 @@ from typing import Sequence
 from django.core.files.uploadedfile import UploadedFile
 from rest_framework import serializers
 
+from apps.study_notes.constants import ALLOWED_ATTACHMENT_FILE_TYPES
 from apps.study_notes.models.study_notes import (
     StudyNote,
     StudyNoteAttachment,
@@ -63,21 +64,11 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
 
     # 첨부파일 유효성 검사
     def validate_attachment_files(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
-        allowed_types = [
-            "application/pdf",  # PDF
-            "application/msword",  # DOC
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # DOCX
-            "application/haansofthwp",  # HWP
-            "application/vnd.ms-powerpoint",  # PPT
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",  # PPTX
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # XLSX
-            "text/plain",  # TXT
-        ]
         if len(files) > 3:
             raise serializers.ValidationError("첨부파일은 최대 3개까지 업로드 가능합니다.")
         for f in files:
             if f.size is not None and f.size > 5 * 1024 * 1024:
                 raise serializers.ValidationError(f"{f.name}: 첨부파일은 5MB 이하만 업로드 가능합니다.")
-            if f.content_type not in allowed_types:
+            if f.content_type not in ALLOWED_ATTACHMENT_FILE_TYPES:
                 raise serializers.ValidationError(f"{f.name}: 지원하지 않는 파일 형식입니다.")
         return files
