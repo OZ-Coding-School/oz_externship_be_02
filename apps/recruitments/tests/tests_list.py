@@ -163,7 +163,7 @@ class RecruitmentsListTestCase(APITestCase):
     def test_list_page(self) -> None:
         url = reverse("recruitment-list")
         query_params = {"page": 1, "size": 3}
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         results = res.data["results"]
         self.assertEqual(len(results), 3)
@@ -171,7 +171,7 @@ class RecruitmentsListTestCase(APITestCase):
     def test_list_search(self) -> None:
         url = reverse("recruitment-list")
         query_params: Dict[str, Union[str, int]] = {"page": 1, "search": "3"}
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         results = res.data["results"]
         self.assertEqual(len(results), 2)
@@ -179,7 +179,7 @@ class RecruitmentsListTestCase(APITestCase):
     def test_list_order(self) -> None:
         url = reverse("recruitment-list")
         query_params: Dict[str, Union[str, int]] = {"page": 1, "size": 20, "ordering": "-bookmarks_count,-created_at"}
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         results = res.data["results"]
         self.assertEqual(results[0]["bookmarks_count"], 5)
@@ -188,14 +188,14 @@ class RecruitmentsListTestCase(APITestCase):
     def test_list_filter(self) -> None:
         url = reverse("recruitment-list")
         query_params: Dict[str, Union[str, int]] = {"page": 1, "tag": "tag1"}
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["count"], 10)
 
         query_params = {"page": 1, "tag": "tag4"}
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.data["count"], 5)
 
         query_params = {"page": 1, "tag": "없는 태그"}
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.data["count"], 0)
