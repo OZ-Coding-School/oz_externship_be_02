@@ -1,7 +1,7 @@
 # apps/users/views/withdrawals.py
 
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,6 +33,7 @@ class WithdrawalAPIView(APIView):
 
 
 class AccountRecoveryAPIView(APIView):
+    permission_classes = [AllowAny]
     """
     탈퇴 계정 복구 요청 API
     └ 이메일과 인증 코드 검증
@@ -40,7 +41,6 @@ class AccountRecoveryAPIView(APIView):
     """
 
     def post(self, request: Request) -> Response:
-
         # 1) 유효성 검증
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
