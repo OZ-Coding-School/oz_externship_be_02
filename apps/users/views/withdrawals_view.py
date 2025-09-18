@@ -1,4 +1,4 @@
-# apps/users/views/withdrawals.py
+# apps/users/views/withdrawals_view.py
 
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -9,12 +9,12 @@ from rest_framework.views import APIView
 from apps.users.serializers.email_verification_serializers import (
     EmailVerifyCodeSerializer,
 )
-from apps.users.serializers.withdrawals import (
+from apps.users.serializers.withdrawals_serializer import (
     WithdrawalRequestSerializer,
     WithdrawalResponseSerializer,
 )
 from apps.users.services.email_service import EmailVerificationService
-from apps.users.services.withdrawals import create_withdrawal, recover_account
+from apps.users.services.withdrawals_service import create_withdrawal, recover_account
 from apps.users.utils.enums import VerificationPurpose
 
 email_service = EmailVerificationService()

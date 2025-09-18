@@ -1,4 +1,4 @@
-# apps/users/services/withdrawals.py
+# apps/users/services/withdrawals_service.py
 
 from datetime import date, timedelta
 
