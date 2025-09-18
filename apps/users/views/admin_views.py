@@ -1,8 +1,9 @@
+from typing import Type, Union
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser
 from rest_framework.request import Request
@@ -11,8 +12,9 @@ from rest_framework.views import APIView
 
 from apps.users.filters import UserFilter
 from apps.users.models import User
-from apps.users.permissons import IsSuperUser
+from apps.users.permissions import IsSuperUser
 from apps.users.serializers.admin_serializers import (
+    UserAdminDetailSerializer,
     UserAdminListSerializer,
     UserPermissionResponseSerializer,
     UserPermissionUpdateSerializer,
@@ -52,12 +54,12 @@ class UserAdminPagination(PageNumberPagination):
 
 class UserAdminViewSet(viewsets.ReadOnlyModelViewSet[User]):
     """
-    관리자용 회원 목록 조회 API
+    관리자용 회원 목록 조회 및 회원 정보 상세 조회 API
     """
 
     queryset = User.objects.select_related("withdrawals").all().order_by("uuid")
-    serializer_class = UserAdminListSerializer
     permission_classes = [IsAdminUser]
+    lookup_field = "uuid"
 
     # 페이지네이션, 필터링, 검색, 정렬 기능 구현
     pagination_class = UserAdminPagination
@@ -69,3 +71,10 @@ class UserAdminViewSet(viewsets.ReadOnlyModelViewSet[User]):
     search_fields = ["nickname", "name", "email"]
     # 정렬 필드 지정
     ordering_fields = ["uuid", "created_at", "name", "email"]
+
+    # 요청에 따라 목록 조회 or 정보 상세 조회 시리얼라이저 반환
+    def get_serializer_class(self) -> Type[Union[UserAdminDetailSerializer, UserAdminListSerializer]]:
+        if self.action == "retrieve":
+            return UserAdminDetailSerializer
+
+        return UserAdminListSerializer
