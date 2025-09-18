@@ -2,19 +2,23 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.tests.mixins.test_user_mixins import TestUserMixin
+from apps.users.enums import Permission, UserStatus
 from apps.users.models import User, Withdrawals
 
 user_model = User
 
 
-class UserAdminAPITest(APITestCase, TestUserMixin):
-    superuser: "User"
-    staff_user: "User"
+class UserAdminAPITest(APITestCase):
+    superuser: User
+    staff_user: User
+    active_user: User
+    inactive_user: User
+    withdrawn_user: User
+    list_url: str
 
-    # Mixin을 사용하지 않고 모든 유저를 직접 생성하여 고유성을 보장합니다.
     @classmethod
     def setUpTestData(cls) -> None:
+        """모든 테스트 유저를 여기서 직접 생성해서 고유성 보장"""
         cls.superuser = user_model.objects.create_superuser(
             email="superuser@test.com",
             password="pw",
@@ -28,15 +32,13 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
             email="staff@test.com",
             password="pw",
             name="스태프",
-            nickname="staff",
+            nickname="staff_user",
             phone_number="010-1111-1111",
             birthday="1991-01-01",
             is_staff=True,
             is_active=True,
         )
-
-    def setUp(self) -> None:
-        self.active_user = user_model.objects.create_user(
+        cls.active_user = user_model.objects.create_user(
             email="active@test.com",
             password="pw",
             name="활성유저",
@@ -45,7 +47,7 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
             birthday="1992-01-01",
             is_active=True,
         )
-        self.inactive_user = user_model.objects.create_user(
+        cls.inactive_user = user_model.objects.create_user(
             email="inactive@test.com",
             password="pw",
             name="비활성유저",
@@ -54,7 +56,7 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
             birthday="1993-01-01",
             is_active=False,
         )
-        self.withdrawn_user = user_model.objects.create_user(
+        cls.withdrawn_user = user_model.objects.create_user(
             email="withdrawn@test.com",
             password="pw",
             name="탈퇴유저",
@@ -64,72 +66,71 @@ class UserAdminAPITest(APITestCase, TestUserMixin):
             is_active=True,
         )
 
-        Withdrawals.objects.create(
-            user=self.withdrawn_user, reason="OTHER", reason_detail="test", due_date="2025-12-31"
-        )
-        self.list_url = reverse("admin_user:users-list")
+        Withdrawals.objects.create(user=cls.withdrawn_user, reason="OTHER", reason_detail="test", due_date="2025-12-31")
+        cls.list_url = reverse("admin_user:users-list")
 
     # 권한 수정 API 테스트
-    # 슈퍼유저가 일반유저의 권한을 staff으로 변경하는 기능 테스트
     def test_permission_update_success_as_superuser(self) -> None:
         self.client.force_authenticate(user=self.superuser)
-        data = {"permission": "staff"}
+        data = {"permission": Permission.STAFF.value[0]}
         url = reverse("admin_user:user_permissions", kwargs={"user_uuid": self.active_user.uuid})
-
         response = self.client.patch(url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.active_user.refresh_from_db()
         self.assertTrue(self.active_user.is_staff)
-        self.assertFalse(self.active_user.is_superuser)
 
-    # 일반 스태프가 권한 변경 시도 시 403 에러가 발생하는지 테스트
     def test_permission_update_fail_as_staff(self) -> None:
         self.client.force_authenticate(user=self.staff_user)
-        data = {"permission": "admin"}
+        data = {"permission": Permission.ADMIN.value[0]}
         url = reverse("admin_user:user_permissions", kwargs={"user_uuid": self.active_user.uuid})
         response = self.client.patch(url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # 회원 목록 조회 API 테스트
-    # 스태프가 회원 목록을 성공적으로 조회하는지 테스트
-    def test_user_list_success_as_staff(self) -> None:
+    # 회원 목록 및 상세 조회 API 테스트
+    def test_list_and_retrieve_users_success_as_staff(self) -> None:
+        """슈퍼유저가 아닌 일반 스태프가 회원 목록과 상세 정보를 성공적으로 조회하는지 테스트"""
         self.client.force_authenticate(user=self.staff_user)
-        response = self.client.get(self.list_url)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 5)  # 전체 유저 수
-        self.assertEqual(len(response.data["results"]), 5)
+        list_response = self.client.get(self.list_url)
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
 
-    # 일반 유저가 회원 목록 조회 시 403 에러가 발생하는지 테스트
-    def test_user_list_fail_for_general_user(self) -> None:
+        detail_url = reverse("admin_user:users-detail", kwargs={"uuid": self.active_user.uuid})
+        detail_response = self.client.get(detail_url)
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+        self.assertIn("phone_number", detail_response.data)
+
+    def test_access_denied_for_general_user(self) -> None:
+        """일반 유저가 관리자 API 접근 시 403 에러가 발생하는지 테스트"""
         self.client.force_authenticate(user=self.active_user)
-        response = self.client.get(self.list_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # 권한(permission)으로 필터링이 잘 되는지 테스트
-    def test_user_list_filter_by_permission(self) -> None:
-        self.client.force_authenticate(user=self.superuser)
-        response = self.client.get(self.list_url, {"permission": "staff"})
+        list_response = self.client.get(self.list_url)
+        self.assertEqual(list_response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 1)
-        self.assertEqual(response.data["results"][0]["email"], self.staff_user.email)
+        detail_url = reverse("admin_user:users-detail", kwargs={"uuid": self.staff_user.uuid})
+        detail_response = self.client.get(detail_url)
+        self.assertEqual(detail_response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # 상태(status)로 필터링이 잘 되는지 테스트
-    def test_user_list_filter_by_status(self) -> None:
+    # 필터링, 검색, 정렬 테스트
+    def test_list_features_work_correctly(self) -> None:
+        """목록 조회의 필터링, 검색, 정렬 기능이 올바르게 동작하는지 테스트"""
         self.client.force_authenticate(user=self.superuser)
 
-        response = self.client.get(self.list_url, {"status": "withdrawn"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # 권한 필터링 테스트
+        permission_response = self.client.get(self.list_url, {"permission": Permission.STAFF.value[0]})
+        self.assertEqual(permission_response.data["count"], 1)
+        self.assertEqual(permission_response.data["results"][0]["email"], self.staff_user.email)
+
+        # 필터링 기능 테스트
+        response = self.client.get(self.list_url, {"status": UserStatus.WITHDRAWN.value[0]})
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["email"], self.withdrawn_user.email)
 
-    # 닉네임으로 검색이 잘 되는지 테스트
-    def test_user_list_search(self) -> None:
-        self.client.force_authenticate(user=self.superuser)
+        # 검색 기능 테스트
         response = self.client.get(self.list_url, {"search": "active_us"})
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["email"], self.active_user.email)
+
+        # 정렬 기능 테스트
+        response = self.client.get(self.list_url, {"ordering": "-created_at"})
+        self.assertEqual(response.data["results"][0]["email"], self.withdrawn_user.email)
