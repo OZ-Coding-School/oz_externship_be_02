@@ -112,16 +112,14 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
             profile_img_url = s3_uploader.upload_file(file=img)
             validated_data["profile_img_url"] = profile_img_url.get("url")
 
-        instance.name = validated_data.get("name", instance.name)
-        instance.introduction = validated_data.get("introduction", instance.introduction)
-        instance.max_headcount = validated_data.get("max_headcount", instance.max_headcount)
-        instance.profile_img_url = validated_data.get("profile_img_url", instance.profile_img_url)
-        instance.start_at = validated_data.get("start_at", instance.start_at)
-        instance.end_at = validated_data.get("end_at", instance.end_at)
-        lectures = validated_data.get("lectures")
-        if lectures is not None:
-            instance.lectures.set(lectures)
-        instance.save()
+        lectures = validated_data.pop("lectures", None)  # 강의 데이터가 있을 경우에만 데이터 추출, 없으면 None
+
+        with transaction.atomic():  # 하나의 작업으로 묶음, 실패 시 롤백
+            instance = super().update(instance, validated_data)  # 일반 필드 업데이트 및 save()처리.
+
+            if lectures is not None:
+                instance.lectures.set(lectures)  # Many to Many는 별도로 처리.
+
         return instance
 
     def to_representation(self, instance: StudyGroup) -> dict[str, Any]:
