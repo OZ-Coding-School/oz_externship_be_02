@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -15,6 +16,8 @@ from apps.lectures.models import Lecture
 from apps.lectures.models.crawled_lectures import DifficultyChoices, PlatformChoices
 from apps.studies.models import StudyGroup
 from apps.studies.serializers.study_group import StudyGroupCreateSerializer
+
+logger = logging.getLogger(__name__)
 
 
 @mock_aws
@@ -64,6 +67,7 @@ class UpdateStudyGroupTest(TestCase, TestUserMixin):
             "start_at": datetime(2025, 10, 15),
             "end_at": datetime(2025, 10, 30),
             "lectures": [self.lecture.id],
+            "profile_img": create_temp_image(),
         }
         self.target = StudyGroupCreateSerializer(data=self.data)
         self.assertTrue(self.target.is_valid(raise_exception=True))
@@ -75,6 +79,7 @@ class UpdateStudyGroupTest(TestCase, TestUserMixin):
             {"start_at": datetime(2025, 9, 1)},  # 과거 날짜
             {"end_at": datetime(2025, 10, 14)},  # 시작일 이전
             {"end_at": datetime(2025, 10, 17)},  # 최소기간
+            {"max_headcount": 15},
             # 성공케이스
             {"max_headcount": 5},
             {"profile_img": create_temp_image()},
@@ -87,7 +92,7 @@ class UpdateStudyGroupTest(TestCase, TestUserMixin):
             if serializer.is_valid():
                 serializer.save()
             else:
-                print(serializer.errors)
+                logger.debug(serializer.errors)
 
 
 @mock_aws
@@ -147,6 +152,7 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
             {"start_at": "2025-09-01T00:00:00Z"},  # 과거 날짜
             {"end_at": "2025-10-14T00:00:00Z"},  # 시작일 이전
             {"end_at": "2025-10-14T00:00:00Z"},  # 최소기간
+            {"max_headcount": 15},
             # 성공케이스
             {"name": "인원 수정", "max_headcount": 5},
             {"name": "프로필 사진 추가", "profile_img": create_temp_image()},
