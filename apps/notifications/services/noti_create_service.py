@@ -20,7 +20,7 @@ class ApplicationNotificationService:
         )
         return cls(app)
 
-    def notification_add_application(self) -> Notification:
+    def notify_add_application(self) -> Notification:
         rec = self.app.recruitment
         if rec is None:  # mypy
             raise ValueError("Application.recruitment is None")
@@ -32,7 +32,7 @@ class ApplicationNotificationService:
             back_url_link=f"/recruitments/{rec.uuid}/applications",
         )
 
-    def notification_application_accept(self) -> Notification:
+    def notify_application_accept(self) -> Notification:
         if self.app.status != Application.ApplicationStatus.ACCEPTED:
             raise ValueError("Application status is not accepted")
 
@@ -47,7 +47,7 @@ class ApplicationNotificationService:
             back_url_link=f"/my-page/applications",
         )
 
-    def notification_application_reject(self) -> Notification:
+    def notify_application_reject(self) -> Notification:
         if self.app.status != Application.ApplicationStatus.REJECTED:
             raise ValueError("Application.status is not REJECTED")
 
@@ -62,7 +62,7 @@ class ApplicationNotificationService:
             back_url_link="/my-page/applications",
         )
 
-    def notification_group_members_join(self) -> int:
+    def notify_group_members_join(self) -> int:
         if self.app.status != Application.ApplicationStatus.ACCEPTED:
             return 0
         rec = self.app.recruitment
