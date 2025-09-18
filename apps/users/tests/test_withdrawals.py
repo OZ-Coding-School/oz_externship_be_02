@@ -1,6 +1,7 @@
 from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.response import Response
 from rest_framework.test import APITestCase
 
 from apps.core.tests.mixins.test_user_mixins import EmailVerificationMixin
@@ -17,9 +18,9 @@ class UserWithdrawalJWTAPITest(APITestCase, EmailVerificationMixin):
     # 클래스 메소드: 테스트 클래스 전체에서 공유하는 데이터 설정
     def setUpTestData(cls) -> None:
         cls.user = cls._create_test_user()  # 유저 생성
-        cls.client.force_authenticate(user=cls.user)
 
     def setUp(self) -> None:
+        self.client.force_authenticate(user=self.user)
         self.url = reverse("account_withdrawals")  # mypy 에러 방지용
 
     def test_successful_withdrawal_request(self) -> None:
@@ -69,44 +70,51 @@ class UserRecoveryJWTAPITest(APITestCase, EmailVerificationMixin):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.user = cls._create_test_user()  # 유저 생성
-        cls.client.force_authenticate(user=cls.user)
 
     def setUp(self) -> None:
-        self.url = reverse("account_recovery")  # mypy 에러 방지용
+        self.client.force_authenticate(user=self.user)
+        self.withdrawal_url = reverse("account_withdrawals")  # mypy 에러 방지용
+        self.recovery_url = reverse("account_recovery")  # mypy 에러 방지용
 
-    # 인증 코드 설정(code: str은 나중에 123456 대신 실제 코드로 변경할 가능성을 위해 남겨 둠)
-    def _set_verification_code(self, email: str, code: str, purpose: VerificationPurpose) -> None:
-        cache.clear()  # 인증 코드 설정하는 캐시 초기화
-        cache_key = f"{purpose.RECOVER_ACCOUNT}: {email}"
-        cache.set(cache_key, 123456, timeout=300)  # 5분 동안 유효
-
-    def test_account_withdrawal_request(self) -> None:
-        # EmailVerificationMixin을 통해 인증 코드 미리 세팅
-        self._set_verification_code(self.user.email, "123456", VerificationPurpose.RECOVER_ACCOUNT)
-
-        # 1) 탈퇴 요청을 생성
+    # * 탈퇴 요청한 유저 생성
+    def _test_successful_withdrawal_request(self) -> Response:
+        self.client.force_authenticate(user=self.user)
         data = {
             "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             "reason_detail": "개인정보/보안/우려",
         }
-        response = self.client.post(self.url, data)
-        # response = self.client.post(self.send_url, {"email": (email := self.test_email)})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.post(self.withdrawal_url, data)
+        self.client.force_authenticate(user=None)
+        return response
 
+    # * 인증 코드 설정
+    def _set_verification_code(self, email: str, code: str, purpose: VerificationPurpose) -> None:
+        cache.clear()  # 인증 코드 설정하는 캐시 초기화
+        cache_key = f"{purpose}-{email}"
+        cache.set(cache_key, code, timeout=300)  # 5분 동안 유효
+
+    # * 탈퇴 복구
     def test_account_recovery_request(self) -> None:
-        # 2) 탈퇴 신청을 번복(계정 복구 요청)
+        # 1) 탈퇴 요청을 생성
+        self._test_successful_withdrawal_request()
+
+        # 2) EmailVerificationMixin을 통해 인증 코드 세팅
+        self._set_verification_code(self.user.email, "123456", VerificationPurpose.RECOVER_ACCOUNT)
+
+        # 3) 탈퇴 신청을 번복(계정 복구 요청)
         data = {
             "email": self.user.email,
-            "verification_code": "123456",  # 테스트용 코드
+            "verification_code": "123456",
         }
 
-        response = self.client.post(self.url, data)
+        response = self.client.post(self.recovery_url, data)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["detail"], "계정이 복구되었습니다. 이제 로그인할 수 있습니다.")
 
-        # 3) 유저 계정 활성화 확인
+        # 4) 유저 계정 활성화 확인
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_active)
 
-        # 4) Withdrawals 레코드 삭제 확인
+        # 5) Withdrawals 레코드에서 해당 유저가 삭제되었는지 확인
         self.assertFalse(Withdrawals.objects.filter(user=self.user).exists())
