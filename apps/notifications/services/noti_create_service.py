@@ -106,9 +106,7 @@ class StudyNoteNotificationService:
 
     @classmethod
     def from_id(cls, sn_id: int) -> "StudyNoteNotificationService":
-        sn = StudyNote.objects.select_related("author", "study_group").get(
-            pk=sn_id
-        )
+        sn = StudyNote.objects.select_related("author", "study_group").get(pk=sn_id)
         return cls(sn)
 
     def notify_add_study_note(self) -> int:
@@ -118,7 +116,7 @@ class StudyNoteNotificationService:
 
         accepted_user_ids.discard(author.id)
         if not accepted_user_ids:
-          return 0
+            return 0
 
         notifications = [
             Notification(
@@ -131,6 +129,6 @@ class StudyNoteNotificationService:
         ]
 
         with transaction.atomic():
-          created = Notification.objects.bulk_create(notifications)
+            created = Notification.objects.bulk_create(notifications)
 
         return len(created)
