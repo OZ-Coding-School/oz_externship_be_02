@@ -2,6 +2,8 @@
 
 from datetime import date, timedelta
 
+from django.db import transaction
+
 from apps.users.models.user import User
 from apps.users.models.withdrawals import Withdrawals
 
@@ -21,7 +23,7 @@ def create_withdrawal(user: User, reason: str, reason_detail: str) -> Withdrawal
     return withdrawal
 
 
-def recover_account(email: str, verification_code: str) -> User:
+def recover_account(email: str) -> None:
     """
     인증 코드 검증 후 유저 계정을 복구하고 탈퇴 요청을 삭제.
     """
@@ -33,12 +35,9 @@ def recover_account(email: str, verification_code: str) -> User:
     if not withdrawal:
         raise Withdrawals.DoesNotExist("해당 이메일로 탈퇴 요청이 존재하지 않습니다.")
 
-    # 2) 유저 계정 복구: 탈퇴 요청만 삭제하는 거고 user 모델의 상태는 변경하지 않으므로 user.is_active = True를 명시적으로 설정
-    user = withdrawal.user
-    user.is_active = True
-    user.save()
-
-    # 3) 탈퇴 요청 삭제: withdrawal 모델에서 해당 user를 삭제
-    withdrawal.delete()
-
-    return user
+    # 2) 유저 계정 복구와 탈퇴 요청 삭제: 탈퇴 요청만 삭제하는 거고 user 모델의 상태는 변경하지 않으므로 user.is_active = True를 명시적으로 설정
+    with transaction.atomic():
+        user = withdrawal.user
+        user.is_active = True
+        user.save()
+        withdrawal.delete()
