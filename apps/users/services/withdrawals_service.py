@@ -23,7 +23,7 @@ def create_withdrawal(user: User, reason: str, reason_detail: str) -> Withdrawal
     return withdrawal
 
 
-def recover_account(email: str) -> None:
+def recover_account(email: str, verification_code: str) -> None:
     """
     인증 코드 검증 후 유저 계정을 복구하고 탈퇴 요청을 삭제.
     """
