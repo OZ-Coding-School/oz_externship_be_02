@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import BasePermission, IsAdminUser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,6 +16,7 @@ from apps.users.permissions import IsSuperUser
 from apps.users.serializers.admin_serializers import (
     UserAdminDetailSerializer,
     UserAdminListSerializer,
+    UserAdminUpdateSerializer,
     UserPermissionResponseSerializer,
     UserPermissionUpdateSerializer,
 )
@@ -52,13 +53,15 @@ class UserAdminPagination(PageNumberPagination):
     max_page_size = 50
 
 
-class UserAdminViewSet(viewsets.ReadOnlyModelViewSet[User]):
+class UserAdminViewSet(viewsets.ModelViewSet[User]):
     """
-    관리자용 회원 목록 조회 및 회원 정보 상세 조회 API
+    관리자용 회원 CRUD API
+    목록 조회 / 정보 상세 조회 (GET)
+    회원 정보 수정 (PATCH)
+    회원 정보 삭제 (DELETE)
     """
 
     queryset = User.objects.select_related("withdrawals").all().order_by("uuid")
-    permission_classes = [IsAdminUser]
     lookup_field = "uuid"
 
     # 페이지네이션, 필터링, 검색, 정렬 기능 구현
@@ -72,8 +75,20 @@ class UserAdminViewSet(viewsets.ReadOnlyModelViewSet[User]):
     # 정렬 필드 지정
     ordering_fields = ["uuid", "created_at", "name", "email"]
 
+    def get_permissions(self) -> list[BasePermission]:
+        """요청에 따라 다른 권한을 적용합니다."""
+        if self.action == "destroy":
+            # 회원 정보 삭제는 관리자(superuser)만 가능하도록 권한 설정
+            return [IsSuperUser()]
+        # 그 외 조회, 상세조회, 수정은 스태프 권한 이상 가능하도록 설정
+        return [IsAdminUser()]
+
     # 요청에 따라 목록 조회 or 정보 상세 조회 시리얼라이저 반환
-    def get_serializer_class(self) -> Type[Union[UserAdminDetailSerializer, UserAdminListSerializer]]:
+    def get_serializer_class(
+        self,
+    ) -> Type[Union[UserAdminDetailSerializer, UserAdminListSerializer, UserAdminUpdateSerializer]]:
+        if self.action in ["update", "partial_update"]:
+            return UserAdminUpdateSerializer
         if self.action == "retrieve":
             return UserAdminDetailSerializer
 
