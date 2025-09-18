@@ -1,8 +1,8 @@
 from django.db.models import QuerySet
 from django_filters import rest_framework as filters
 
-from apps.users.enums import Permission, UserStatus
 from apps.users.models import User
+from apps.users.utils.enums import Permission, UserStatus
 
 # Enum을  사용해 CHOICES를 동적으로 생성
 PERMISSION_CHOICES = [p.value for p in Permission]

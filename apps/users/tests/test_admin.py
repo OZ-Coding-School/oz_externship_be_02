@@ -2,8 +2,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.users.enums import Permission, UserStatus
 from apps.users.models import User, Withdrawals
+from apps.users.utils.enums import Permission, UserStatus
 
 user_model = User
 
