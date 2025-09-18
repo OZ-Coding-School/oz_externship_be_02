@@ -2,8 +2,8 @@ from typing import Any, Dict
 
 from rest_framework import serializers
 
-from apps.users.enums import Permission
 from apps.users.models import User, Withdrawals
+from apps.users.utils.enums import Permission
 
 
 class UserPermissionUpdateSerializer(serializers.ModelSerializer[User]):
