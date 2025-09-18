@@ -30,8 +30,9 @@ class WithdrawalResponseSerializer(serializers.ModelSerializer[Withdrawals]):
         model = Withdrawals
         fields = ("user", "reason", "reason_detail", "due_date", "created_at", "updated_at")
 
+    # 복구 코드 입력 검증용
+
 
 class AccountRecoverySerializer(serializers.Serializer[Withdrawals]):
-    # 복구 코드 입력 검증용
-    # email 정의 안 하는 이유: request.user.email을 그대로 쓰는 게 Django가 권장하는 방식으로 보임
-    code = serializers.CharField()
+    email = serializers.EmailField()
+    verification_code = serializers.CharField()
