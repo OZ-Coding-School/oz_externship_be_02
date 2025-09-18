@@ -32,6 +32,7 @@ class StudyNoteUploadViewTest(TestCase):
             start_at=timezone.make_aware(datetime(2025, 9, 16, 12, 0, 0)),
             end_at=timezone.make_aware(datetime(2025, 9, 30, 12, 0, 0)),
         )
+        self.study_group.members.add(self.user)
         self.client.force_authenticate(user=self.user)
 
     def test_upload_success(self) -> None:
