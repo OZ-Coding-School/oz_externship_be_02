@@ -1,5 +1,8 @@
+from typing import Tuple
 from uuid import UUID
 
+from django.db.models import QuerySet
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -11,7 +14,6 @@ from apps.studies.models.study_reviews import StudyReview
 from apps.studies.serializers.review_serializers import (
     ReviewCreateRequestSerializer,
     ReviewCreateResponseSerializer,
-    ReviewListRequestSerializer,
     ReviewListResponseSerializer,
 )
 
@@ -45,14 +47,16 @@ class StudyGroupReviewListView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request: Request, group_uuid: UUID, *args: object, **kwargs: object) -> Response:
-        # 요청 검증
-        req = ReviewListRequestSerializer(data={"group_uuid": group_uuid}, context={"request": request})
-        req.is_valid(raise_exception=True)
+    def get_queryset(self, group_uuid: UUID) -> Tuple[StudyGroup, "QuerySet[StudyReview]"]:
+        # 스터디 그룹 검증 (없으면 404)
+        group = get_object_or_404(StudyGroup, uuid=group_uuid)
 
-        group: StudyGroup = req.context["study_group"]
-
+        # 리뷰 목록 조회 (없으면 빈 리스트 반환)
         qs = StudyReview.objects.filter(study_group=group).order_by("-created_at")
+        return group, qs
+
+    def get(self, request: Request, group_uuid: UUID, *args: object, **kwargs: object) -> Response:
+        group, qs = self.get_queryset(group_uuid)
         payload = {"study_group_id": group.id, "reviews": qs}
 
         res = ReviewListResponseSerializer(payload, context={"request": request})
