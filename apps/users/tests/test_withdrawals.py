@@ -4,12 +4,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.test import APITestCase
 
-from apps.core.tests.mixins.test_user_mixins import EmailVerificationMixin
+from apps.core.tests.mixins.test_user_mixins import VerificationMixin
 from apps.users.models.withdrawals import Withdrawals, WithdrawalsReasonChoices
 from apps.users.utils.enums import VerificationPurpose
 
 
-class UserWithdrawalJWTAPITest(APITestCase, EmailVerificationMixin):
+class UserWithdrawalJWTAPITest(APITestCase, VerificationMixin):
     """
     회원 탈퇴 요청 API 테스트
     """
@@ -66,7 +66,7 @@ class UserWithdrawalJWTAPITest(APITestCase, EmailVerificationMixin):
         self.assertEqual(error_detail.code, "error")
 
 
-class UserRecoveryJWTAPITest(APITestCase, EmailVerificationMixin):
+class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.user = cls._create_test_user()  # 유저 생성
