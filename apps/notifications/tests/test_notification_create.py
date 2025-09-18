@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.applications.models.applications import Application
 from apps.notifications.models import Notification
 from apps.recruitments.models.recruitments import Recruitment
+from apps.studies.models import GroupMember
 from apps.studies.models.study_groups import StudyGroup
 from apps.users.models.user import User
 
@@ -114,7 +115,7 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
         n = notifs.first()
         assert n is not None  # mypy
         self.assertIn(self.recruitment.title, n.content)
-        self.assertEqual(n.back_url_link, "/applications/me")
+        self.assertEqual(n.back_url_link, "/my-page/applications")
 
         # 같은 상태로 한 번 더 저장해도 추가 생성되지 않음(중복 방지)
         with transaction.atomic():
@@ -154,10 +155,81 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
         n = notifs.first()
         assert n is not None
         self.assertIn(self.recruitment.title, n.content)
-        self.assertEqual(n.back_url_link, "/applications/me")
+        self.assertEqual(n.back_url_link, "/my-page/applications")
 
         # 같은 상태로 한 번 더 저장해도 추가 생성되지 않음(중복 방지)
         with transaction.atomic():
             app.status = Application.ApplicationStatus.REJECTED
             app.save(update_fields=["status"])
         self.assertEqual(notifs.count(), 1)
+
+    def test_notification_created_after_accept_status_change_by_study_join(self) -> None:
+        """
+        Application 상태가 PENDING -> ACCEPTED로 바뀌면
+        on_commit 이후 기존 스터디 그룹원에게 신규 인원이 있다는 알림 발생
+        """
+        # 기존 멤버
+        old_member = User.objects.create_user(
+            email="oldmember@example.com",
+            password="pass1234!",
+            nickname="oz",
+            name="Old Member",
+            phone_number="01012341222",
+            gender="male",
+            birthday=date(1993, 1, 1),
+        )
+        # 리더
+        GroupMember.objects.create(study_group=self.recruitment.study_group, user=self.leader, is_leader=True)
+
+        # 기존 멤버
+        GroupMember.objects.create(study_group=self.recruitment.study_group, user=old_member, is_leader=False)
+
+        with transaction.atomic():
+            app_old = Application.objects.create(
+                recruitment=self.recruitment,
+                user=old_member,
+                objective="파이썬 심화",
+                motivation="깊게 배우고 싶어서",
+                self_introduction="열심히 하겠습니다",
+                available_time="주중 저녁",
+                has_study_experience=False,
+                status=Application.ApplicationStatus.PENDING,
+            )
+
+        with transaction.atomic():
+            app_old.status = Application.ApplicationStatus.ACCEPTED
+            app_old.save(update_fields=["status"])
+
+        # 신규 멤버 accept
+        with transaction.atomic():
+            app_new = Application.objects.create(
+                recruitment=self.recruitment,
+                user=self.applicant,
+                objective="파이썬 심화2",
+                motivation="깊게 배우고 싶어서2",
+                self_introduction="열심히 하겠습니다2",
+                available_time="주중 저녁2",
+                has_study_experience=False,
+                status=Application.ApplicationStatus.PENDING,
+            )
+
+        with transaction.atomic():
+            app_new.status = Application.ApplicationStatus.ACCEPTED
+            app_new.save(update_fields=["status"])
+
+        notifs = Notification.objects.filter(
+            notification_type=Notification.NotificationType.STUDY_JOIN,
+        )
+        self.assertGreaterEqual(notifs.count(), 2)  # 기존 멤버(old_member)와 그룹 리더(self.leader)에게 알림 생성
+
+        recipients = set(notifs.values_list("user_id", flat=True))
+        self.assertIn(old_member.id, recipients)
+        self.assertIn(self.leader.id, recipients)
+        self.assertNotIn(self.applicant.id, recipients)
+
+        n_old = notifs.filter(user_id=old_member.id).first()
+        assert n_old is not None  # mypy
+        self.assertIn(self.recruitment.study_group.name, n_old.content)
+        self.assertIn(self.applicant.nickname, n_old.content)
+        group_id = self.recruitment.study_group_id
+        self.assertEqual(n_old.back_url_link, f"/study-groups/{group_id}/chat")

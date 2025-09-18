@@ -6,7 +6,7 @@ from django.dispatch import receiver
 
 from apps.applications.models import Application
 from apps.notifications.services.noti_create_service import (
-    NotificationCreateApplicationService,
+    ApplicationNotificationService,
 )
 
 
@@ -29,7 +29,7 @@ def notify_add_application(instance: Application, created: bool, **kwargs: Any) 
     app_id = instance.pk
 
     def add_application() -> None:
-        NotificationCreateApplicationService.notification_add_application_by_id(app_id)
+        ApplicationNotificationService.from_id(app_id).notify_add_application()
 
     transaction.on_commit(add_application)
 
@@ -49,13 +49,17 @@ def notify_status_change_to_applicant(instance: Application, created: bool, **kw
     if curr == Application.ApplicationStatus.ACCEPTED:  # 현재가 승인  상태로 바뀐 경우만
 
         def accept_application() -> None:
-            NotificationCreateApplicationService.notification_application_accept_by_id(app_id)
+            ApplicationNotificationService.from_id(app_id).notify_application_accept()
+
+        def join_study_group() -> None:
+            ApplicationNotificationService.from_id(app_id).notify_group_members_join()
 
         transaction.on_commit(accept_application)
+        transaction.on_commit(join_study_group)
 
     if curr == Application.ApplicationStatus.REJECTED:
 
         def reject_application() -> None:
-            NotificationCreateApplicationService.notification_application_reject_by_id(app_id)
+            ApplicationNotificationService.from_id(app_id).notify_application_reject()
 
         transaction.on_commit(reject_application)
