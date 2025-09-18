@@ -6,8 +6,9 @@ from django.dispatch import receiver
 
 from apps.applications.models import Application
 from apps.notifications.services.noti_create_service import (
-    ApplicationNotificationService,
+    ApplicationNotificationService, StudyNoteNotificationService,
 )
+from apps.study_notes.models import StudyNote
 
 
 @receiver(
@@ -63,3 +64,15 @@ def notify_status_change_to_applicant(instance: Application, created: bool, **kw
             ApplicationNotificationService.from_id(app_id).notify_application_reject()
 
         transaction.on_commit(reject_application)
+
+@receiver(post_save, sender=StudyNote, dispatch_uid="notify_add_study_note")
+def notify_add_application(instance: StudyNote, created: bool, **kwargs: Any) -> None:
+    if not created:
+        return
+
+    sn_id = instance.pk
+
+    def add_study_note() -> None:
+        StudyNoteNotificationService.from_id(sn_id).notify_add_study_note()
+
+    transaction.on_commit(add_study_note)
