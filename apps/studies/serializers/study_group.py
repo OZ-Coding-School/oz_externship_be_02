@@ -16,6 +16,7 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
 
     lectures = serializers.PrimaryKeyRelatedField(many=True, queryset=Lecture.objects.all(), required=False)
     profile_img = serializers.ImageField(required=False, write_only=True)
+    max_headcount = serializers.IntegerField(max_value=10, error_messages={"max_value": "인원 수 초과 되었습니다."})
 
     class Meta:
         model = StudyGroup
@@ -35,17 +36,6 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
     def validate_lectures(self, value: list[int]) -> list[int]:
         if len(value) > 5:
             raise serializers.ValidationError({"lectures": "강의는 최대 5개까지 등록 가능합니다."})
-        return value
-
-    def validate_max_headcount(self, value: int) -> int:
-        """
-        스터디 그룹 생성 시, 시작일, 종료일 조건 검증 -> `serializer.is_valid()` 실행 시, 자동으로 검증 함수 호출.
-        **인원 수 검증 로직**
-        :param value: 유저가 입력한 스터디 그룹 최대 인원 수
-        """
-        # 인원 수 검증
-        if value > 10:
-            raise serializers.ValidationError("인원 수 초과 되었습니다.")
         return value
 
     def validate(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
