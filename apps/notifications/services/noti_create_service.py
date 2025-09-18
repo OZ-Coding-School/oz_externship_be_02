@@ -5,16 +5,16 @@ from apps.notifications.models import Notification
 from apps.studies.models import GroupMember
 
 
-class NotificationCreateService:
+class ApplicationNotificationService:
     def __init__(self, app: Application):
         self.app = app
 
     @classmethod
-    def from_instance(cls, app: Application) -> "NotificationCreateService":
+    def from_instance(cls, app: Application) -> "ApplicationNotificationService":
         return cls(app)
 
     @classmethod
-    def from_id(cls, app_id: int) -> "NotificationCreateService":
+    def from_id(cls, app_id: int) -> "ApplicationNotificationService":
         app = Application.objects.select_related("recruitment__author", "recruitment__study_group", "user").get(
             pk=app_id
         )
@@ -69,8 +69,7 @@ class NotificationCreateService:
         if rec is None:  # mypy
             return 0
         group = rec.study_group
-        if group is None:  # mypy
-            return 0
+
         new_user = self.app.user
 
         # 그룹에 참여중인 멤버들
