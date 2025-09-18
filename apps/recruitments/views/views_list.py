@@ -2,7 +2,7 @@ import typing
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import serializers
+from rest_framework import filters, serializers
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -11,12 +11,20 @@ from rest_framework.views import APIView
 
 from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
-from apps.recruitments.services.services_list import active_get_query
+from apps.recruitments.services.services_list import (
+    active_get_query,
+    filter_tag,
+)
 
 
 class RecruitmentView(APIView):
     # swagger 테스트를 위해 사용
     permession_class = [AllowAny]
+
+    # 검색정보
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["title"]
+    ordering_fields = ["views_count", "bookmarks_count", "created_at"]
 
     @extend_schema(
         tags=["스터디 구인 공고"],
@@ -33,9 +41,29 @@ class RecruitmentView(APIView):
             OpenApiParameter(name="page", description="조회할 page", required=True, type=OpenApiTypes.INT),
             OpenApiParameter(
                 name="size",
-                description="조회할 page의 데이터 개수를 정할 수 있음",
+                description="조회할 page의 데이터 개수를 정할 수 있음\n\n" "정하지 않으면 기본으로 10개씩 반환함",
                 required=False,
                 type=OpenApiTypes.INT,
+            ),
+            OpenApiParameter(
+                name="search",
+                description="검색할 키워드를 입력",
+                required=False,
+                type=OpenApiTypes.STR,
+            ),
+            OpenApiParameter(
+                name="ordering",
+                description="**'-views_count'**는 조회수 높은 순, **'-bookmarks_count'**는 북마크 많은 순\n\n"
+                "입력하지 않으면 기본으로 최신 순으로 정렬\n\n"
+                "같은 값들을 정렬 하려면 **-views_count,-created_at** 사용\n\n",
+                required=False,
+                type=OpenApiTypes.STR,
+            ),
+            OpenApiParameter(
+                name="tag",
+                description="해당 태그를 가진 공고만 필터링",
+                required=False,
+                type=OpenApiTypes.STR,
             ),
         ],
         responses={
@@ -54,13 +82,27 @@ class RecruitmentView(APIView):
         # 조회
         optimized_queryset: RecruitmentListQuerySet = active_get_query()
 
+        # 필터
+        # 'tag' 파라미터 확인
+        tag = request.query_params.get("tag", None)
+        if tag is not None and tag != "":
+            optimized_queryset = filter_tag(optimized_queryset, tag)
+
+        # 검색
+        search_filter = filters.SearchFilter()
+        searched_queryset = search_filter.filter_queryset(request, optimized_queryset, self)
+
+        # 정렬
+        ordering_filter = filters.OrderingFilter()
+        ordering_queryset = ordering_filter.filter_queryset(request, searched_queryset, self)
+
         # 페이지네이션
         paginator = PageNumberPagination()
         paginator.page_size = 10
         paginator.page_size_query_param = "size"
         paginator.max_page_size = 100
         # url의 page파라미터를 읽어 데이터 슬라이싱
-        paginated_queryset = paginator.paginate_queryset(optimized_queryset, request)
+        paginated_queryset = paginator.paginate_queryset(ordering_queryset, request, self)
 
         serializer = RecruitmentListSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)

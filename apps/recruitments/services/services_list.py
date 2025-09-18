@@ -7,3 +7,8 @@ def active_get_query() -> RecruitmentListQuerySet:
     # 시리얼라이저 정보 최적화하여 채워넣기
     queryset = Recruitment.object_list.filter_is_closed().order_last().optimized_queryset()
     return queryset
+
+
+def filter_tag(queryset: RecruitmentListQuerySet, tag: str) -> RecruitmentListQuerySet:
+    filtered_queryset = queryset.filter(tags__name=tag)
+    return filtered_queryset
