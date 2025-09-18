@@ -30,8 +30,6 @@ class WithdrawalResponseSerializer(serializers.ModelSerializer[Withdrawals]):
         model = Withdrawals
         fields = ("user", "reason", "reason_detail", "due_date", "created_at", "updated_at")
 
-    # 복구 코드 입력 검증용
-
 
 class AccountRecoverySerializer(serializers.Serializer[Withdrawals]):
     email = serializers.EmailField()
