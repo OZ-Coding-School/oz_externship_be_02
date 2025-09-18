@@ -1,7 +1,8 @@
+from datetime import date, timedelta
+
 from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.test import APITestCase
 
 from apps.core.tests.mixins.test_user_mixins import VerificationMixin
@@ -76,17 +77,6 @@ class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
         self.withdrawal_url = reverse("account_withdrawals")  # mypy 에러 방지용
         self.recovery_url = reverse("account_recovery")  # mypy 에러 방지용
 
-    # * 탈퇴 요청한 유저 생성
-    def _test_successful_withdrawal_request(self) -> Response:
-        self.client.force_authenticate(user=self.user)
-        data = {
-            "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
-            "reason_detail": "개인정보/보안/우려",
-        }
-        response = self.client.post(self.withdrawal_url, data)
-        self.client.force_authenticate(user=None)
-        return response
-
     # * 인증 코드 설정
     def _set_verification_code(self, email: str, code: str, purpose: VerificationPurpose) -> None:
         cache.clear()  # 인증 코드 설정하는 캐시 초기화
@@ -96,7 +86,12 @@ class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
     # * 탈퇴 복구
     def test_account_recovery_request(self) -> None:
         # 1) 탈퇴 요청을 생성
-        self._test_successful_withdrawal_request()
+        Withdrawals.objects.create(
+            user=self.user,
+            reason=WithdrawalsReasonChoices.PRIVACY_CONCERNS,
+            reason_detail="개인정보/보안/우려",
+            due_date=date.today() + timedelta(days=14),
+        )
 
         # 2) EmailVerificationMixin을 통해 인증 코드 세팅
         self._set_verification_code(self.user.email, "123456", VerificationPurpose.RECOVER_ACCOUNT)
