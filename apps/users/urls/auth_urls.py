@@ -9,7 +9,7 @@ from apps.users.views.email_view import (
     SignUpEmailVerifiCationVerifyAPIView,
 )
 from apps.users.views.phone_view import SendVerificationCodeAPIView, VerifyCodeAPIView
-from apps.users.views.withdrawals import AccountRecoveryAPIView, WithdrawalAPIView
+from apps.users.views.withdrawals_view import AccountRecoveryAPIView, WithdrawalAPIView
 
 urlpatterns = [
     path("auth/email/send-code", SignUpEmailVerificationSendAPIView.as_view(), name="email_send_code"),

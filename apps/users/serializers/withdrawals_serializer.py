@@ -1,4 +1,4 @@
-# apps/users/serializers/withdrawals.py
+# apps/users/serializers/withdrawals_serializer.py
 
 from typing import Any, Dict
 
