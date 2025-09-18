@@ -1,3 +1,5 @@
+# apps/users/serializers/withdrawals_serializer.py
+
 from typing import Any, Dict
 
 from rest_framework import serializers
@@ -13,6 +15,7 @@ class WithdrawalRequestSerializer(serializers.ModelSerializer[Withdrawals]):
         model = Withdrawals
         fields = ("user", "reason", "reason_detail")
 
+    # user는 validated_data에 자동으로 포함됨
     def validate(self, data: Dict[str, Any]) -> Dict[str, Any]:
         user = data["user"]
         if not self.instance and Withdrawals.objects.filter(user=user).exists():
@@ -26,3 +29,8 @@ class WithdrawalResponseSerializer(serializers.ModelSerializer[Withdrawals]):
     class Meta:
         model = Withdrawals
         fields = ("user", "reason", "reason_detail", "due_date", "created_at", "updated_at")
+
+
+class AccountRecoverySerializer(serializers.Serializer[Withdrawals]):
+    email = serializers.EmailField()
+    verification_code = serializers.CharField()
