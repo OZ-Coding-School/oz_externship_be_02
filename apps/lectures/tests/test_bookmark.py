@@ -1,21 +1,10 @@
-from typing import cast
-from urllib.parse import parse_qs, urlparse
-
+# apps/lectures/tests/test_bookmark.py
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.models.lecture_bookmarks import LectureBookmark
 from apps.users.models.user import User
-
-
-def _extract_cursor(url: str | None) -> str | None:
-    if not url:
-        return None
-    parsed = urlparse(url)
-    qs = parse_qs(parsed.query)
-    vals = qs.get("cursor")
-    return vals[0] if vals else None
 
 
 class TestBookmarkView(APITestCase):
@@ -32,7 +21,7 @@ class TestBookmarkView(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
-        # 강의 생성
+        # 강의 생성 (Lecture는 UUIDBaseModel → uuid 필드 사용)
         self.lecture = Lecture.objects.create(
             title="테스트 강의",
             instructor="효종",
@@ -47,12 +36,15 @@ class TestBookmarkView(APITestCase):
         )
 
         base = "/api/v1/lectures"
+        # URL 컨버터가 <uuid:lecture_uuid> 라서 pk가 아닌 uuid를 사용
         self.lecture_uuid_str = str(self.lecture.uuid)
         self.add_url = f"{base}/{self.lecture_uuid_str}/bookmark"
         self.cancel_url = f"{base}/{self.lecture_uuid_str}/bookmark"
         self.list_url = f"{base}/bookmarks"
 
-    # 추가/삭제 테스트
+    # ---------------------------
+    # 추가/삭제(토글) 테스트
+    # ---------------------------
 
     def test_add_bookmark_success(self) -> None:
         """북마크 추가 성공"""
@@ -102,21 +94,25 @@ class TestBookmarkView(APITestCase):
         self.assertEqual(res_post.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(res_delete.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    # 목록 조회 테스트 (REQ-LECT-006)
+    # ---------------------------
+    # 목록 조회 테스트 (REQ-LECT-006) - CursorPagination + cursor 값만 응답
+    # ---------------------------
 
     def test_list_bookmarks_empty_returns_200(self) -> None:
         res = self.client.get(self.list_url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+        # 커서 페이징: next_cursor/previous_cursor/results 구조
         self.assertIn("results", res.data)
         self.assertEqual(res.data["results"], [])
-        self.assertIsNone(res.data.get("next"))
+        self.assertIsNone(res.data.get("next_cursor"))
+        self.assertIsNone(res.data.get("previous_cursor"))
 
     def test_list_bookmarks_basic_fields_and_transform(self) -> None:
         lec = Lecture.objects.create(
             title="파이썬 심화",
             instructor="Alice",
-            duration=125,
-            difficulty="normal",
+            duration=125,  # 2시간 5분
+            difficulty="normal",  # 응답에서 MIDDLE로 변환
             description="심화",
             platform="Inflearn",
             original_price=20000,
@@ -157,21 +153,19 @@ class TestBookmarkView(APITestCase):
             )
             LectureBookmark.objects.create(user=self.user, lecture=lec)
 
-        res1 = self.client.get(self.list_url, data={"page_size": "10"})
+        # 첫 페이지 (page_size=10)
+        res1 = self.client.get(self.list_url, data={"page_size": 10})
         self.assertEqual(res1.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res1.data.get("results", [])), 10)
-        self.assertIsNotNone(res1.data.get("next"))
+        self.assertIsNotNone(res1.data.get("next_cursor"))
 
-        next_url = cast(str | None, res1.data.get("next"))
-        self.assertIsNotNone(next_url)
-        cursor = _extract_cursor(next_url)
-        self.assertIsNotNone(cursor)
-        cursor_str = cast(str, cursor)
+        next_cursor = res1.data.get("next_cursor")
 
-        res2 = self.client.get(self.list_url, data={"cursor": cursor_str, "page_size": "10"})
+        # 다음 페이지 요청 (cursor 사용)
+        res2 = self.client.get(self.list_url, data={"cursor": next_cursor, "page_size": 10})
         self.assertEqual(res2.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res2.data.get("results", [])), 2)
-        self.assertIsNotNone(res2.data.get("previous"))
+        self.assertIsNotNone(res2.data.get("previous_cursor"))
 
     def test_list_bookmarks_search(self) -> None:
         lec1 = Lecture.objects.create(
