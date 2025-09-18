@@ -62,17 +62,16 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
         end_at = attrs.get("end_at", getattr(instance, "end_at", None))
 
         if start_at is not None:
+            # 시작일이 과거일 경우
+            if start_at < timezone.now():
+                raise serializers.ValidationError("스터디 시작일이 과거일 수 없습니다.")
+        if start_at is not None and end_at is not None:
             # 종료일이 시작일 이전일 경우
             if start_at > end_at:
                 raise serializers.ValidationError("스터디 종료일이 시작일보다 이전일 수 없습니다.")
             # 스터디 기간이 5일 미만인 경우
             if (end_at - start_at).days < 4:
                 raise serializers.ValidationError("스터디 종료 날짜는 시작날 기준 최소 5일 이후여야 합니다. ")
-        if start_at is not None and end_at is not None:
-            # 시작일이 과거일 경우
-            if start_at < timezone.now():
-                raise serializers.ValidationError("스터디 시작일이 과거일 수 없습니다.")
-
         return attrs
 
     def create(self, validated_data: Dict[str, Any]) -> Any:
