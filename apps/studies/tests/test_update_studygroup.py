@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from moto import mock_aws
+from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.tests.mixins.test_user_mixins import TestUserMixin
@@ -73,14 +74,22 @@ class UpdateStudyGroupTest(TestCase, TestUserMixin):
         self.assertTrue(self.target.is_valid(raise_exception=True))
         self.target.save(user=self.user)
 
-    def test_update(self) -> None:
+    def test_update_fail(self) -> None:
         test_data: List[Dict[str, Any]] = [
-            # 실패 케이스
             {"start_at": datetime(2025, 9, 1)},  # 과거 날짜
             {"end_at": datetime(2025, 10, 14)},  # 시작일 이전
             {"end_at": datetime(2025, 10, 17)},  # 최소기간
             {"max_headcount": 15},
-            # 성공케이스
+        ]
+
+        for case in test_data:
+            set_up = get_object_or_404(StudyGroup, id=self.target.data["id"])
+            serializer = StudyGroupCreateSerializer(instance=set_up, data=case, partial=True)
+            self.assertFalse(serializer.is_valid())
+            logger.debug(serializer.errors)
+
+    def test_update_success(self) -> None:
+        test_data: List[Dict[str, Any]] = [
             {"max_headcount": 5},
             {"profile_img": create_temp_image()},
             {"name": "이름 수정"},
@@ -89,10 +98,8 @@ class UpdateStudyGroupTest(TestCase, TestUserMixin):
         for case in test_data:
             set_up = get_object_or_404(StudyGroup, id=self.target.data["id"])
             serializer = StudyGroupCreateSerializer(instance=set_up, data=case, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-            else:
-                logger.debug(serializer.errors)
+            self.assertTrue(serializer.is_valid(raise_exception=True))
+            serializer.save(user=self.user)
 
 
 @mock_aws
@@ -146,17 +153,24 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
         )  # 좀 더 좋은 방법이 있을거 같은데 모르겠음.
         self.url = reverse("update_study_group", kwargs={"group_uuid": self.study_group.uuid})
 
-    def test_patch(self) -> None:
+    def test_patch_fail(self) -> None:
         test_data = [  # 보완이 필요해보임.
-            # 실패 케이스
             {"start_at": "2025-09-01T00:00:00Z"},  # 과거 날짜
             {"end_at": "2025-10-14T00:00:00Z"},  # 시작일 이전
             {"end_at": "2025-10-14T00:00:00Z"},  # 최소기간
             {"max_headcount": 15},
-            # 성공케이스
+        ]
+        for case in test_data:
+            response = self.client.patch(self.url, data=case)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            logger.debug(response.data)
+
+    def test_patch_success(self) -> None:
+        test_data = [
             {"name": "인원 수정", "max_headcount": 5},
             {"name": "프로필 사진 추가", "profile_img": create_temp_image()},
             {"name": "스터디 일정 수정", "start_at": "2025-10-01T00:00:00Z", "end_at": "2025-10-31T00:00:00Z"},
         ]
         for case in test_data:
             response = self.client.patch(self.url, data=case)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
