@@ -14,11 +14,12 @@ def filter_tag(queryset: RecruitmentListQuerySet, tag: str) -> RecruitmentListQu
     filtered_queryset = queryset.filter(tags__name=tag)
     return filtered_queryset
 
+
 def active_get_my_query(user: User) -> RecruitmentListQuerySet:
-    queryset=Recruitment.object_list.order_last().optimized_queryset().filter(author=user)
+    queryset = Recruitment.object_list.order_last().optimized_queryset().filter(author=user)
     return queryset
 
-def filter_is_closed(queryset: RecruitmentListQuerySet, is_closed: bool)->RecruitmentListQuerySet:
+
+def filter_is_closed(queryset: RecruitmentListQuerySet, is_closed: bool) -> RecruitmentListQuerySet:
     filtered_queryset = queryset.filter(is_closed=is_closed)
     return filtered_queryset
-
