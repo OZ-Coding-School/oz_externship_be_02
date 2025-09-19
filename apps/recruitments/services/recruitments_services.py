@@ -1,10 +1,9 @@
 import re
 from typing import Any
 from uuid import UUID
-
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-
+from functools import partial
 from apps.core.utils.s3_uploader import S3Uploader
 
 from ..models.recruitment_attachments import RecruitmentAttachment
@@ -17,7 +16,7 @@ def get_recruitment_detail(recruitment_uuid: UUID) -> Recruitment:
     try:
         recruitment = (
             Recruitment.objects.select_related("author")
-            .prefetch_related("tags", "attachments", "bookmark_users", "images")
+            .prefetch_related("tags", "attachments", "images")
             .get(uuid=recruitment_uuid)
         )
         return recruitment
@@ -53,7 +52,7 @@ def update_recruitment(instance: Recruitment, validated_data: dict[str, Any]) ->
             [RecruitmentImage(recruitment=instance, img_url=url) for url in image_urls]
         )
 
-    _cleanup_orphan_images(instance, new_content)
+    transaction.on_commit(partial(_cleanup_orphan_images, instance=instance, content=new_content))
     return instance
 
 
