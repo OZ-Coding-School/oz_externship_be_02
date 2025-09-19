@@ -5,5 +5,5 @@ from apps.studies.views.study_group_update_view import UpdateStudyGroupView
 
 urlpatterns = [
     path("", CreateStudyGroupView.as_view(), name="create_study_group"),
-    path("<uuid:group_uuid>/leader", UpdateStudyGroupView.as_view(), name="update_study_group"),
+    path("/<uuid:group_uuid>", UpdateStudyGroupView.as_view(), name="update_study_group"),
 ]
