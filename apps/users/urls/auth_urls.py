@@ -13,7 +13,7 @@ from apps.users.views.phone_verification_view import (
     SendVerificationCodeAPIView,
     VerifyCodeAPIView,
 )
-from apps.users.views.withdrawals import WithdrawalAPIView
+from apps.users.views.withdrawals_view import WithdrawalAPIView, AccountRecoveryAPIView
 
 urlpatterns = [
     path("auth/email/send-code", SignUpEmailVerificationSendAPIView.as_view(), name="email_send_code"),
@@ -36,4 +36,5 @@ urlpatterns = [
     path("auth/phone/verify", VerifyCodeAPIView.as_view(), name="phone_verify_code"),
     path("auth/withdraw", WithdrawalAPIView.as_view(), name="account_withdrawals"),
     path("auth/email/signup", UserSignupAPIView.as_view(), name="signup"),
+    path("auth/recover", AccountRecoveryAPIView.as_view(), name="account_recovery"),
 ]
