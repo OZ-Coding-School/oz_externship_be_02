@@ -21,6 +21,7 @@ email_service = EmailVerificationService()
 
 class SignUpEmailVerificationSendAPIView(APIView):
     permission_classes = (AllowAny,)
+    authentication_classes = ()
     """
     회원가입 이메일 코드 전송
     """
