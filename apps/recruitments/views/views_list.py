@@ -1,10 +1,11 @@
 import typing
+from xmlrpc.client import Boolean
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import filters, serializers
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,16 +13,14 @@ from rest_framework.views import APIView
 from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
 from apps.recruitments.services.services_list import (
-    active_get_query,
-    filter_tag,
     active_get_my_query,
-    filter_is_closed
+    active_get_query,
+    filter_is_closed,
+    filter_tag,
 )
 
 
 class RecruitmentView(APIView):
-    # swagger 테스트를 위해 사용
-    permession_class = [AllowAny]
     authentication_classes = ()
 
     # 검색정보
@@ -110,9 +109,9 @@ class RecruitmentView(APIView):
         serializer = RecruitmentListSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+
 class MyRecruitmentView(APIView):
-    # swagger 테스트를 위해 사용
-    permession_class = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     # 필터 사용
     filter_backends = [filters.OrderingFilter]
@@ -144,8 +143,8 @@ class MyRecruitmentView(APIView):
             OpenApiParameter(
                 name="ordering",
                 description="**'-views_count'**는 조회수 높은 순, **'-bookmarks_count'**는 북마크 많은 순\n\n"
-                            "입력하지 않으면 기본으로 최신 순으로 정렬\n\n"
-                            "같은 값들을 정렬 하려면 **-views_count,-created_at** 사용\n\n",
+                "입력하지 않으면 기본으로 최신 순으로 정렬\n\n"
+                "같은 값들을 정렬 하려면 **-views_count,-created_at** 사용\n\n",
                 required=False,
                 type=OpenApiTypes.STR,
             ),
@@ -163,13 +162,15 @@ class MyRecruitmentView(APIView):
         },
     )
     def get(self: typing.Self, request: Request) -> Response:
+        assert request.user.is_authenticated
         # 조회
         optimized_queryset: RecruitmentListQuerySet = active_get_my_query(request.user)
 
         # 필터
-        is_closed = request.query_params.get("is_closed",None)
-        if is_closed is not None and is_closed !="":
-            optimized_queryset = filter_is_closed(optimized_queryset, is_closed)
+        is_closed = request.query_params.get("is_closed", None)
+        if is_closed is not None and is_closed != "":
+            is_closed_bool = is_closed.lower() in ["true", "1"]
+            optimized_queryset = filter_is_closed(optimized_queryset, is_closed_bool)
 
         # 정렬
         ordering_filter = filters.OrderingFilter()
