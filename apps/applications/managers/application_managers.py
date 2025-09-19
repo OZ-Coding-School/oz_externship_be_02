@@ -7,7 +7,7 @@ from django.db import IntegrityError, models
 from apps.recruitments.models import Recruitment
 from apps.users.models import User
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..models import Application
 
 
