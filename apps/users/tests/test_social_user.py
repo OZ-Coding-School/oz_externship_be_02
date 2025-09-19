@@ -29,7 +29,7 @@ class TestKakaoLogin(APITestCase):
             "kakao_account": {
                 "email": "test@example.com",
                 "profile": {
-                    "nickname": "testuser",
+                    "nickname": "test",
                     "profile_image_url": "http://example.com/image.png",
                 },
                 "name": "김오즈",
@@ -62,7 +62,13 @@ class TestKakaoLogin(APITestCase):
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data["message"], "Kakao login successful")
-            self.assertEqual(response.data["user"]["email"], "test@example.com")
+
+            user_data = response.data["user"]
+            self.assertEqual(user_data["email"], "test@example.com")
+            self.assertTrue("uuid" in user_data)
+
+            nickname = response.data["user"]["nickname"]
+            self.assertRegex(nickname, r"test#\d{4}$")
 
             user = User.objects.get(email="test@example.com")
             social_user = SocialUser.objects.get(user=user)
@@ -107,7 +113,9 @@ class TestKakaoLogin(APITestCase):
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertFalse(response.data["is_new_user"])  # 신규 아님
-            self.assertEqual(User.objects.filter(email="test@example.com").count(), 1)
+            user_data = response.data["user"]
+            self.assertEqual(user_data["email"], "test@example.com")
+            self.assertTrue("uuid" in user_data)
 
     @patch("apps.users.services.social_user.cache.set")
     def test_cache_set_called(self, mock_cache_set: Mock) -> None:

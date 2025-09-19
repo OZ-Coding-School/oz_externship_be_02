@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 
 from apps.users.serializers.social_user import (
     KakaoLoginResponseSerializer,
-    UserResponseSerializer,
+    UserMinimalResponseSerializer,
 )
 from apps.users.services.social_user import KakaoService
 
@@ -30,11 +30,10 @@ class KakaoLoginCallbackView(APIView):
                 "access": result["access"],
                 "refresh": result["refresh"],
                 "is_new_user": result["is_new_user"],
-                "user": UserResponseSerializer(user_instance).data,
+                "user": UserMinimalResponseSerializer(user_instance).data,
             }
 
-            serializer = KakaoLoginResponseSerializer(data=response_data)
-            serializer.is_valid(raise_exception=True)
+            serializer = KakaoLoginResponseSerializer(response_data)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 

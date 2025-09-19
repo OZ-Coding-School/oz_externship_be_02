@@ -1,3 +1,4 @@
+import random
 from typing import Any
 
 import requests
@@ -58,12 +59,11 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
 
     def unique_nickname(self, base_nickname: str) -> str:
         # 닉네임 중복 방지
-        nickname = base_nickname
-        counter = 1
-        while User.objects.filter(nickname=nickname).exists():
-            nickname = f"{base_nickname}{counter}"
-            counter += 1
-        return nickname
+        while True:
+            number = str(random.randint(1, 9999)).zfill(4)  # 항상 4자리, 최솟값 0001
+            nickname = f"{base_nickname}#{number}"
+            if not User.objects.filter(nickname=nickname).exists():
+                return nickname
 
     def login_or_signup(self, kakao_user: dict[str, Any]) -> tuple[User, bool]:  # 기존 유저면 로그인, 신규면 회원가입
         kakao_id = str(kakao_user.get("id"))

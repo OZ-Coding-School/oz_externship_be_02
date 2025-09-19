@@ -9,7 +9,7 @@ class UserResponseSerializer(serializers.ModelSerializer[User]):
     class Meta:
         model = User
         fields = [
-            "id",
+            "uuid",
             "email",
             "nickname",
             "phone_number",
@@ -18,11 +18,25 @@ class UserResponseSerializer(serializers.ModelSerializer[User]):
             "gender",
             "profile_img_url",
             "provider",
+            "is_active",
+            "is_staff",
+            "is_superuser",
         ]
 
     def get_provider(self, obj: User) -> str | None:
         social_user = SocialUser.objects.filter(user=obj).first()
         return social_user.provider if social_user else None
+
+
+class UserMinimalResponseSerializer(serializers.ModelSerializer[User]):
+    # 로그인 응답으로 최소한의 정보만 전달
+    class Meta:
+        model = User
+        fields = [
+            "uuid",
+            "email",
+            "nickname",
+        ]
 
 
 class KakaoLoginResponseSerializer(serializers.Serializer[dict[str, object]]):
@@ -31,4 +45,4 @@ class KakaoLoginResponseSerializer(serializers.Serializer[dict[str, object]]):
     access = serializers.CharField()  # JWT 토큰
     refresh = serializers.CharField()  # JWT 토큰
     is_new_user = serializers.BooleanField()  # 신규유저 여부
-    user = serializers.JSONField()
+    user = UserMinimalResponseSerializer()  # Nested Serializers
