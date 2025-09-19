@@ -42,22 +42,25 @@ class StudyGroupReviewListView(APIView):
     """
     [REQ-REVW-00] 스터디 그룹 리뷰 목록 조회 API
     GET /api/v1/study-groups/reviews/{group_uuid}/
-    - 로그인한 사용자가 특정 스터디 그룹의 리뷰 목록을 조회한다.
     """
 
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self, group_uuid: UUID) -> Tuple[StudyGroup, "QuerySet[StudyReview]"]:
-        # 스터디 그룹 검증 (없으면 404)
-        group = get_object_or_404(StudyGroup, uuid=group_uuid)
-
-        # 리뷰 목록 조회 (없으면 빈 리스트 반환)
-        qs = StudyReview.objects.filter(study_group=group).order_by("-created_at")
-        return group, qs
+    def get_queryset(self, group_uuid: UUID) -> QuerySet[StudyReview]:
+        return StudyReview.objects.filter(study_group__uuid=group_uuid).order_by("-created_at")
 
     def get(self, request: Request, group_uuid: UUID, *args: object, **kwargs: object) -> Response:
-        group, qs = self.get_queryset(group_uuid)
-        payload = {"study_group_id": group.id, "reviews": qs}
+        qs = self.get_queryset(group_uuid)
 
+        study_group_id = qs.values_list("study_group_id", flat=True).first()
+
+        # 리뷰가 없으면 → StudyGroup 존재 여부 확인 후 id 가져오기
+        if study_group_id is None:
+            study_group_id = get_object_or_404(StudyGroup, uuid=group_uuid).id
+
+        payload = {
+            "study_group_id": study_group_id,
+            "reviews": qs,
+        }
         res = ReviewListResponseSerializer(payload, context={"request": request})
         return Response(res.data)

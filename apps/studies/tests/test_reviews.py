@@ -129,7 +129,7 @@ class TestStudyGroupReviewListAPI(APITestCase):
 
     검증 포인트
     - 성공: 200 OK + 응답 구조/필드/포맷
-    - 성공: 리뷰 없음 -> 200 OK + 빈 리스트
+    - 성공: 리뷰 없음 -> 200 OK + 빈 리스트 (study_group_id 없음)
     - 실패: 잘못된 group_uuid -> 404 Not Found
     - 실패: 비인증 -> 401 Unauthorized
     """
@@ -185,15 +185,18 @@ class TestStudyGroupReviewListAPI(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("reviews", resp.data)
         self.assertEqual(len(resp.data["reviews"]), 2)
+        self.assertIn("study_group_id", resp.data)
 
     def test_success_review_list_no_reviews(self) -> None:
-        # 성공: 리뷰가 없는 경우 -> 200 OK + 빈 리스트
+        # 성공: 리뷰가 없는 경우 -> 200 OK + 빈 리스트 (study_group_id 포함)
         self.client.force_authenticate(self.user)
 
         resp = self.client.get(self.url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn("reviews", resp.data)
         self.assertEqual(len(resp.data["reviews"]), 0)
+        self.assertIn("study_group_id", resp.data)
+        self.assertEqual(resp.data["study_group_id"], self.study_group.id)
 
     def test_fail_review_list_invalid_uuid(self) -> None:
         # 실패: 존재하지 않는 그룹 uuid (404)
