@@ -210,17 +210,17 @@ class RecruitmentsListTestCase(APITestCase):
         url = reverse("recruitment-mylist")
         query_params = {"page": 1}
         # 조회
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["count"], 5)
 
         # 필터링
         query_params = {"page": 1, "is_closed": False}
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["count"], 4)
 
         query_params = {"page": 1, "is_closed": True}
-        res = self.client.get(url, data=query_params)
+        res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["count"], 1)
