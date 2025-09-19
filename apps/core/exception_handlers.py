@@ -1,9 +1,11 @@
 import logging
-from rest_framework.views import exception_handler
-from rest_framework.response import Response
+
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import exception_handler
 
 logger = logging.getLogger(__name__)
+
 
 def universal_exception_handler(exc, context: dict) -> Response:
     """
@@ -17,12 +19,12 @@ def universal_exception_handler(exc, context: dict) -> Response:
 
     # 에러 메시지 추출 - 순서가 중요함
     if isinstance(response.data, dict):
-        if 'detail' in response.data:
+        if "detail" in response.data:
             # 단순한 detail 메시지 (인증 실패 등)
-            error_message = str(response.data['detail'])
-        elif 'non_field_errors' in response.data:
+            error_message = str(response.data["detail"])
+        elif "non_field_errors" in response.data:
             # 시리얼라이저의 non_field_errors
-            error_message = ', '.join([str(err) for err in response.data['non_field_errors']])
+            error_message = ", ".join([str(err) for err in response.data["non_field_errors"]])
         else:
             # 여러 필드의 validation 에러를 읽기 쉽게 조합
             error_parts = []
@@ -31,9 +33,9 @@ def universal_exception_handler(exc, context: dict) -> Response:
                     error_parts.append(f"{field}: {', '.join([str(err) for err in errors])}")
                 else:
                     error_parts.append(f"{field}: {str(errors)}")
-            error_message = '; '.join(error_parts)
+            error_message = "; ".join(error_parts)
     elif isinstance(response.data, list):
-        error_message = ', '.join([str(err) for err in response.data])
+        error_message = ", ".join([str(err) for err in response.data])
     else:
         error_message = str(response.data)
 
