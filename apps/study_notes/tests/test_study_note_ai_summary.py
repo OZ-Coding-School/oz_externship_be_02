@@ -4,15 +4,11 @@ from unittest.mock import Mock, patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
-from dotenv import load_dotenv
 
 from apps.studies.models import StudyGroup
 from apps.study_notes.services.study_note_ai_summary import generate_study_summary
 from apps.study_notes.services.study_notes_services import StudyNoteService
 from apps.users.models.user import User
-
-# .env에서 실제 API_KEY 불러오기
-load_dotenv()
 
 
 class StudyNoteAITestCase(TestCase):
@@ -51,7 +47,6 @@ class StudyNoteAITestCase(TestCase):
             start_at=timezone.make_aware(datetime(2025, 9, 16, 12, 0, 0)),
             end_at=timezone.make_aware(datetime(2025, 9, 30, 12, 0, 0)),
         )
-
         cls.study_group.members.add(cls.user)
 
         # 정상 노트 데이터
@@ -60,15 +55,24 @@ class StudyNoteAITestCase(TestCase):
         그리고 업로드 과정에 생기는 고아객체를 처리하는 로직도 만들었다.
         """
 
-    def test_normal_creation_with_real_ai(self) -> None:
-        """실제 AI 호출, 노트 생성, 이미지/첨부파일 검증, 눈으로 확인"""
+    @patch("apps.study_notes.services.study_note_ai_summary.genai.GenerativeModel")
+    def test_normal_creation_with_mocked_ai(self, mock_model_class: Mock) -> None:
+        """AI 호출을 mock 처리해서 노트 생성 테스트"""
         service = StudyNoteService()
+
+        # mock 설정: 정상 텍스트 반환
+        mock_model = Mock()
+        mock_response = Mock()
+        mock_response.text = "요약된 AI 내용"
+        mock_response.candidates = None
+        mock_model.generate_content.return_value = mock_response
+        mock_model_class.return_value = mock_model
+
         # 테스트용 파일 객체 생성
         image1 = SimpleUploadedFile("test1.png", b"image_content", content_type="image/png")
         image2 = SimpleUploadedFile("test2.png", b"image_content", content_type="image/png")
         attachment1 = SimpleUploadedFile("file1.pdf", b"file_content", content_type="application/pdf")
 
-        # images / attachments는 필요하면 넣어도 됨
         note = service.create_study_note(
             author=self.user,
             study_group=self.study_group,
@@ -78,19 +82,19 @@ class StudyNoteAITestCase(TestCase):
             attachments=[attachment1],
         )
 
-        # 기본 assert로 검증
-        self.assertIsInstance(note.ai_summary, str)
-        self.assertTrue(len(note.ai_summary) > 0)
+        # 검증
+        self.assertEqual(note.ai_summary, "요약된 AI 내용")
         self.assertEqual(note.images.count(), 2)
         self.assertEqual(note.attachments.count(), 1)
 
     @patch("apps.study_notes.services.study_note_ai_summary.genai.GenerativeModel")
     def test_candidates_parts(self, mock_model_class: Mock) -> None:
-        # response.text 없고 candidates.parts(text가 없을 때 여러 후보) 있는 경우
+        """response.text 없고 candidates.parts(text가 없을 때 여러 후보) 있는 경우"""
         part1 = Mock(text="부분1")
         part2 = Mock(text="부분2")
         candidate = Mock()
-        candidate.content.parts = [part1, part2]  # 후보 0번의 실제 텍스트 조각들
+        candidate.content.parts = [part1, part2]
+
         mock_model = Mock()
         mock_model.generate_content.return_value = Mock(text=None, candidates=[candidate])
         mock_model_class.return_value = mock_model
@@ -100,7 +104,7 @@ class StudyNoteAITestCase(TestCase):
 
     @patch("apps.study_notes.services.study_note_ai_summary.genai.GenerativeModel")
     def test_exception(self, mock_model_class: Mock) -> None:
-        # generate_content 호출 시 예외 발생
+        """generate_content 호출 시 예외 발생"""
         mock_model = Mock()
         mock_model.generate_content.side_effect = Exception("모델 오류")
         mock_model_class.return_value = mock_model
