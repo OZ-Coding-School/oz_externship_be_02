@@ -9,6 +9,6 @@ router = DefaultRouter()
 router.register("", UserAdminViewSet, basename="users")
 
 urlpatterns: list[URLPattern | URLResolver] = [
-    path("users/<uuid:user_uuid>/permission", UserPermissionUpdateAPIView.as_view(), name="user_permissions"),
+    path("/<uuid:user_uuid>/permission", UserPermissionUpdateAPIView.as_view(), name="user_permissions"),
     path("", include(router.urls)),
 ]
