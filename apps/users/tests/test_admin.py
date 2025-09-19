@@ -150,7 +150,7 @@ class UserAdminAPITest(APITestCase):
         self.assertEqual(self.active_user.nickname, "changed_us")
         self.assertFalse(self.active_user.is_active)
 
-    def test_user_update_fail_as_staff(self) -> None:
+    def test_user_update_success_as_staff(self) -> None:
         """스태프 권한을 가진 유저가 다른 유저의 정보 수정 테스트"""
         self.client.force_authenticate(user=self.staff_user)
 
