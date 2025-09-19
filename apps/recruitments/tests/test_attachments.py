@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Any
 from unittest.mock import patch
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
@@ -19,12 +20,10 @@ class RecruitmentFileUploadViewTest(APITransactionTestCase):
         self.url = reverse("recruitment-file-upload")
 
     @patch("apps.recruitments.views.attachments_views.S3Uploader")
-    def test_file_upload_success(self, mock_s3_uploader_class:Any) -> None:
+    def test_file_upload_success(self, mock_s3_uploader_class: Any) -> None:
         # GIVEN
         mock_s3_instance = mock_s3_uploader_class.return_value
-        mock_s3_instance.upload_file.return_value = {
-            "url": "https://s3.mock-domain.com/attachments/test.pdf"
-        }
+        mock_s3_instance.upload_file.return_value = {"url": "https://s3.mock-domain.com/attachments/test.pdf"}
         test_file = SimpleUploadedFile("test.pdf", b"file_content", content_type="application/pdf")
         data = {"file": test_file}
 

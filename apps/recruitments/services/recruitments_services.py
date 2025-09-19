@@ -1,9 +1,11 @@
 import re
+from functools import partial
 from typing import Any
 from uuid import UUID
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from functools import partial
+
 from apps.core.utils.s3_uploader import S3Uploader
 
 from ..models.recruitment_attachments import RecruitmentAttachment
