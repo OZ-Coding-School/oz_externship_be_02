@@ -40,6 +40,7 @@ class SignUpEmailVerificationSendAPIView(APIView):
 
 class SignUpEmailVerifiCationVerifyAPIView(APIView):
     permission_classes = (AllowAny,)
+    authentication_classes = ()
     """
     회원가입 이메일 전송 코드 검증
     """
@@ -58,6 +59,7 @@ class SignUpEmailVerifiCationVerifyAPIView(APIView):
 
 class PasswordResetEmailVerificationSendAPIView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = ()
     """
     비밀번호 찾기 이메일 코드 전송 
     """
@@ -77,6 +79,7 @@ class PasswordResetEmailVerificationSendAPIView(APIView):
 
 class PassowrdResetEmailVerificationVerifyAPIView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = ()
     """
     비밀번호 찾기 이메일 전송 코드 검증
     """
@@ -95,6 +98,7 @@ class PassowrdResetEmailVerificationVerifyAPIView(APIView):
 
 class AccountRecoveryEmailVerificationSendAPIView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = ()
     """
     계정 복구 이메일 코드 전송
     """
@@ -114,6 +118,7 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
 
 class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = ()
     """
     계정 복구 이메일 코드 검증
     """

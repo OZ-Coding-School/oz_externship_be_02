@@ -24,7 +24,7 @@ twilio_service = TwilioAuthService()
 class SendVerificationCodeAPIView(APIView):
     permission_classes = [AllowAny]
     serializer_class = PhoneVerificationSerializer
-
+    authentication_classes = ()
     def post(self, request: Request) -> Response:
         serializer = PhoneVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -39,7 +39,7 @@ class SendVerificationCodeAPIView(APIView):
 class VerifyCodeAPIView(APIView):
     permission_classes = [AllowAny]
     serializer_class = VerifyCodeSerializer
-
+    authentication_classes = ()
     def post(self, request: Request) -> Response:
         serializer = VerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
