@@ -19,7 +19,7 @@ class UserWithdrawalJWTAPITest(APITestCase, VerificationMixin):
     # 클래스 메소드: 테스트 클래스 전체에서 공유하는 데이터 설정
     def setUpTestData(cls) -> None:
         cls.user = cls._create_test_user()  # 유저 생성
-        cls.url  = reverse("account_withdrawals")  # mypy 에러 방지용
+        cls.url = reverse("account_withdrawals")  # mypy 에러 방지용
 
     def setUp(self) -> None:
         self.client.force_authenticate(user=self.user)
