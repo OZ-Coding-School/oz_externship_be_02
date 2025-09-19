@@ -3,10 +3,11 @@ from django.urls import include, path
 from apps.recruitments.views.attachments_views import RecruitmentFileView
 from apps.recruitments.views.images_views import RecruitmentImageView
 from apps.recruitments.views.recruitments_views import RecruitmentDetailView
-from apps.recruitments.views.views_list import RecruitmentView
+from apps.recruitments.views.views_list import RecruitmentView, MyRecruitmentView
 
 urlpatterns = [
     path("", RecruitmentView.as_view(), name="recruitment-list"),
+    path("/me", MyRecruitmentView.as_view(), name="recruitment-mylist"),
     path("/<uuid:recruitment_uuid>/applications", include("apps.applications.urls")),
     path("/<uuid:recruitment_uuid>", RecruitmentDetailView.as_view(), name="recruitment-detail"),
     path("/attachments", RecruitmentFileView.as_view(), name="recruitment-attachments-upload"),
