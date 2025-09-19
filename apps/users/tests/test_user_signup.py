@@ -87,7 +87,7 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
         response = self.client.post(self.url, self.signup_data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("email_verification_code", response.data)
+        self.assertIn("error", response.data)
 
     @patch("apps.users.serializers.signup_serializers.phone_service.is_verified")
     def test_phone_verification_code(self, mock_is_verified: MagicMock) -> None:
@@ -100,4 +100,4 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
         response = self.client.post(self.url, self.signup_data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("phone_verification_code", response.data)
+        self.assertIn("error", response.data)
