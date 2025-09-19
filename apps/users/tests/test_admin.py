@@ -134,3 +134,64 @@ class UserAdminAPITest(APITestCase):
         # 정렬 기능 테스트
         response = self.client.get(self.list_url, {"ordering": "-created_at"})
         self.assertEqual(response.data["results"][0]["email"], self.withdrawn_user.email)
+
+    # 회원 정보 수정 API 테스트
+    def test_user_update_success_as_admin(self) -> None:
+        """관리자 권한을 가진 유저가 다른 유저의 정보 수정 테스트"""
+        self.client.force_authenticate(user=self.superuser)
+
+        detail_url = reverse("admin_user:users-detail", kwargs={"uuid": self.active_user.uuid})
+        data = {"nickname": "changed_us", "status": "inactive"}
+        response = self.client.patch(detail_url, data=data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.active_user.refresh_from_db()
+        self.assertEqual(self.active_user.nickname, "changed_us")
+        self.assertFalse(self.active_user.is_active)
+
+    def test_user_update_success_as_staff(self) -> None:
+        """스태프 권한을 가진 유저가 다른 유저의 정보 수정 테스트"""
+        self.client.force_authenticate(user=self.staff_user)
+
+        detail_url = reverse("admin_user:users-detail", kwargs={"uuid": self.active_user.uuid})
+        data = {"nickname": "changed_sf"}
+        response = self.client.patch(detail_url, data=data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.active_user.refresh_from_db()
+        self.assertEqual(self.active_user.nickname, "changed_sf")
+
+    def test_user_update_fail_for_general_staff(self) -> None:
+        """권한이 없는 유저가 다른 유저 정보 수정시 403 에러 발생 여부 테스트"""
+        self.client.force_authenticate(user=self.active_user)
+        detail_url = reverse("admin_user:users-detail", kwargs={"uuid": self.active_user.uuid})
+        data = {"nickname": "hacked"}
+
+        responses = self.client.patch(detail_url, data=data, format="json")
+        self.assertEqual(responses.status_code, status.HTTP_403_FORBIDDEN)
+
+    # 회원 정보 삭제 테스트
+    def test_delete_user_success_as_superuser(self) -> None:
+        """관리자(superuser)권한 유저가 다른 유저 정보를 삭제하는 테스트"""
+        self.client.force_authenticate(user=self.superuser)
+
+        target_user_uuid = self.active_user.uuid
+        detail_url = reverse("admin_user:users-detail", kwargs={"uuid": target_user_uuid})
+
+        responses = self.client.delete(detail_url)
+
+        self.assertEqual(responses.status_code, status.HTTP_204_NO_CONTENT)
+
+        with self.assertRaises(user_model.DoesNotExist):
+            user_model.objects.get(uuid=target_user_uuid)
+
+    def test_delete_user_fail_as_staff(self) -> None:
+        """스태프(staff)권한 유저가 다른 유저 정보를 삭제하는 테스트"""
+        self.client.force_authenticate(user=self.staff_user)
+        detail_url = reverse("admin_user:users-detail", kwargs={"uuid": self.active_user.uuid})
+
+        responses = self.client.delete(detail_url)
+
+        self.assertEqual(responses.status_code, status.HTTP_403_FORBIDDEN)

@@ -152,3 +152,26 @@ class UserAdminDetailSerializer(serializers.ModelSerializer[User]):
         if hasattr(obj, "withdrawals") and obj.withdrawals:
             return "탈퇴진행중"
         return "활성화" if obj.is_active else "비활성화"
+
+
+# 회원 정보 수정 시리얼라이저
+class UserAdminUpdateSerializer(serializers.ModelSerializer[User]):
+    status = serializers.ChoiceField(choices=[("active", "활성화"), ("inactive", "비활성화")], write_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "name",
+            "gender",
+            "nickname",
+            "phone_number",
+            "status",
+            "profile_img_url",
+        ]
+
+    def update(self, instance: User, validated_data: Dict[str, Any]) -> User:
+        if "status" in validated_data:
+            status = validated_data.get("status")
+            instance.is_active = status == "active"
+
+        return super().update(instance, validated_data)
