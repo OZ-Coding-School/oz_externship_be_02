@@ -33,29 +33,6 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         ]
         extra_kwargs = {"password": {"write_only": True}}
 
-    def validate_email(self, value: str) -> str:
-        """
-        이메일 중복 확인
-        """
-        if User.objects.exists_email(value):
-            raise serializers.ValidationError("이미 사용 중인 이메일입니다.")
-        return value
-
-    def validate_nickname(self, value: str) -> str:
-        """
-        닉네임 중복 확인
-        """
-        if User.objects.exists_nickname(value):
-            raise serializers.ValidationError("이미 사용 중인 닉네임입니다.")
-        return value
-
-    def validate_phone_number(self, value: str) -> str:
-        """
-        휴대폰 번호 중복 확인
-        """
-        if User.objects.exists_phone(value):
-            raise serializers.ValidationError("이미 사용 중인 휴대폰 번호입니다.")
-        return value
 
     def validate_email_verification_code(self, value: str) -> str:
         """
