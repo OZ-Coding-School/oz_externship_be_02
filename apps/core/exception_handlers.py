@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from rest_framework import status
 from rest_framework.response import Response
@@ -7,7 +8,7 @@ from rest_framework.views import exception_handler as drf_exception_handler
 logger = logging.getLogger(__name__)
 
 
-def universal_exception_handler(exc, context: dict) -> Response:
+def universal_exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
     """
     DRF에서 발생하는 모든 예외를 {"error": "메시지"} 형태로 통일하는 핸들러
     """
