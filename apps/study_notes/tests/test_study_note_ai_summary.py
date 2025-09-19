@@ -55,6 +55,7 @@ class StudyNoteAITestCase(TestCase):
         그리고 업로드 과정에 생기는 고아객체를 처리하는 로직도 만들었다.
         """
 
+    @patch("apps.study_notes.services.study_note_ai_summary.GOOGLE_API_KEY", "fake-api-key-for-test")
     @patch("apps.study_notes.services.study_note_ai_summary.genai.GenerativeModel")
     def test_normal_creation_with_mocked_ai(self, mock_model_class: Mock) -> None:
         """AI 호출을 mock 처리해서 노트 생성 테스트"""
@@ -87,6 +88,7 @@ class StudyNoteAITestCase(TestCase):
         self.assertEqual(note.images.count(), 2)
         self.assertEqual(note.attachments.count(), 1)
 
+    @patch("apps.study_notes.services.study_note_ai_summary.GOOGLE_API_KEY", "fake-api-key-for-test")
     @patch("apps.study_notes.services.study_note_ai_summary.genai.GenerativeModel")
     def test_candidates_parts(self, mock_model_class: Mock) -> None:
         """response.text 없고 candidates.parts(text가 없을 때 여러 후보) 있는 경우"""
@@ -102,6 +104,7 @@ class StudyNoteAITestCase(TestCase):
         result = generate_study_summary("내용", "준혁", "2025-09-18")
         self.assertEqual(result, "부분1\n부분2")
 
+    @patch("apps.study_notes.services.study_note_ai_summary.GOOGLE_API_KEY", "fake-api-key-for-test")
     @patch("apps.study_notes.services.study_note_ai_summary.genai.GenerativeModel")
     def test_exception(self, mock_model_class: Mock) -> None:
         """generate_content 호출 시 예외 발생"""
