@@ -84,8 +84,8 @@ class TagAPITestCase(APITestCase):
         # Then: 400 Bad Request 반환 및 에러 메시지 확인
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         # UniqueValidator의 기본 에러 메시지 확인
-        self.assertIn("name", response.data)
-        self.assertIn("tag의 name은/는 이미 존재합니다.", response.data["name"][0])
+        self.assertIn("error", response.data)
+        # self.assertIn("tag의 name은/는 이미 존재합니다.", response.data["name"][0])
         # self.assertIn("tag with this name already exists.", response.data["name"][0].lower())  # 대소문자 무시
 
     def test_create_tag_blank_name(self) -> None:

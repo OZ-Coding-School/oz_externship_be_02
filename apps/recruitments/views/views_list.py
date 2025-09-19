@@ -20,6 +20,7 @@ from apps.recruitments.services.services_list import (
 class RecruitmentView(APIView):
     # swagger 테스트를 위해 사용
     permession_class = [AllowAny]
+    authentication_classes = ()
 
     # 검색정보
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]

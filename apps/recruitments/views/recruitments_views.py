@@ -2,6 +2,7 @@ from uuid import UUID
 
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
+from rest_framework.decorators import authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -15,6 +16,7 @@ from apps.recruitments.serializers.recruitments_serializers import (
 
 class RecruitmentDetailView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = ()
 
     @extend_schema(
         summary="스터디 구인공고 상세 조회",
