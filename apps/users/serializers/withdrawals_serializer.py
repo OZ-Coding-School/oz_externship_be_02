@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from rest_framework import serializers
 
-from apps.recruitments.serializers.recruitments_detail import UserSerializer
+from apps.recruitments.serializers.recruitments_serializers import UserSerializer
 from apps.users.models.withdrawals import Withdrawals
 
 

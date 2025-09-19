@@ -8,14 +8,24 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..serializers.recruitments_correction import RecruitmentUpdateSerializer
-from ..serializers.recruitments_detail import RecruitmentDetailSerializer
+from ..models.recruitments import Recruitment
+from ..serializers.recruitments_serializers import (
+    RecruitmentDetailSerializer,
+    RecruitmentUpdateSerializer,
+)
 from ..services.recruitments_services import get_recruitment_detail, update_recruitment
 
 
 class RecruitmentDetailView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = ()
+
+    def get_object(self, recruitment_uuid: UUID) -> Recruitment:
+        try:
+            return get_recruitment_detail(recruitment_uuid=recruitment_uuid)
+        except ObjectDoesNotExist as e:
+            raise e
+
 
     @extend_schema(
         summary="스터디 구인공고 상세조회",
@@ -36,11 +46,11 @@ class RecruitmentDetailView(APIView):
         ],
     )
     def get(self, request: Request, recruitment_uuid: UUID) -> Response:
-        # GET 요청은 권한 검사가 전혀 필요 없으므로, 바로 로직을 실행합니다.
         try:
-            recruitment = get_recruitment_detail(recruitment_uuid=recruitment_uuid)
+            recruitment = self.get_object(recruitment_uuid=recruitment_uuid)
         except ObjectDoesNotExist as e:
             return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = RecruitmentDetailSerializer(recruitment, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -63,7 +73,7 @@ class RecruitmentDetailView(APIView):
     )
     def patch(self, request: Request, recruitment_uuid: UUID) -> Response:
         try:
-            recruitment_to_update = get_recruitment_detail(recruitment_uuid)
+            recruitment_to_update = self.get_object(recruitment_uuid=recruitment_uuid)
         except ObjectDoesNotExist as e:
             return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
 
