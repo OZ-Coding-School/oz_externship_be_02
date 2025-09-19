@@ -79,37 +79,30 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
         cls.signup_data = cls._create_signup_data()
 
     @patch("apps.users.serializers.signup_serializers.email_service.is_verified")
-    @patch("apps.users.serializers.signup_serializers.email_service.verify_code")
-    @patch("apps.users.serializers.signup_serializers.twilio_service.check_verification_code")
     def test_email_not_verified(
-        self, mock_phone_verify: MagicMock, mock_email_verify: MagicMock, mock_is_verified: MagicMock
+        self, mock_is_verified: MagicMock
     ) -> None:
         """
         이메일 인증번호 불일치 케이스
         """
         data = self._create_signup_data()
-        mock_phone_verify.return_value = None
         mock_is_verified.return_value = False
-        mock_email_verify.return_value = None
 
         response = self.client.post(self.url, self.signup_data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("email_verification_code", response.data)
 
-    @patch("apps.users.serializers.signup_serializers.email_service.is_verified")
-    @patch("apps.users.serializers.signup_serializers.email_service.verify_code")
-    @patch("apps.users.serializers.signup_serializers.twilio_service.check_verification_code")
+
+    @patch("apps.users.serializers.signup_serializers.phone_service.is_verified")
     def test_phone_verification_code(
-        self, mock_phone_verify: MagicMock, mock_email_verify: MagicMock, mock_is_verified: MagicMock
+        self, mock_is_verified: MagicMock
     ) -> None:
         """
         휴대폰 인증코드 불일치 케이스
         """
         data = self._create_signup_data()
-        mock_email_verify.return_value = None
-        mock_is_verified.return_value = True
-        mock_phone_verify.side_effect = PhoneVerificationCodeFailedError("휴대폰 인증 실패")
+        mock_is_verified.return_value = False
 
         response = self.client.post(self.url, self.signup_data)
 
