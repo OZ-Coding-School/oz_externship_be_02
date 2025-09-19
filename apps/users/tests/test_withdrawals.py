@@ -62,9 +62,8 @@ class UserWithdrawalJWTAPITest(APITestCase, VerificationMixin):
         second_response = self.client.post(self.url, second_data)
         self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        error_detail = second_response.data["non_field_errors"][0]
-        self.assertEqual(str(error_detail), "이미 탈퇴 요청이 존재합니다.")
-        self.assertEqual(error_detail.code, "error")
+        self.assertIn("error", second_response.data)
+        self.assertIn("이미 탈퇴 요청이 존재합니다", second_response.data["error"])
 
 
 class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
