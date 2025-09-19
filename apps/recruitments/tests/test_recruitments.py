@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APITransactionTestCase
 
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.recruitments.models import RecruitmentImage
@@ -20,7 +20,7 @@ from apps.studies.models.study_groups import StudyGroup
 from apps.users.models.user import User
 
 
-class RecruitmentDetailViewTest(APITestCase):
+class RecruitmentDetailViewTest(APITransactionTestCase):
     # 스터디 구인 공고 상세 조회 API의 전체 흐름을 테스트
 
     def setUp(self) -> None:
