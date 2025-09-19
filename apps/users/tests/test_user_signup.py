@@ -30,7 +30,6 @@ class UserSignupTestCase(APITestCase, VerificationMixin):
 
     @classmethod
     def setUpTestData(cls) -> None:
-        cls.user = cls._create_test_user()
         cls.url = reverse("signup")
         cls.signup_data = cls._create_signup_data()
 
@@ -74,7 +73,6 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
 
     @classmethod
     def setUpTestData(cls) -> None:
-        cls.user = cls._create_test_user()
         cls.url = reverse("signup")
         cls.signup_data = cls._create_signup_data()
 
