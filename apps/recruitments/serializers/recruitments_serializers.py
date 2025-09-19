@@ -4,7 +4,6 @@ from apps.lectures.models.crawled_lectures import Lecture
 from apps.users.models.user import User
 
 from ..models.recruitment_attachments import RecruitmentAttachment
-from ..models.recruitment_images import RecruitmentImage
 from ..models.recruitments import Recruitment
 from ..models.tags import Tag
 
@@ -27,20 +26,20 @@ class TagSerializer(serializers.ModelSerializer[Tag]):
         fields = ["id", "name"]
 
 
-class ImageSerializer(serializers.ModelSerializer[RecruitmentImage]):
-    class Meta:
-        model = RecruitmentImage
-        fields = ["id", "img_url"]
-
-
 class LectureSerializer(serializers.ModelSerializer[Lecture]):
-    name = serializers.CharField(source="title")
-    shortcut_link = serializers.URLField(source="url_link")
-    thumbnail_image_url = serializers.URLField(source="thumbnail_img_url")
+    lecture_name = serializers.CharField(source="title")
+    lecture_link = serializers.URLField(source="url_link")
+    instructor_name = serializers.CharField(source="instructor")
+    img_url = serializers.URLField(source="thumbnail_img_url")
 
     class Meta:
         model = Lecture
-        fields = ["thumbnail_image_url", "name", "instructor", "shortcut_link"]
+        fields = [
+            "img_url",
+            "lecture_name",
+            "instructor_name",
+            "lecture_link",
+        ]
 
 
 class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
@@ -48,8 +47,7 @@ class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
     attachments = AttachmentSerializer(many=True, read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     study_lectures = LectureSerializer(many=True, read_only=True, source="study_group.lectures.all")
-    images = ImageSerializer(many=True, read_only=True)
-    bookmark_count = serializers.SerializerMethodField()
+    bookmark_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Recruitment
@@ -63,7 +61,6 @@ class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
             "estimated_fee",
             "study_lectures",
             "tags",
-            "images",
             "attachments",
             "created_at",
             "updated_at",
@@ -76,3 +73,12 @@ class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
     @staticmethod
     def get_bookmark_count(obj: Recruitment) -> int:
         return obj.bookmark_users.count()
+
+
+class RecruitmentUpdateSerializer(serializers.ModelSerializer[Recruitment]):
+    tags = serializers.ListField(child=serializers.CharField(), required=False, write_only=True)
+    attachments = AttachmentSerializer(many=True, required=False, write_only=True)
+
+    class Meta:
+        model = Recruitment
+        fields = ["title", "content", "expected_headcount", "estimated_fee", "tags", "close_at", "attachments"]

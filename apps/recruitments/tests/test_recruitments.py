@@ -13,7 +13,7 @@ from apps.recruitments.models.recruitment_attachments import RecruitmentAttachme
 from apps.recruitments.models.recruitment_tags import RecruitmentTag
 from apps.recruitments.models.recruitments import Recruitment
 from apps.recruitments.models.tags import Tag
-from apps.recruitments.serializers.recruitments_detail import (
+from apps.recruitments.serializers.recruitments_serializers import (
     RecruitmentDetailSerializer,
 )
 from apps.studies.models.study_groups import StudyGroup
