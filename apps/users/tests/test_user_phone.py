@@ -11,7 +11,7 @@ from apps.users.services.exceptions import (
     PhoneSendingFailedError,
     PhoneVerificationCodeFailedError,
 )
-from apps.users.views.phone_view import twilio_service
+from apps.users.views.phone_verification_view import twilio_service
 
 
 class PhoneVerificationTests(APITestCase, VerificationMixin):
