@@ -3,6 +3,7 @@ from django.db import transaction
 from apps.applications.models.applications import Application
 from apps.notifications.models import Notification
 from apps.studies.models import GroupMember
+from apps.study_notes.models import StudyNote
 
 
 class ApplicationNotificationService:
@@ -85,6 +86,44 @@ class ApplicationNotificationService:
                 content=f"{group.name}에 {new_user.nickname} 님이 참여했습니다. 환영해주세요!",
                 notification_type=Notification.NotificationType.STUDY_JOIN,
                 back_url_link=f"/study-groups/{group.id}/chat",
+            )
+            for uid in accepted_user_ids
+        ]
+
+        with transaction.atomic():
+            created = Notification.objects.bulk_create(notifications)
+
+        return len(created)
+
+
+class StudyNoteNotificationService:
+    def __init__(self, sn: StudyNote):
+        self.sn = sn
+
+    @classmethod
+    def from_instance(cls, sn: StudyNote) -> "StudyNoteNotificationService":
+        return cls(sn)
+
+    @classmethod
+    def from_id(cls, sn_id: int) -> "StudyNoteNotificationService":
+        sn = StudyNote.objects.select_related("author", "study_group").get(pk=sn_id)
+        return cls(sn)
+
+    def notify_add_study_note(self) -> int:
+        group = self.sn.study_group
+        author = self.sn.author
+        accepted_user_ids = set(GroupMember.objects.filter(study_group=group.id).values_list("user_id", flat=True))
+
+        accepted_user_ids.discard(author.id)
+        if not accepted_user_ids:
+            return 0
+
+        notifications = [
+            Notification(
+                user_id=uid,
+                content=f"{author.nickname} 님이 {group.name}에 스터디 기록을 작성하였습니다. 확인해보세요!",
+                notification_type=Notification.NotificationType.STUDY_NOTE_CREATE,
+                back_url_link=f"/study-group/{group.uuid}",
             )
             for uid in accepted_user_ids
         ]
