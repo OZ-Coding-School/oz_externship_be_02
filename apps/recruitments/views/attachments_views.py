@@ -21,7 +21,9 @@ class RecruitmentFileUploadView(APIView):
             file_url = result.get("url")
 
         except Exception as e:
-            return Response({"error": f"파일 업로드 중 오류 발생: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"파일 업로드 중 오류 발생: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         if not file_url:
             raise ValueError("S3 업로드 후 URL 가져오지 못함")
