@@ -33,7 +33,6 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         ]
         extra_kwargs = {"password": {"write_only": True}}
 
-
     def validate_email_verification_code(self, value: str) -> str:
         """
         이메일 인증 코드 검증
