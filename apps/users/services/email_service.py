@@ -18,7 +18,8 @@ from apps.users.utils.enums import VerificationPurpose
 
 
 class EmailVerificationService:
-    def generate_verification_code(self) -> str:
+    @staticmethod
+    def generate_verification_code() -> str:
         return Base62.uuid_encode(u=uuid.uuid4())
 
     def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> None:
@@ -48,9 +49,10 @@ class EmailVerificationService:
             send_mail(subject, message, from_email, recipient_list)
         except SMTPException as e:
             cache.delete(cache_key)
-            raise EmailSendingFailedError(f"이메일 발송 시스템에 문제가 발생하였습니다: {e}")
+            raise EmailSendingFailedError(f"이메일 발송에 실패했습니다: {e}")
 
-    def verify_code(self, purpose: VerificationPurpose, email: str, verification_code: str) -> None:
+    @staticmethod
+    def verify_code(purpose: VerificationPurpose, email: str, verification_code: str) -> None:
 
         cache_key = f"{purpose}-{email}"
         cache_verification_code = cache.get(cache_key)
@@ -58,4 +60,17 @@ class EmailVerificationService:
         if cache_verification_code != verification_code:
             raise EmailVerificationCodeFailedError("이메일 인증 코드가 일치하지 않습니다")
 
-        cache.set(cache_key, verification_code, timeout=300)
+        cache.delete(cache_key)
+        # 검증이 완료됐다는 cache.set(f"is_verified_email_{email}") -> 여기서 캐시 검증됬다는 값 비교하는 로직 추가
+
+        # 인증 완료 상태 저장
+        verified_key = f"is_verified_email_{email}_{verification_code}"
+        cache.set(verified_key, True, timeout=600)
+
+    @staticmethod
+    def is_verified(email: str, verification_code: str) -> bool:
+        """
+        이메일 검증된 상태인지 확인
+        """
+        verified_key = f"is_verified_email_{email}_{verification_code}"
+        return cache.get(verified_key) is True

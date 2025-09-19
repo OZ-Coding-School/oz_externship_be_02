@@ -36,3 +36,18 @@ class UserManager(BaseUserManager["User"]):
             raise ValueError("Superuser must have is_superuser=True.")
 
         return self.create_user(email, password=password, **extra_fields)
+
+    def exists_email(self, email: str) -> bool:
+        """
+        이메일 중복 확인
+        """
+        return self.active().filter(email=email).exists()
+
+    def exists_nickname(self, nickname: str) -> bool:
+        """
+        닉네임 중복 확인
+        """
+        return self.active().filter(nickname=nickname).exists()
+
+    def exists_phone(self, phone_number: str) -> bool:
+        return self.active().filter(phone_number=phone_number).exists()
