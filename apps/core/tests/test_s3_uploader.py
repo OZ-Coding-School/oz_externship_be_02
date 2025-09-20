@@ -77,7 +77,7 @@ class TestS3Uploader(TestCase):
         여러 파일 업로드 후 delete_files로 삭제
         """
         uploaded_keys = []
-        for i in range(1,4):
+        for i in range(1, 4):
             file = io.BytesIO(b"test_file")
             file.name = f"test{i}.txt"
             result = self.s3_uploader.upload_file(file)
