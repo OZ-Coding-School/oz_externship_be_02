@@ -11,6 +11,7 @@ from apps.study_notes.models.study_notes import (
     StudyNoteAttachment,
     StudyNoteImage,
 )
+from apps.study_notes.services.study_note_ai_summary import generate_study_summary
 from apps.users.models.user import User
 
 logger = logging.getLogger("django")
@@ -79,6 +80,12 @@ class StudyNoteService:
                         for d in attachment_data
                     ]
                     StudyNoteAttachment.objects.bulk_create(attachment_objs)
+
+                # AI 요약본
+                note.ai_summary = generate_study_summary(
+                    content=content, author_name=author.name, date_str=note.created_at.strftime("%Y년 %-m월 %-d일 %A")
+                )
+                note.save(update_fields=["ai_summary"])
 
                 return note
 
