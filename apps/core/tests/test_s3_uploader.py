@@ -58,9 +58,7 @@ class TestS3Uploader(TestCase):
         """
         존재하지 않는 파일 확인
         """
-        with self.assertRaises(APIException):
-            self.s3_uploader.file_exists("non_existent_file.txt")
-            self.assertEqual(APIException.status_code, 404)
+        self.assertFalse(self.s3_uploader.file_exists("non_existent_file.txt"))
 
     def test_delete_file(self) -> None:
         """
@@ -73,3 +71,18 @@ class TestS3Uploader(TestCase):
         uploaded_key = result["key"]
         deleted = self.s3_uploader.delete_file(uploaded_key)
         self.assertTrue(deleted)
+
+    def test_delete_files(self) -> None:
+        """
+        여러 파일 업로드 후 delete_files로 삭제
+        """
+        uploaded_keys = []
+        for i in range(1, 4):
+            file = io.BytesIO(b"test_file")
+            file.name = f"test{i}.txt"
+            result = self.s3_uploader.upload_file(file)
+            uploaded_keys.append(result["key"])
+
+        self.s3_uploader.delete_files(uploaded_keys)
+        for key in uploaded_keys:
+            self.assertFalse(self.s3_uploader.file_exists(key))
