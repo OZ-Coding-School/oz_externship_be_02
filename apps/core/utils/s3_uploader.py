@@ -73,8 +73,11 @@ class S3Uploader:
         return {"url": f"https://{self.bucket_name}.s3.{settings.AWS_S3_REGION}.amazonaws.com/{key}", "key": key}
 
     def file_exists(self, key: str) -> bool:
-        self.s3_safe_call(func=self.s3_client.head_object, Bucket=self.bucket_name, Key=key)
-        return True
+        try:
+            self.s3_safe_call(func=self.s3_client.head_object, Bucket=self.bucket_name, Key=key)
+            return True
+        except NotFound:
+            return False
 
     def delete_file(self, key: str) -> bool:
         """
@@ -88,7 +91,5 @@ class S3Uploader:
         다중 삭제 추가
         S3에 파일들을 한번에 삭제
         """
-        if not keys:
-            return
         objects = [{"Key": key} for key in keys]
         self.s3_safe_call(func=self.s3_client.delete_objects, Bucket=self.bucket_name, Delete={"Objects": objects})
