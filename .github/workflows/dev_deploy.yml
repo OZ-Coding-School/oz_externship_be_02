@@ -69,6 +69,8 @@ jobs:
             
             docker stop ${{ secrets.DJANGO_CONTAINER_NAME }} || true
             docker rm ${{ secrets.DJANGO_CONTAINER_NAME }} || true
+            docker stop celery || true
+            docker rm celery || true
             docker rmi ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:django-dev
           
             docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:django-dev
@@ -84,6 +86,14 @@ jobs:
               sh -c "python manage.py migrate && \
                 python manage.py collectstatic --noinput && \
                 gunicorn --workers 3 --bind 0.0.0.0:8000 config.wsgi:application"
+            
+            docker run -d \
+              --name celery \
+              --network ws \
+              --env-file ${{ secrets.ENV_FILE_NAME }} \
+              -v logs-volume:/oz_externship/logs \
+              ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:django-dev \
+              sh -c "celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler & celery -A config worker -l info"
                         
             docker stop ${{ secrets.NGINX_CONTAINER_NAME }} || true
             docker rm ${{ secrets.NGINX_CONTAINER_NAME }} || true
