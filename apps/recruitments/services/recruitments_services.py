@@ -15,3 +15,7 @@ def get_recruitment_detail(recruitment_uuid: UUID) -> Recruitment:
         return recruitment
     except Recruitment.DoesNotExist:
         raise NotFound("해당 공고를 찾을 수 없음.")
+
+
+def delete_recruitment(recruitment: Recruitment) -> None:
+    recruitment.delete()
