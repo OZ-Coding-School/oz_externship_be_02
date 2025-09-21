@@ -2,8 +2,9 @@ from uuid import UUID
 
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
-from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import NotFound
+from rest_framework.parsers import JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,6 +20,7 @@ from ..services.recruitments_services import get_recruitment_detail
 class RecruitmentDetailView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = ()
+    parser_classes = [JSONParser, MultiPartParser]
 
     def get_object(self, recruitment_uuid: UUID) -> Recruitment:
         try:
