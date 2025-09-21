@@ -1,38 +1,56 @@
 from datetime import date
 from typing import Any
-from unittest.mock import patch
 
+import boto3
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
+from moto import mock_aws
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
 from apps.users.models.user import User
 
 
+@override_settings(
+    AWS_S3_BUCKET_NAME="test-bucket",
+    AWS_S3_ACCESS_KEY_ID="fake",  # 아무 값이나 가능
+    AWS_S3_SECRET_ACCESS_KEY="fake",
+    AWS_S3_REGION="ap-northeast-2",
+)
+@mock_aws
 class RecruitmentFileUploadViewTest(APITransactionTestCase):
 
     def setUp(self) -> None:
+        # moto의 가짜 S3 클라이언트 생성
+        self.s3 = boto3.client(
+            "s3",
+            region_name=settings.AWS_S3_REGION,
+            aws_access_key_id=settings.AWS_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_S3_SECRET_ACCESS_KEY,
+        )
+        self.s3.create_bucket(
+            Bucket=settings.AWS_S3_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": settings.AWS_S3_REGION},
+        )
         self.user = User.objects.create_user(
             email="test@example.com", password="password123", birthday=date(2000, 1, 1), phone_number="010-1234-5678"
         )
         self.client.force_authenticate(user=self.user)
-        self.url = reverse("recruitment-file-upload")
+        self.url = reverse("recruitment-attachments-upload")
 
-    @patch("apps.recruitments.views.attachments_views.S3Uploader")
-    def test_file_upload_success(self, mock_s3_uploader_class: Any) -> None:
+    def test_file_upload_success(self) -> None:
         # GIVEN
-        mock_s3_instance = mock_s3_uploader_class.return_value
-        mock_s3_instance.upload_file.return_value = {"url": "https://s3.mock-domain.com/attachments/test.pdf"}
-        test_file = SimpleUploadedFile("test.pdf", b"file_content", content_type="application/pdf")
+        test_file = SimpleUploadedFile(name="test.pdf", content=b"file_content", content_type="application/pdf")
         data = {"file": test_file}
 
         # WHEN
-        response = self.client.post(self.url, data=data, format="multipart")
+        response = self.client.post(self.url, data=data)
 
         # THEN
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["file_url"], "https://s3.mock-domain.com/attachments/test.pdf")
+        self.assertIn("file_url", response.data)
 
     def test_file_upload_fail_no_file(self) -> None:
         # GIVEN
