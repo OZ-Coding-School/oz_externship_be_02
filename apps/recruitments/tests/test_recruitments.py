@@ -1,12 +1,17 @@
 import uuid
 from datetime import date, timedelta
 
+import boto3
+from django.conf import settings
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
+from moto import mock_aws
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APITransactionTestCase
 
 from apps.lectures.models.crawled_lectures import Lecture
+from apps.recruitments.models import RecruitmentImage
 from apps.recruitments.models.recruitment_attachments import RecruitmentAttachment
 from apps.recruitments.models.recruitment_tags import RecruitmentTag
 from apps.recruitments.models.recruitments import Recruitment
@@ -18,18 +23,36 @@ from apps.studies.models.study_groups import StudyGroup
 from apps.users.models.user import User
 
 
-class RecruitmentDetailViewTest(APITestCase):
+@override_settings(
+    AWS_S3_BUCKET_NAME="test-bucket",
+    AWS_S3_ACCESS_KEY_ID="fake",  # 아무 값이나 가능
+    AWS_S3_SECRET_ACCESS_KEY="fake",
+    AWS_S3_REGION="ap-northeast-2",
+)
+@mock_aws
+class RecruitmentDetailViewTest(APITransactionTestCase):
     # 스터디 구인 공고 상세 조회 API의 전체 흐름을 테스트
 
     def setUp(self) -> None:
-        author = User.objects.create_user(
+        # moto의 가짜 S3 클라이언트 생성
+        self.s3 = boto3.client(
+            "s3",
+            region_name=settings.AWS_S3_REGION,
+            aws_access_key_id=settings.AWS_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_S3_SECRET_ACCESS_KEY,
+        )
+        self.s3.create_bucket(
+            Bucket=settings.AWS_S3_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": settings.AWS_S3_REGION},
+        )
+        self.author = User.objects.create_user(
             email="author@example.com",
             password="password123",
             nickname="해파리볶음밥",
             birthday=date(2002, 3, 14),
             phone_number="010-1111-1111",
         )
-        bookmark_user = User.objects.create_user(
+        self.other_user = User.objects.create_user(
             email="bookmark@example.com",
             password="password123",
             birthday=date(2001, 2, 2),
@@ -54,9 +77,10 @@ class RecruitmentDetailViewTest(APITestCase):
         # 생성한 강의를 스터디 그룹에 연결
         study_group.lectures.add(lecture)
 
+        self.initial_content = "테스트 내용입니다. ![유지될 이미지](https://s3.test.com/kept_image.jpg) ![삭제될 이미지](https://s3.test.com/orphan_image.jpg)"
         self.recruitment = Recruitment.objects.create(
             study_group=study_group,
-            author=author,
+            author=self.author,
             title="API 테스트용 공고",
             content="테스트 내용",
             expected_headcount=5,
@@ -73,11 +97,18 @@ class RecruitmentDetailViewTest(APITestCase):
             file_name="study_plan.pdf",
         )
 
-        self.recruitment.bookmark_users.add(bookmark_user)
+        RecruitmentImage.objects.create(recruitment=self.recruitment, img_url="https://s3.test.com/kept_image.jpg")
+        RecruitmentImage.objects.create(recruitment=self.recruitment, img_url="https://s3.test.com/orphan_image.jpg")
+
+        self.recruitment.bookmark_users.add(self.other_user)
 
     def test_get_recruitment_detail_success(self) -> None:
         # GIVEN
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        context = {"request": self.client.request().wsgi_request}
+        serializer = RecruitmentDetailSerializer(
+            instance=self.recruitment, context={"requests": self.client.request().wsgi_request}
+        )
         expected_data = RecruitmentDetailSerializer(instance=self.recruitment).data
         # WHEN
         response = self.client.get(url)
@@ -93,3 +124,65 @@ class RecruitmentDetailViewTest(APITestCase):
         response = self.client.get(url)
         # THEN
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update_recruitment_success(self) -> None:
+        self.client.force_authenticate(user=self.author)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        update_data = {
+            "title": "수정된 제목입니다.",
+            "tags": ["Python", "NewTag"],
+        }
+
+        response = self.client.patch(url, data=update_data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], "수정된 제목입니다.")
+        self.assertEqual(len(response.data["tags"]), 2)
+        self.assertIn("Python", [tag["name"] for tag in response.data["tags"]])
+
+    def test_update_recruitment_with_attachments_success(self) -> None:
+        self.client.force_authenticate(user=self.author)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        update_data = {
+            "title": "첨부파일 수정 완료",
+            "attachments": [
+                {"file_name": "new_file_1.pdf", "file_url": "https://example.com/new_file_1.pdf"},
+                {"file_name": "new_file_2.pdf", "file_url": "https://example.com/new_file_2.pdf"},
+            ],
+        }
+        # WHEN
+        response = self.client.patch(url, data=update_data, format="json")
+        # THEN
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], "첨부파일 수정 완료")
+        # 응답 데이터에서 첨부파일 2개로 변경됐는지 확인
+        self.assertEqual(len(response.data["attachments"]), 2)
+        self.assertEqual(response.data["attachments"][0]["file_name"], "new_file_1.pdf")
+        self.assertEqual(self.recruitment.attachments.all().count(), 2)
+
+    def test_update_recruitment_cleans_up_orphan_images_in_content(self) -> None:
+        # GIVEN: S3S3Uploader의 인스턴스와 delete_file 메서드를 mock 객체로 만듦
+        self.client.force_authenticate(user=self.author)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        new_content = "내용이 수정되었습니다. ![유지될 이미지](https://s3.test.com/kept_image.jpg)"
+        update_data = {"content": new_content, "images": ["https://s3.test.com/kept_image.jpg"]}
+        # WHEN
+        response = self.client.patch(url, data=update_data, format="json")
+        # THEN
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # DB에서 orphan_image.jpg 삭제 확인
+        orphan_image_exists = RecruitmentImage.objects.filter(img_url="https://s3.test.com/orphan_image.jpg").exists()
+        self.assertFalse(orphan_image_exists, "이미지가 DB에서 삭제되지 않았습니다.")
+
+        # 유지되어야 할 이미지는 DB에 남아있는지 확인
+        kept_image_exists = RecruitmentImage.objects.filter(img_url="https://s3.test.com/kept_image.jpg").exists()
+        self.assertTrue(kept_image_exists, "유지되어야 할 이미지가 삭제됐습니다.")
+
+    def test_update_recruitment_permission_denied(self) -> None:
+        # 작성자가 아닌 다른 사용자가 수정 시도할 때 403에러 반환
+        self.client.force_authenticate(user=self.other_user)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        update_data = {"title": "잘못된 사용자"}
+        response = self.client.patch(url, data=update_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

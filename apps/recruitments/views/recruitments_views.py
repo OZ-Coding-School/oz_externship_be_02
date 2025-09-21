@@ -2,29 +2,39 @@ from uuid import UUID
 
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
-from rest_framework.decorators import authentication_classes
+from rest_framework.exceptions import NotFound
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.recruitments.models.recruitments import Recruitment
-from apps.recruitments.serializers.recruitments_serializers import (
+from ..models.recruitments import Recruitment
+from ..serializers.recruitments_serializers import (
     RecruitmentDetailSerializer,
+    RecruitmentUpdateSerializer,
 )
+from ..services.recruitments_services import get_recruitment_detail
 
 
 class RecruitmentDetailView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = ()
+    parser_classes = [JSONParser, MultiPartParser]
+
+    def get_object(self, recruitment_uuid: UUID) -> Recruitment:
+        try:
+            return Recruitment.objects.get(uuid=recruitment_uuid)
+        except Recruitment.DoesNotExist:
+            raise NotFound(f"Recruitment {recruitment_uuid} not found")
 
     @extend_schema(
-        summary="스터디 구인공고 상세 조회",
+        summary="스터디 구인공고 상세조회",
         description="recruitment_uuid에 해당하는 스터디 구인공고의 모든 상세정보 조회",
         responses={
             status.HTTP_200_OK: RecruitmentDetailSerializer,
             status.HTTP_404_NOT_FOUND: OpenApiResponse(
-                description="해당 공고를 찾을 수 없음", response={"error": "string"}
+                description="해당 공고를 찾을 수 없음", response={"erros": "string"}
             ),
         },
         parameters=[
@@ -37,16 +47,35 @@ class RecruitmentDetailView(APIView):
         ],
     )
     def get(self, request: Request, recruitment_uuid: UUID) -> Response:
-        # 테이블 명세서대로 하기 -> model과 serializer 이용하면 해결될거에요
-        try:
-            # 1. URL 경로로 recruitment_uuid를 사용해 데이터베이스에 해당하는 Recruitment 객체 조회
-            recruitment = (
-                Recruitment.objects.select_related("author")
-                .prefetch_related("tags", "attachments", "bookmark_users")
-                .get(uuid=recruitment_uuid)
-            )
-        except Recruitment.DoesNotExist:
-            return Response({"error": "해당 공고를 찾을 수 없음."}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = RecruitmentDetailSerializer(recruitment)
+        recruitment = get_recruitment_detail(recruitment_uuid=recruitment_uuid)
+        serializer = RecruitmentDetailSerializer(recruitment, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="스터디 구인 공고 수정 (PATCH method)",
+        responses={
+            status.HTTP_200_OK: RecruitmentDetailSerializer,
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="인증이 필요합니다."),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="수정 권한이 없습니다."),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description="해당 공고를 찾을 수 없습니다."),
+        },
+        parameters=[
+            OpenApiParameter(
+                name="recruitment_uuid",
+                type=UUID,
+                location=OpenApiParameter.PATH,
+                description="수정할 공고의 고유 UUID",
+            ),
+        ],
+    )
+    def patch(self, request: Request, recruitment_uuid: UUID) -> Response:
+        recruitment_to_update = self.get_object(recruitment_uuid=recruitment_uuid)
+
+        if request.user != recruitment_to_update.author:
+            return Response({"error": "이 공고를 수정할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = RecruitmentUpdateSerializer(instance=recruitment_to_update, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_instance = serializer.save()
+
+        return Response(RecruitmentDetailSerializer(updated_instance).data, status=status.HTTP_200_OK)
