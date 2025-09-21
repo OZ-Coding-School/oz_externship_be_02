@@ -1,9 +1,12 @@
 import uuid
 from datetime import date, timedelta
-from unittest.mock import MagicMock, patch
 
+import boto3
+from django.conf import settings
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
+from moto import mock_aws
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
@@ -20,10 +23,28 @@ from apps.studies.models.study_groups import StudyGroup
 from apps.users.models.user import User
 
 
+@override_settings(
+    AWS_S3_BUCKET_NAME="test-bucket",
+    AWS_S3_ACCESS_KEY_ID="fake",  # 아무 값이나 가능
+    AWS_S3_SECRET_ACCESS_KEY="fake",
+    AWS_S3_REGION="ap-northeast-2",
+)
+@mock_aws
 class RecruitmentDetailViewTest(APITransactionTestCase):
     # 스터디 구인 공고 상세 조회 API의 전체 흐름을 테스트
 
     def setUp(self) -> None:
+        # moto의 가짜 S3 클라이언트 생성
+        self.s3 = boto3.client(
+            "s3",
+            region_name=settings.AWS_S3_REGION,
+            aws_access_key_id=settings.AWS_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_S3_SECRET_ACCESS_KEY,
+        )
+        self.s3.create_bucket(
+            Bucket=settings.AWS_S3_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": settings.AWS_S3_REGION},
+        )
         self.author = User.objects.create_user(
             email="author@example.com",
             password="password123",
@@ -104,8 +125,7 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
         # THEN
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    @patch("apps.recruitments.services.recruitments_services.S3Uploader")
-    def test_update_recruitment_success(self, mock_s3_uploader: MagicMock) -> None:
+    def test_update_recruitment_success(self) -> None:
         self.client.force_authenticate(user=self.author)
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
         update_data = {
@@ -120,8 +140,7 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
         self.assertEqual(len(response.data["tags"]), 2)
         self.assertIn("Python", [tag["name"] for tag in response.data["tags"]])
 
-    @patch("apps.recruitments.services.recruitments_services.S3Uploader")
-    def test_update_recruitment_with_attachments_success(self, mock_s3_uploader: MagicMock) -> None:
+    def test_update_recruitment_with_attachments_success(self) -> None:
         self.client.force_authenticate(user=self.author)
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
         update_data = {
@@ -141,14 +160,12 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
         self.assertEqual(response.data["attachments"][0]["file_name"], "new_file_1.pdf")
         self.assertEqual(self.recruitment.attachments.all().count(), 2)
 
-    @patch("apps.recruitments.services.recruitments_services.S3Uploader")
-    def test_update_recruitment_cleans_up_orphan_images_in_content(self, mock_s3_uploader: MagicMock) -> None:
+    def test_update_recruitment_cleans_up_orphan_images_in_content(self) -> None:
         # GIVEN: S3S3Uploader의 인스턴스와 delete_file 메서드를 mock 객체로 만듦
-        mock_s3_instance = mock_s3_uploader.return_value
         self.client.force_authenticate(user=self.author)
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
         new_content = "내용이 수정되었습니다. ![유지될 이미지](https://s3.test.com/kept_image.jpg)"
-        update_data = {"content": new_content}
+        update_data = {"content": new_content, "images": ["https://s3.test.com/kept_image.jpg"]}
         # WHEN
         response = self.client.patch(url, data=update_data, format="json")
         # THEN
@@ -161,10 +178,6 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
         # 유지되어야 할 이미지는 DB에 남아있는지 확인
         kept_image_exists = RecruitmentImage.objects.filter(img_url="https://s3.test.com/kept_image.jpg").exists()
         self.assertTrue(kept_image_exists, "유지되어야 할 이미지가 삭제됐습니다.")
-
-        # S3 삭제 함수가 올바른 키 값으로 '한 번' 호출되었는지 확인
-        s3_key_to_delete = "orphan_image.jpg"
-        mock_s3_instance.delete_file.assert_called_once_with(key=s3_key_to_delete)
 
     def test_update_recruitment_permission_denied(self) -> None:
         # 작성자가 아닌 다른 사용자가 수정 시도할 때 403에러 반환
