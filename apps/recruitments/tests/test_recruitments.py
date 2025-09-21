@@ -186,3 +186,26 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
         update_data = {"title": "잘못된 사용자"}
         response = self.client.patch(url, data=update_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_recruitment_by_author_success(self) -> None:
+        self.client.force_authenticate(user=self.author)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Recruitment.objects.filter(uuid=self.recruitment.uuid).exists())
+
+    def test_delete_recruitment_permission_denied(self) -> None:
+        self.client.force_authenticate(user=self.other_user)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Recruitment.objects.filter(uuid=self.recruitment.uuid).exists())
+
+    def test_delete_recruitment_unauthenticated(self) -> None:
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertTrue(Recruitment.objects.filter(uuid=self.recruitment.uuid).exists())
