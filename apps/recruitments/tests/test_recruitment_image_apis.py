@@ -66,8 +66,6 @@ class RecruitmentImageUploadAPITest(APITransactionTestCase):
             format="multipart",
         )
 
-        print(response.data)
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("image_url", response.data)
 
@@ -78,4 +76,4 @@ class RecruitmentImageUploadAPITest(APITransactionTestCase):
         response = self.client.post(self.url, {}, format="multipart")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("image", response.data)
+        self.assertIn("error", response.data)

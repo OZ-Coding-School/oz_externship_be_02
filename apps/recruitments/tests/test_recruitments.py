@@ -133,7 +133,7 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
             "tags": ["Python", "NewTag"],
         }
 
-        response = self.client.patch(url, data=update_data, format="json")
+        response = self.client.patch(url, data=update_data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["title"], "수정된 제목입니다.")
