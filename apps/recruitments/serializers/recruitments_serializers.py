@@ -119,9 +119,10 @@ class RecruitmentUpdateSerializer(serializers.ModelSerializer[Recruitment]):
             setattr(instance, attr, value)
         instance.save()
 
-        transaction.on_commit(
-            partial(self._cleanup_orphan_images_or_attachments, urls=pre_attachment_urls + pre_image_urls)
-        )
+        if pre_image_urls or pre_attachment_urls:
+            transaction.on_commit(
+                partial(self._cleanup_orphan_images_or_attachments, urls=pre_attachment_urls + pre_image_urls)
+            )
         return instance
 
     def _cleanup_orphan_images_or_attachments(self, urls: list[str]) -> None:
