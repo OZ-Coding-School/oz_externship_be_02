@@ -13,7 +13,7 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
     def setUpTestData(cls) -> None:
         cls.email = "test@example.com"
         cls.password = "testpassword"
-        cls.user = cls._create_test_user(email="test@example.com")
+        cls.user = cls._create_test_user(email=cls.email, password=cls.password, is_active=True)
         cls.refresh_url = reverse("token_refresh")
         cls.revoke_url = reverse("logout")
         cls.login_url = reverse("email_login")
