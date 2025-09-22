@@ -196,8 +196,6 @@ class StudyReviewNotificationService:
             )
             for uid in ids
         ]
-        if not notifications:
-            return 0
 
         Notification.objects.bulk_create(notifications, batch_size=1000)
         return len(notifications)
