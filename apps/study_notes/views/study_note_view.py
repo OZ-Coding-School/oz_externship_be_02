@@ -23,9 +23,6 @@ from apps.users.models import User
 
 
 class StudyNoteView(APIView):
-    """
-    스터디 그룹에 속한 유저가 그룹원들의 스터디 기록을 전체 조회하거나, 새로운 스터디 기록을 생성합니다.
-    """
 
     permission_classes = [IsAuthenticated]
     service_class = StudyNoteService
