@@ -21,7 +21,7 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
     class Meta:
         model = StudyGroup
         fields = [
-            "id",
+            "uuid",
             "name",  # 스터디 그룹명
             "introduction",  # 스터디 소개글
             "max_headcount",  # 최대 인원 수
@@ -32,6 +32,9 @@ class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
             "lectures",  # 스터디 그룹에서 수강할 강의
             "created_at",
         ]
+        extra_kwargs = {
+            'uuid': {'read_only': True},
+        }
 
     def validate_lectures(self, value: list[int]) -> list[int]:
         if len(value) > 5:
