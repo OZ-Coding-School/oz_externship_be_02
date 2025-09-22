@@ -33,7 +33,7 @@ class StudyGroupCreateUpdateSerializer(serializers.ModelSerializer[StudyGroup]):
             "created_at",
         ]
         extra_kwargs = {
-            'uuid': {'read_only': True},
+            "uuid": {"read_only": True},
         }
 
     def validate_lectures(self, value: list[int]) -> list[int]:
