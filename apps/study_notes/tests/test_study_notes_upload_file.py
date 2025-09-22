@@ -43,7 +43,7 @@ class StudyNoteUploadViewTest(TestCase):
 
         image_file = create_temp_image()
         attachment_file = SimpleUploadedFile("test.txt", b"hello world", content_type="text/plain")
-        data = {"images_file": [image_file], "attachments_file": [attachment_file]}  # 키 이름 수정
+        data = {"images_file": [image_file], "attachments_file": [attachment_file]}
 
         response = cast(Response, self.client.post(url, data, format="multipart"))
         self.assertEqual(response.status_code, 200)
