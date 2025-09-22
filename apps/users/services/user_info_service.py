@@ -16,7 +16,15 @@ from apps.users.serializers.user_info_serializer import (
 def get_phone_verification_key(phone_number: str) -> str:
     return f"phone_verification: {phone_number}"
 
-# 사용자 정보 수정(조회는 view에서 처리)
+# 사용자 정보 조회
+class UserInfoService:
+    def __init__(self) -> None:
+        self.user = User
+
+    def get_user_info(self) -> dict:
+        return UserInfoSerializer(self.user).data
+
+# 사용자 정보 수정
 class UserInfoEditService:
     def __init__(self, user: User):
         self.user = user
@@ -30,8 +38,7 @@ class UserInfoEditService:
             if not cache.get(cache_key):
                 raise ValidationError("휴대폰 인증이 필요합니다.")
 
-
-        # 사용자 정보 업데이트(serializer 처리)
+        # 사용자 정보 업데이트(serializer가 처리)
         serializer = UserInfoEditSerializer(instance=self.user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_user = serializer.save()
