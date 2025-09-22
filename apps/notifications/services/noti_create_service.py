@@ -1,8 +1,8 @@
 from datetime import date, datetime, time, timedelta
-from typing import Iterable, List, Set, Tuple
+from typing import Dict, Iterable, List, Set, Tuple
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
 from django.utils import timezone
 
 from apps.applications.models.applications import Application
@@ -148,34 +148,45 @@ class StudyReviewNotificationService:
         return start, end
 
     @classmethod
-    # 해당 날짜에 종료되는 스터디 그룹 조회
     def get_groups_end(cls, d: date) -> QuerySet[StudyGroup]:
+        """
+        로컬일자에 종료되는 그룹만 조회
+        멤버 user_id를 N+1 없이 쓰도록 prefetch
+        """
         start, end = cls.day_range(d)
-        return StudyGroup.objects.filter(end_at__gte=start, end_at__lt=end).only("id", "uuid", "name")
-
-    @classmethod
-    # 특정 스터디 그룹에 속한 멤버들의 id 조회
-    def list_members(cls, study_group_id: int) -> List[int]:
-        return list(
-            GroupMember.objects.filter(
-                study_group=study_group_id,
-            ).values_list("user_id", flat=True)
+        return (
+            StudyGroup.objects.filter(end_at__gte=start, end_at__lt=end)
+            .only("id", "uuid", "name")
+            .prefetch_related(
+                Prefetch(
+                    "groupmember_set",
+                    queryset=GroupMember.objects.only("id", "user_id", "study_group_id"),
+                )
+            )
         )
 
     @classmethod
-    # 중복 방지를 위한 이미 알림을 받은 유저 조회
-    def list_notified_users(cls, today: date, member_ids: Iterable[int]) -> Set[int]:
+    def list_notified_users(cls, today: date, user_ids: Iterable[int]) -> Set[int]:
+        if not user_ids:
+            return set()
+
+        start, end = cls.day_range(today)
         return set(
             Notification.objects.filter(
                 notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST,
                 back_url_link="/my-page/completed-study",
-                created_at__date=today,
-                user_id__in=member_ids,
+                created_at__gte=start,
+                created_at__lt=end,
+                user_id__in=set(user_ids),
             ).values_list("user_id", flat=True)
         )
 
     @classmethod
-    def notify_study_review(cls, study_group_name: str, member_user_ids: Iterable[int]) -> int:
+    def notify_study_review(cls, study_group_name: str, target_user_ids: Iterable[int]) -> int:
+        ids = set(target_user_ids)
+        if not ids:
+            return 0
+
         notifications = [
             Notification(
                 user_id=uid,
@@ -183,24 +194,48 @@ class StudyReviewNotificationService:
                 notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST,
                 back_url_link=f"/my-page/completed-study",
             )
-            for uid in set(member_user_ids)
+            for uid in ids
         ]
         if not notifications:
             return 0
-        with transaction.atomic():
-            Notification.objects.bulk_create(notifications, batch_size=1000)
 
+        Notification.objects.bulk_create(notifications, batch_size=1000)
         return len(notifications)
 
     @classmethod
-    def send_review_requests_for_groups(cls, group: StudyGroup, today: date) -> int:
-        member_ids = cls.list_members(group.id)
+    def create_review_request_notifications_for_group(cls, group: StudyGroup, today: date) -> int:
+        member_ids: Set[int] = {m.user_id for m in group.groupmember_set.all()}
         if not member_ids:
             return 0
 
-        already = cls.list_notified_users(today=today, member_ids=member_ids)
-        targets = [uid for uid in member_ids if uid not in already]
+        already: Set[int] = cls.list_notified_users(today=today, user_ids=member_ids)
+        targets: List[int] = [uid for uid in member_ids if uid not in already]
         if not targets:
             return 0
 
-        return cls.notify_study_review(study_group_name=group.name, member_user_ids=targets)
+        return cls.notify_study_review(
+            study_group_name=group.name,
+            target_user_ids=targets,
+        )
+
+    @classmethod
+    def create_review_request_notifications_for_due_group(
+        cls, today: date | None = None, chunk_size: int = 200
+    ) -> Dict[str, int]:
+        """
+        오늘 종료되는 모든 그룹에 대해 후기요청 멱등 발송.
+        반환: {"groups_processed": X, "notifications_created": Y}
+        """
+        if today is None:
+            today = timezone.localdate()
+
+        groups = cls.get_groups_end(today)
+
+        stats: Dict[str, int] = {"groups_processed": 0, "notifications_created": 0}
+
+        for group in groups.iterator(chunk_size=chunk_size):
+            created = cls.create_review_request_notifications_for_group(group=group, today=today)
+            stats["groups_processed"] += 1
+            stats["notifications_created"] += created
+
+        return stats
