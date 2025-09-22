@@ -1,18 +1,15 @@
-from typing import Dict, Optional, Tuple
+from typing import Optional, cast
 
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
-from rest_framework_simplejwt.settings import api_settings
-from rest_framework_simplejwt.tokens import RefreshToken, TokenError
-
-from apps.users.models import User
+from rest_framework_simplejwt.tokens import RefreshToken, Token
+from rest_framework_simplejwt.exceptions import TokenError
 
 
 class AuthService:
     """
     이메일 로그인
     """
-
     @staticmethod
     def email_login(email: str, password: str) -> dict[str, str]:
         user = authenticate(email=email, password=password)
@@ -26,8 +23,9 @@ class AuthService:
 
     @staticmethod
     def revoke_refresh_tokens(refresh_token: Optional[str]) -> None:
+        refresh_token_str = cast(Token, refresh_token)
         try:
-            token = RefreshToken(refresh_token)
+            token = RefreshToken(refresh_token_str)
             token.blacklist()
         except TokenError:
             raise ValidationError("리프레시 토큰이 유효하지 않습니다")
@@ -39,10 +37,11 @@ class JWTService:
         """
         쿠키의 refresh 토큰으로 새로운 access 토큰 발급
         """
-        if not refresh_token:
+        refresh_token_str = cast(Token, refresh_token)
+        if not refresh_token_str:
             raise AuthenticationFailed("재로그인이 필요합니다")
         try:
-            token = RefreshToken(refresh_token)
+            token = RefreshToken(refresh_token_str)
             return str(token.access_token)
         except Exception as e:
             msg = str(e).lower()

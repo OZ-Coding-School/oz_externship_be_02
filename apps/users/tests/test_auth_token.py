@@ -1,9 +1,11 @@
+from http.cookies import Morsel
+from typing import cast
+
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.tests.mixins.test_user_mixins import VerificationMixin
-from apps.users.models import User
 
 
 class AuthTokenViewsTests(APITestCase, VerificationMixin):
@@ -23,7 +25,6 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         response = self.client.post(
             self.login_url, {"email": self.email, "password": self.password}
         )
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.cookies)
@@ -78,7 +79,7 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
             self.login_url, {"email": self.email, "password": self.password}
         )
 
-        refresh_cookie = response.cookies.get("refresh")
+        refresh_cookie = cast(Morsel[str], response.cookies.get("refresh"))
 
         # 2. refresh 쿠키 포함해서 로그아웃 요청
         self.client.cookies["refresh"] = refresh_cookie.value
