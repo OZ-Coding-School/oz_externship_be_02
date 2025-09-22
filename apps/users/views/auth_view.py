@@ -50,10 +50,16 @@ class EmailLoginAPIView(APIView):
             tokens = AuthService.email_login(**serializer.validated_data)
         except AuthenticationFailed as e:
             return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
         response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
 
-        response.set_cookie("refresh", tokens["refresh"], httponly=True)
+        response.set_cookie("refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site",
+        secure=True,
+        samesite="None")
+
         return response
 
 
@@ -71,8 +77,9 @@ class LogoutAPIView(APIView):
             return Response({"error": "refresh 토큰이 필요합니다"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             login_service.revoke_refresh_tokens(refresh)
-        except ValidationError as e:
+        except AuthenticationFailed as e:
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
+
 
         response = Response({"detail": "로그아웃이 완료되었습니다"}, status=status.HTTP_200_OK)
         response.delete_cookie("refresh")
@@ -94,5 +101,7 @@ class CookieTokenRefreshAPIView(APIView):
             access_token = JWTService.refresh_access_token(refresh_token)
         except AuthenticationFailed as e:
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status.HTTP_400_BAD_REQUEST)
 
         return Response({"access": access_token}, status=status.HTTP_200_OK)
