@@ -21,8 +21,6 @@ class IsStudyGroupLeaderPermission(permissions.BasePermission):
         :param obj: StudyGroup 인스턴스
         :return:
         """
-        if request.method in permissions.SAFE_METHODS:  # SAFE_METHODS = GET, HEAD, OPTIONS
-            return True  # GET, HEAD, OPTIONS은 혀용
 
         study_group = obj
 
