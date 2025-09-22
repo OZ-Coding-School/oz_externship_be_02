@@ -19,12 +19,14 @@ class RecruitmentApplicationListSerializer(serializers.ModelSerializer[Applicati
     특정 공고에 대한 지원자 목록 조회 Serializer
     """
 
+    application_id = serializers.IntegerField(source="id")
     applicant = ApplicantSerializer(source="user", read_only=True)
     applied_at = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
         model = Application
         fields = [
+            "application_id",
             "applicant",
             "available_time",
             "has_study_experience",
