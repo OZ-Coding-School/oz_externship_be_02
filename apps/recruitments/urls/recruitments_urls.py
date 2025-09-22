@@ -2,7 +2,7 @@ from django.urls import include, path
 
 from apps.recruitments.views.attachments_views import RecruitmentFileView
 from apps.recruitments.views.images_views import RecruitmentImageView
-from apps.recruitments.views.recruitments_views import RecruitmentDetailView
+from apps.recruitments.views.recruitments_detail_views import RecruitmentDetailView
 from apps.recruitments.views.views_list import RecruitmentView
 
 urlpatterns = [
