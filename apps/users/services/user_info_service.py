@@ -11,6 +11,8 @@ from apps.users.serializers.user_info_serializer import (
     UserInfoSerializer,
 )
 
+#TODO phone_service.py 가져와서 써야 할 수도 있겠는데...
+#TODO 인증 번호 발송, 인증 번호 확인 등
 
 # 휴대폰 인증 관련 캐시 키 생성 함수(일관성 유지가 목적)
 def get_phone_verification_key(phone_number: str) -> str:
