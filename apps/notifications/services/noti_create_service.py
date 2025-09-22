@@ -1,11 +1,11 @@
 from datetime import date, datetime, time, timedelta
 from typing import Dict, Iterable, List, Set, Tuple
 
-from django.db import transaction
 from django.db.models import Prefetch, QuerySet
 from django.utils import timezone
 
 from apps.applications.models.applications import Application
+from apps.notifications.const import get_notification_back_url
 from apps.notifications.models import Notification
 from apps.studies.models import GroupMember, StudyGroup
 from apps.study_notes.models import StudyNote
@@ -35,7 +35,7 @@ class ApplicationNotificationService:
             user_id=rec.author_id,
             content=f"{rec.title} 구인 공고에 신규 지원자가 있습니다.",
             notification_type=Notification.NotificationType.ADD_APPLICATION,
-            back_url_link=f"/recruitments/{rec.uuid}/applications",
+            back_url_link=get_notification_back_url(Notification.NotificationType.ADD_APPLICATION),
         )
 
     def notify_application_accept(self) -> Notification:
@@ -50,7 +50,7 @@ class ApplicationNotificationService:
             user_id=self.app.user_id,
             content=f"{rec.title} 구인 공고에 대한 지원 내역이 승인 되었습니다.",
             notification_type=Notification.NotificationType.APPLICATION_ACCEPT,
-            back_url_link=f"/my-page/applications",
+            back_url_link=get_notification_back_url(Notification.NotificationType.APPLICATION_ACCEPT),
         )
 
     def notify_application_reject(self) -> Notification:
@@ -65,7 +65,7 @@ class ApplicationNotificationService:
             user_id=self.app.user_id,  # 수신자 = 지원자
             content=f"{rec.title} 구인 공고에 대한 지원 내역이 거절되었습니다.",
             notification_type=Notification.NotificationType.APPLICATION_REJECT,
-            back_url_link="/my-page/applications",
+            back_url_link=get_notification_back_url(Notification.NotificationType.APPLICATION_REJECT),
         )
 
     def notify_group_members_join(self) -> int:
@@ -90,15 +90,14 @@ class ApplicationNotificationService:
                 user_id=uid,
                 content=f"{group.name}에 {new_user.nickname} 님이 참여했습니다. 환영해주세요!",
                 notification_type=Notification.NotificationType.STUDY_JOIN,
-                back_url_link=f"/study-groups/{group.id}/chat",
+                back_url_link=get_notification_back_url(Notification.NotificationType.STUDY_JOIN, group_id=group.id),
             )
             for uid in accepted_user_ids
         ]
 
-        with transaction.atomic():
-            created = Notification.objects.bulk_create(notifications)
+        Notification.objects.bulk_create(notifications)
 
-        return len(created)
+        return len(notifications)
 
 
 class StudyNoteNotificationService:
@@ -128,15 +127,16 @@ class StudyNoteNotificationService:
                 user_id=uid,
                 content=f"{author.nickname} 님이 {group.name}에 스터디 기록을 작성하였습니다. 확인해보세요!",
                 notification_type=Notification.NotificationType.STUDY_NOTE_CREATE,
-                back_url_link=f"/study-group/{group.uuid}",
+                back_url_link=get_notification_back_url(
+                    Notification.NotificationType.STUDY_NOTE_CREATE, group_id=group.id
+                ),
             )
             for uid in accepted_user_ids
         ]
 
-        with transaction.atomic():
-            created = Notification.objects.bulk_create(notifications)
+        Notification.objects.bulk_create(notifications)
 
-        return len(created)
+        return len(notifications)
 
 
 class StudyReviewNotificationService:
@@ -174,7 +174,7 @@ class StudyReviewNotificationService:
         return set(
             Notification.objects.filter(
                 notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST,
-                back_url_link="/my-page/completed-study",
+                back_url_link=get_notification_back_url(Notification.NotificationType.STUDY_REVIEW_REQUEST),
                 created_at__gte=start,
                 created_at__lt=end,
                 user_id__in=set(user_ids),
@@ -192,7 +192,7 @@ class StudyReviewNotificationService:
                 user_id=uid,
                 content=f"오늘은 {study_group_name}의 종료일이에요! 스터디 후기를 기록해주세요!",
                 notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST,
-                back_url_link=f"/my-page/completed-study",
+                back_url_link=get_notification_back_url(Notification.NotificationType.STUDY_REVIEW_REQUEST),
             )
             for uid in ids
         ]
