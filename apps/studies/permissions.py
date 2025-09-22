@@ -14,7 +14,7 @@ class IsStudyGroupLeaderPermission(permissions.BasePermission):
 
     def has_object_permission(
         self, request: Request, view: APIView, obj: Any
-    ) -> bool:  # 특정 권한 객체에 대한 권한 확인
+    ) -> Any:  # 특정 권한 객체에 대한 권한 확인
         """
         :param request: HTTP request
         :param view: view 인스턴스
@@ -30,9 +30,4 @@ class IsStudyGroupLeaderPermission(permissions.BasePermission):
             return False
 
         # 리더 권한 확인
-        try:
-            GroupMember.objects.get(study_group=study_group, user=request.user, is_leader=True)
-            return True
-        except GroupMember.DoesNotExist:
-            self.message = f"{obj.name} 스터디 그룹의 리더 권한이 없습니다."
-            return False
+        return study_group.members.through.objects.filter(user=request.user, is_leader=True).exists()
