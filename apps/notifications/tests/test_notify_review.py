@@ -1,15 +1,17 @@
-from datetime import datetime, time, timedelta, date
+from datetime import date, datetime, time, timedelta
 from typing import Tuple
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
-from django.contrib.auth import get_user_model
 
-from apps.notifications.tasks import study_review_requests_for_groups
-from apps.studies.models.study_groups import StudyGroup
-from apps.studies.models.group_members import GroupMember
 from apps.notifications.models import Notification
-from apps.notifications.services.noti_create_service import StudyReviewNotificationService as Svc
+from apps.notifications.services.noti_create_service import (
+    StudyReviewNotificationService as Svc,
+)
+from apps.notifications.tasks import study_review_requests_for_groups
+from apps.studies.models.group_members import GroupMember
+from apps.studies.models.study_groups import StudyGroup
 
 User = get_user_model()
 
@@ -20,6 +22,7 @@ def kst_today_range() -> Tuple[date, datetime, datetime]:
     start = timezone.make_aware(datetime.combine(today, time.min), tz)
     end = start + timedelta(days=1)
     return today, start, end
+
 
 class StudyReviewRequestServiceTests(TestCase):
     def setUp(self) -> None:
@@ -85,9 +88,7 @@ class StudyReviewRequestServiceTests(TestCase):
 
         # 총 알림 수: 기존 1 + 새로 2 = 3
         self.assertEqual(
-            Notification.objects.filter(
-                notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST
-            ).count(),
+            Notification.objects.filter(notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST).count(),
             3,
         )
 
@@ -122,6 +123,7 @@ class StudyReviewRequestServiceTests(TestCase):
         created = Svc.send_review_requests_for_groups(group=empty_group, today=today)
         self.assertEqual(created, 0)
         self.assertEqual(Notification.objects.count(), 0)
+
 
 class StudyReviewRequestTaskTests(TestCase):
     def setUp(self) -> None:
@@ -198,13 +200,11 @@ class StudyReviewRequestTaskTests(TestCase):
         self.assertEqual(stats1["groups_processed"], 2)
         self.assertEqual(stats1["notifications_created"], 3)
         self.assertEqual(
-            Notification.objects.filter(
-                notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST
-            ).count(),
+            Notification.objects.filter(notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST).count(),
             3,
         )
 
         # 두 번째 실행: 모두 이미 오늘 받았으므로 0건
         stats2 = study_review_requests_for_groups()
-        self.assertEqual(stats2["groups_processed"], 2)   # 그래도 그룹은 두 개 처리
+        self.assertEqual(stats2["groups_processed"], 2)  # 그래도 그룹은 두 개 처리
         self.assertEqual(stats2["notifications_created"], 0)
