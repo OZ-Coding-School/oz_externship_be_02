@@ -23,7 +23,8 @@ class StudyNoteAttachmentSerializer(serializers.ModelSerializer[StudyNoteAttachm
         model = StudyNoteAttachment
         fields = ["id", "file_name", "file_url"]
 
-class UserInfoSerializer(serializers.ModelSerializer):
+
+class UserInfoSerializer(serializers.ModelSerializer[User]):
     class Meta:
         model = User
         fields = ["id", "nickname", "profile_img_url"]
@@ -79,8 +80,9 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
                 raise serializers.ValidationError(f"{f.name}: 지원하지 않는 파일 형식입니다.")
         return files
 
+
 # 스터디 노트 기록 전체 목록 조회
-class StudyNoteListSerializer(serializers.ModelSerializer):
+class StudyNoteListSerializer(serializers.ModelSerializer[StudyNote]):
     author = UserInfoSerializer(read_only=True)
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
 
