@@ -105,11 +105,8 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
     def test_get_recruitment_detail_success(self) -> None:
         # GIVEN
         url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
-        context = {"request": self.client.request().wsgi_request}
-        serializer = RecruitmentDetailSerializer(
-            instance=self.recruitment, context={"requests": self.client.request().wsgi_request}
-        )
-        expected_data = RecruitmentDetailSerializer(instance=self.recruitment).data
+        request = self.client.request().wsgi_request
+        expected_data = RecruitmentDetailSerializer(instance=self.recruitment, context={"requests": request}).data
         # WHEN
         response = self.client.get(url)
         # THEN
@@ -186,3 +183,32 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
         update_data = {"title": "잘못된 사용자"}
         response = self.client.patch(url, data=update_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_recruitment_unauthenticated(self) -> None:
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        update_data = {"title": "비로그인 수정 시도"}
+        response = self.client.patch(url, data=update_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_delete_recruitment_by_author_success(self) -> None:
+        self.client.force_authenticate(user=self.author)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Recruitment.objects.filter(uuid=self.recruitment.uuid).exists())
+
+    def test_delete_recruitment_permission_denied(self) -> None:
+        self.client.force_authenticate(user=self.other_user)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Recruitment.objects.filter(uuid=self.recruitment.uuid).exists())
+
+    def test_delete_recruitment_unauthenticated(self) -> None:
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertTrue(Recruitment.objects.filter(uuid=self.recruitment.uuid).exists())

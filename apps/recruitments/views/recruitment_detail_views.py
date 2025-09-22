@@ -18,11 +18,12 @@ from ..services.recruitments_services import get_recruitment_detail
 
 
 class RecruitmentDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # 그냥 조회는 누구나 가능합니다
     authentication_classes = ()
     parser_classes = [JSONParser, MultiPartParser]
 
-    def get_object(self, recruitment_uuid: UUID) -> Recruitment:
+    @staticmethod
+    def _get_object(recruitment_uuid: UUID) -> Recruitment:
         try:
             return Recruitment.objects.get(uuid=recruitment_uuid)
         except Recruitment.DoesNotExist:
@@ -69,7 +70,10 @@ class RecruitmentDetailView(APIView):
         ],
     )
     def patch(self, request: Request, recruitment_uuid: UUID) -> Response:
-        recruitment_to_update = self.get_object(recruitment_uuid=recruitment_uuid)
+        if not request.user.is_authenticated:
+            return Response({"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        recruitment_to_update = self._get_object(recruitment_uuid=recruitment_uuid)
 
         if request.user != recruitment_to_update.author:
             return Response({"error": "이 공고를 수정할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
@@ -78,4 +82,36 @@ class RecruitmentDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         updated_instance = serializer.save()
 
-        return Response(RecruitmentDetailSerializer(updated_instance).data, status=status.HTTP_200_OK)
+        return Response(
+            RecruitmentDetailSerializer(updated_instance, context={"request": request}).data, status=status.HTTP_200_OK
+        )
+
+    @extend_schema(
+        summary="스터디 구인 공고 삭제",
+        description="recruitment_uuid에 해당하는 구인공고 삭제, 작성자만 삭제 가능",
+        responses={
+            status.HTTP_204_NO_CONTENT: OpenApiResponse(description="삭제 성공. 응답 본문 없음."),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(description="인증이 필요합니다."),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(description="삭제 권한이 없습니다."),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description="해당 공고를 찾을 수 없습니다."),
+        },
+        parameters=[
+            OpenApiParameter(
+                name="recruitment_uuid",
+                type=UUID,
+                location=OpenApiParameter.PATH,
+                description="삭제할 공고의 고유 UUID",
+            ),
+        ],
+    )
+    def delete(self, request: Request, recruitment_uuid: UUID) -> Response:
+        if not request.user.is_authenticated:
+            return Response({"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        recruitment = self._get_object(recruitment_uuid)
+
+        if request.user != recruitment.author:
+            return Response({"이 공고를 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        recruitment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
