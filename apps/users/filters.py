@@ -1,7 +1,7 @@
 from django.db.models import QuerySet
 from django_filters import rest_framework as filters
 
-from apps.users.models import User
+from apps.users.models import User, Withdrawals
 from apps.users.utils.enums import Permission, UserStatus
 
 # Enum을  사용해 CHOICES를 동적으로 생성
@@ -38,3 +38,20 @@ class UserFilter(filters.FilterSet):
         # active 또는 inactive인 경우, 탈퇴 신청을 하지 않은 유저 중에서 필터링
         is_active = value == UserStatus.ACTIVE.value[0]
         return queryset.filter(withdrawals__isnull=True, is_active=is_active)
+
+
+class WithdrawalFilter(filters.FilterSet):
+    permission = filters.ChoiceFilter(choices=[p.value for p in Permission], method="filter_by_permission")
+
+    class Meta:
+        model = Withdrawals
+        fields = ["permission"]
+
+    def filter_by_permission(self, queryset: QuerySet[Withdrawals], name: str, value: str) -> QuerySet[Withdrawals]:
+        if value == Permission.ADMIN.value[0]:
+            return queryset.filter(user__is_superuser=True)
+        if value == Permission.STAFF.value[0]:
+            return queryset.filter(user__is_staff=True, user__is_superuser=False)
+        if value == Permission.GENERAL.value[0]:
+            return queryset.filter(user__is_staff=False, user__is_superuser=False)
+        return queryset

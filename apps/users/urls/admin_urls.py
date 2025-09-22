@@ -2,13 +2,16 @@ from django.urls import URLPattern, URLResolver, include, path
 from rest_framework.routers import DefaultRouter
 
 from apps.users.views.admin_views import UserAdminViewSet, UserPermissionUpdateAPIView
+from apps.users.views.admin_withdrawal_view import WithdrawalAdminViewSet
 
 app_name = "admin_user"
 
 router = DefaultRouter()
-router.register("", UserAdminViewSet, basename="users")
+
+router.register("users", UserAdminViewSet, basename="users")
+router.register("withdrawals", WithdrawalAdminViewSet, basename="admin-withdrawal")
 
 urlpatterns: list[URLPattern | URLResolver] = [
-    path("/<uuid:user_uuid>/permission", UserPermissionUpdateAPIView.as_view(), name="user_permissions"),
+    path("users/<uuid:user_uuid>/permission/", UserPermissionUpdateAPIView.as_view(), name="user_permissions"),
     path("", include(router.urls)),
 ]
