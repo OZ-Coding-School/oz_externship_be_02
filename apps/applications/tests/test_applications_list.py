@@ -89,7 +89,7 @@ class RecruitmentApplicationListTest(APITestCase):
             available_time="시간2",
         )
 
-        self.url = reverse("recruitment-application-list", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        self.url = reverse("recruitment-applications", kwargs={"recruitment_uuid": self.recruitment.uuid})
 
     def test_list_applications_success_as_author(self) -> None:
         """성공: 공고 작성자가 지원자 목록을 조회"""
@@ -121,7 +121,7 @@ class RecruitmentApplicationListTest(APITestCase):
 
     def test_list_applications_for_non_existent_recruitment(self) -> None:
         """실패: 존재하지 않는 공고의 지원자 목록 조회 시도"""
-        invalid_url = reverse("recruitment-application-list", kwargs={"recruitment_uuid": uuid.uuid4()})
+        invalid_url = reverse("recruitment-applications", kwargs={"recruitment_uuid": uuid.uuid4()})
         self.client.force_authenticate(user=self.author)
         response = self.client.get(invalid_url)
         # IsRecruitmentAuthor 권한 클래스에 의해 403 반환
