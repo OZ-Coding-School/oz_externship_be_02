@@ -16,7 +16,7 @@ from apps.core.utils import create_temp_image
 from apps.lectures.models import Lecture
 from apps.lectures.models.crawled_lectures import DifficultyChoices, PlatformChoices
 from apps.studies.models import StudyGroup
-from apps.studies.serializers.study_group import StudyGroupCreateSerializer
+from apps.studies.serializers.study_group import StudyGroupCreateUpdateSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class UpdateStudyGroupTest(TestCase, TestUserMixin):
             "lectures": [self.lecture.id],
             "profile_img": create_temp_image(),
         }
-        self.target = StudyGroupCreateSerializer(data=self.data)
+        self.target = StudyGroupCreateUpdateSerializer(data=self.data)
         self.assertTrue(self.target.is_valid(raise_exception=True))
         self.target.save(user=self.user)
 
@@ -83,8 +83,8 @@ class UpdateStudyGroupTest(TestCase, TestUserMixin):
         ]
 
         for case in test_data:
-            set_up = get_object_or_404(StudyGroup, id=self.target.data["id"])
-            serializer = StudyGroupCreateSerializer(instance=set_up, data=case, partial=True)
+            set_up = get_object_or_404(StudyGroup, uuid=self.target.data["uuid"])
+            serializer = StudyGroupCreateUpdateSerializer(instance=set_up, data=case, partial=True)
             self.assertFalse(serializer.is_valid())
             logger.debug(serializer.errors)
 
@@ -96,8 +96,8 @@ class UpdateStudyGroupTest(TestCase, TestUserMixin):
         ]
 
         for case in test_data:
-            set_up = get_object_or_404(StudyGroup, id=self.target.data["id"])
-            serializer = StudyGroupCreateSerializer(instance=set_up, data=case, partial=True)
+            set_up = get_object_or_404(StudyGroup, uuid=self.target.data["uuid"])
+            serializer = StudyGroupCreateUpdateSerializer(instance=set_up, data=case, partial=True)
             self.assertTrue(serializer.is_valid(raise_exception=True))
             serializer.save(user=self.user)
 
@@ -149,7 +149,7 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
         }
         self.response = self.client.post(reverse("create_study_group"), data=self.data)
         self.study_group = StudyGroup.objects.get(
-            id=self.response.data["id"]
+            uuid=self.response.data["uuid"]
         )  # 좀 더 좋은 방법이 있을거 같은데 모르겠음.
         self.url = reverse("update_study_group", kwargs={"group_uuid": self.study_group.uuid})
 
