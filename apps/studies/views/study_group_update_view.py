@@ -29,5 +29,5 @@ class UpdateStudyGroupView(APIView):
         study_group_data = get_object_or_404(StudyGroup, uuid=group_uuid)
         serializer = StudyGroupCreateUpdateSerializer(instance=study_group_data, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save(user=request.user)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
