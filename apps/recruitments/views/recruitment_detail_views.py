@@ -22,7 +22,8 @@ class RecruitmentDetailView(APIView):
     authentication_classes = ()
     parser_classes = [JSONParser, MultiPartParser]
 
-    def get_object(self, recruitment_uuid: UUID) -> Recruitment:
+    @staticmethod
+    def _get_object(recruitment_uuid: UUID) -> Recruitment:
         try:
             return Recruitment.objects.get(uuid=recruitment_uuid)
         except Recruitment.DoesNotExist:
@@ -41,7 +42,7 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH,
+                location=OpenApiParameter.PATH, #type: ignore
                 description="조회할 공고의 고유 UUID",
             ),
         ],
@@ -63,7 +64,7 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH,
+                location=OpenApiParameter.PATH, # type: ignore
                 description="수정할 공고의 고유 UUID",
             ),
         ],
@@ -72,7 +73,7 @@ class RecruitmentDetailView(APIView):
         if not request.user.is_authenticated:
             return Response({"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        recruitment_to_update = self.get_object(recruitment_uuid=recruitment_uuid)
+        recruitment_to_update = self._get_object(recruitment_uuid=recruitment_uuid)
 
         if request.user != recruitment_to_update.author:
             return Response({"error": "이 공고를 수정할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
@@ -98,16 +99,16 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH,
+                location=OpenApiParameter.PATH, # type: ignore
                 description="삭제할 공고의 고유 UUID",
             ),
         ],
     )
     def delete(self, request: Request, recruitment_uuid: UUID) -> Response:
-        recruitment_to_delete = self.get_object(recruitment_uuid)
-
         if not request.user.is_authenticated:
             return Response({"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        recruitment_to_delete = self._get_object(recruitment_uuid)
 
         if request.user != recruitment_to_delete.author:
             return Response({"이 공고를 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
