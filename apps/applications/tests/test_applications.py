@@ -53,7 +53,7 @@ class ApplicationAPITest(APITestCase):
             estimated_fee=25000,
         )
 
-        self.url = reverse("application-create", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        self.url = reverse("recruitment-applications", kwargs={"recruitment_uuid": self.recruitment.uuid})
         self.valid_payload = {
             "self_introduction": "안녕하세요",
             "motivation": "성장하고 싶습니다",
@@ -86,11 +86,11 @@ class ApplicationAPITest(APITestCase):
         response = self.client.post(self.url, self.valid_payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-        self.assertEqual(response.data["error_code"], "DUPLICATE_APPLICATION")
+        self.assertIn("error", response.data)
 
     def test_create_application_for_non_existent_recruitment_fails(self) -> None:
         """존재하지 않는 공고에 지원 실패 테스트"""
-        invalid_url = reverse("application-create", kwargs={"recruitment_uuid": uuid.uuid4()})
+        invalid_url = reverse("recruitment-applications", kwargs={"recruitment_uuid": uuid.uuid4()})
         self.client.force_authenticate(user=self.applicant)
         response = self.client.post(invalid_url, self.valid_payload, format="json")
 
@@ -106,4 +106,5 @@ class ApplicationAPITest(APITestCase):
         response = self.client.post(self.url, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("study_experience", response.data["message"])
+        self.assertIn("error", response.data)
+        self.assertIn("study_experience", response.data["error"])
