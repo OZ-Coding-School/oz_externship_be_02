@@ -9,17 +9,21 @@ from apps.users.serializers.user_info_serializer import (
     UserInfoSerializer,
 )
 
-#TODO phone_service.py 가져와서 써야 할 수도 있겠는데...
-#TODO 인증 번호 발송, 인증 번호 확인 등
+#? phone_service.py에서는 인증 번호를 생성하기만 하고, 그 번호가 맞는지는 여기서 체크하니까 굳이 phone_service.py를 import할 필요는 없는 걸까?
 
-# 휴대폰 인증 관련 캐시 키 생성 함수(일관성 유지가 목적)
+# 휴대폰 인증 관련 캐시 키 생성 함수
 def get_phone_verification_key(phone_number: str) -> str:
     return f"phone_verification: {phone_number}"
 
+# 인증이 완료된 휴대폰 번호를 캐시에 저장
+#? 이거 필요할까? 개인적으로는 의미를 분리하는 게 명확한 상태 기록에 도움이 될 듯싶다.
+def set_phone_verified(phone_number: str) -> None:
+    cache.set(get_phone_verification_key(phone_number), True)
+
 # 사용자 정보 조회
 class UserInfoService:
-    def __init__(self) -> None:
-        self.user = User
+    def __init__(self, user: User) -> None:
+        self.user = user
 
     def get_user_info(self) -> dict:
         return UserInfoSerializer(self.user).data
@@ -32,13 +36,14 @@ class UserInfoEditService:
     def update_user_info(self, data: dict[str, Any]) -> User:
         phone_number = data.get("phone_number")
 
-        # 휴대폰 번호가 있다면, 인증 검증
+        # 휴대폰 번호가 (캐시에) 있다면, 인증 검증
+        # 휴대폰 번호가 (캐시에) 없다면, 예외 발생
         if phone_number:
             cache_key = get_phone_verification_key(phone_number)
             if not cache.get(cache_key):
                 raise ValidationError("휴대폰 인증이 필요합니다.")
 
-        # 사용자 정보 업데이트(serializer가 처리)
+        # 시리얼라이저를 통한 사용자 정보 업데이트
         serializer = UserInfoEditSerializer(instance=self.user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_user = serializer.save()
