@@ -34,3 +34,5 @@ class WithdrawalResponseSerializer(serializers.ModelSerializer[Withdrawals]):
 class AccountRecoverySerializer(serializers.Serializer[Withdrawals]):
     email = serializers.EmailField()
     verification_code = serializers.CharField()
+
+#TODO AdminWithdrawalSerializer(관리자 전용) 필요할 듯
