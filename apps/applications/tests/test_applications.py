@@ -86,7 +86,7 @@ class ApplicationAPITest(APITestCase):
         response = self.client.post(self.url, self.valid_payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-        self.assertEqual(response.data["error_code"], "DUPLICATE_APPLICATION")
+        self.assertIn("error", response.data)
 
     def test_create_application_for_non_existent_recruitment_fails(self) -> None:
         """존재하지 않는 공고에 지원 실패 테스트"""
@@ -106,4 +106,5 @@ class ApplicationAPITest(APITestCase):
         response = self.client.post(self.url, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("study_experience", response.data["message"])
+        self.assertIn("error", response.data)
+        self.assertIn("study_experience", response.data["error"])

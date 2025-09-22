@@ -17,9 +17,20 @@ class RecruitmentApplicationListTest(APITestCase):
     REQ-APLY-002: 본인이 작성한 공고에 대한 지원 목록 조회 API 테스트
     """
 
-    def setUp(self) -> None:
+    author: User
+    applicant1: User
+    applicant2: User
+    other_user: User
+    study_group: StudyGroup
+    recruitment: Recruitment
+    application1: Application
+    application2: Application
+    url: str
+
+    @classmethod
+    def setUpTestData(cls) -> None:
         """테스트 케이스 실행 전에 초기 데이터 설정"""
-        self.author = User.objects.create_user(
+        cls.author = User.objects.create_user(
             email="author@test.com",
             password="password",
             name="작성자",
@@ -28,7 +39,7 @@ class RecruitmentApplicationListTest(APITestCase):
             gender="M",
             birthday="1990-01-01",
         )
-        self.applicant1 = User.objects.create_user(
+        cls.applicant1 = User.objects.create_user(
             email="applicant1@test.com",
             password="password",
             name="지원자1",
@@ -37,7 +48,7 @@ class RecruitmentApplicationListTest(APITestCase):
             gender="F",
             birthday="1995-01-01",
         )
-        self.applicant2 = User.objects.create_user(
+        cls.applicant2 = User.objects.create_user(
             email="applicant2@test.com",
             password="password",
             name="지원자2",
@@ -46,7 +57,7 @@ class RecruitmentApplicationListTest(APITestCase):
             gender="M",
             birthday="1996-01-01",
         )
-        self.other_user = User.objects.create_user(
+        cls.other_user = User.objects.create_user(
             email="other@test.com",
             password="password",
             name="다른유저",
@@ -59,12 +70,12 @@ class RecruitmentApplicationListTest(APITestCase):
         aware_start_at = timezone.make_aware(datetime(2025, 1, 1))
         aware_end_at = timezone.make_aware(datetime(2025, 3, 1))
 
-        self.study_group = StudyGroup.objects.create(
+        cls.study_group = StudyGroup.objects.create(
             name="테스트 스터디", max_headcount=5, start_at=aware_start_at, end_at=aware_end_at
         )
-        self.recruitment = Recruitment.objects.create(
-            author=self.author,
-            study_group=self.study_group,
+        cls.recruitment = Recruitment.objects.create(
+            author=cls.author,
+            study_group=cls.study_group,
             title="테스트 공고",
             content="내용",
             expected_headcount=3,
@@ -72,24 +83,24 @@ class RecruitmentApplicationListTest(APITestCase):
         )
 
         # 지원서 데이터 생성
-        self.application1 = Application.objects.create(
-            recruitment=self.recruitment,
-            user=self.applicant1,
+        cls.application1 = Application.objects.create(
+            recruitment=cls.recruitment,
+            user=cls.applicant1,
             objective="목표1",
             motivation="동기1",
             self_introduction="소개1",
             available_time="시간1",
         )
-        self.application2 = Application.objects.create(
-            recruitment=self.recruitment,
-            user=self.applicant2,
+        cls.application2 = Application.objects.create(
+            recruitment=cls.recruitment,
+            user=cls.applicant2,
             objective="목표2",
             motivation="동기2",
             self_introduction="소개2",
             available_time="시간2",
         )
 
-        self.url = reverse("recruitment-applications", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        cls.url = reverse("recruitment-applications", kwargs={"recruitment_uuid": cls.recruitment.uuid})
 
     def test_list_applications_success_as_author(self) -> None:
         """성공: 공고 작성자가 지원자 목록을 조회"""
@@ -129,8 +140,8 @@ class RecruitmentApplicationListTest(APITestCase):
         invalid_url = reverse("recruitment-applications", kwargs={"recruitment_uuid": uuid.uuid4()})
         self.client.force_authenticate(user=self.author)
         response = self.client.get(invalid_url)
-        # IsRecruitmentAuthor 권한 클래스에 의해 403 반환
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # IsRecruitmentAuthor 권한 클래스보다 먼저 객체를 조회하므로 404가 반환됩니다.
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_list_applications_pagination(self) -> None:
         """성공: 페이지네이션 동작 확인"""
