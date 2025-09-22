@@ -14,11 +14,11 @@ from ..serializers.recruitments_serializers import (
     RecruitmentDetailSerializer,
     RecruitmentUpdateSerializer,
 )
-from ..services.recruitments_services import delete_recruitment, get_recruitment_detail
+from ..services.recruitments_services import get_recruitment_detail
 
 
 class RecruitmentDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # 그냥 조회는 누구나 가능
     authentication_classes = ()
     parser_classes = [JSONParser, MultiPartParser]
 
@@ -69,6 +69,9 @@ class RecruitmentDetailView(APIView):
         ],
     )
     def patch(self, request: Request, recruitment_uuid: UUID) -> Response:
+        if not request.user.is_authenticated:
+            return Response({"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+
         recruitment_to_update = self.get_object(recruitment_uuid=recruitment_uuid)
 
         if request.user != recruitment_to_update.author:
@@ -78,7 +81,9 @@ class RecruitmentDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         updated_instance = serializer.save()
 
-        return Response(RecruitmentDetailSerializer(updated_instance).data, status=status.HTTP_200_OK)
+        return Response(
+            RecruitmentDetailSerializer(updated_instance, context={"request": request}).data, status=status.HTTP_200_OK
+        )
 
     @extend_schema(
         summary="스터디 구인 공고 삭제",
@@ -99,7 +104,7 @@ class RecruitmentDetailView(APIView):
         ],
     )
     def delete(self, request: Request, recruitment_uuid: UUID) -> Response:
-        recruitment_to_delete = self.get_object(recruitment_uuid=recruitment_uuid)
+        recruitment_to_delete = self.get_object(recruitment_uuid)
 
         if not request.user.is_authenticated:
             return Response({"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
@@ -107,6 +112,5 @@ class RecruitmentDetailView(APIView):
         if request.user != recruitment_to_delete.author:
             return Response({"이 공고를 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
 
-        delete_recruitment(recruitment=recruitment_to_delete)
-
+        recruitment_to_delete.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
