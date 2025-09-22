@@ -9,6 +9,7 @@ from apps.study_notes.models.study_notes import (
     StudyNoteAttachment,
     StudyNoteImage,
 )
+from apps.users.models import User
 
 
 class StudyNoteImageSerializer(serializers.ModelSerializer[StudyNoteImage]):
@@ -21,6 +22,11 @@ class StudyNoteAttachmentSerializer(serializers.ModelSerializer[StudyNoteAttachm
     class Meta:
         model = StudyNoteAttachment
         fields = ["id", "file_name", "file_url"]
+
+class UserInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "nickname", "profile_img_url"]
 
 
 class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
@@ -72,3 +78,12 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
             if f.content_type not in ALLOWED_ATTACHMENT_FILE_TYPES:
                 raise serializers.ValidationError(f"{f.name}: 지원하지 않는 파일 형식입니다.")
         return files
+
+# 스터디 노트 기록 전체 목록 조회
+class StudyNoteListSerializer(serializers.ModelSerializer):
+    author = UserInfoSerializer(read_only=True)
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+
+    class Meta:
+        model = StudyNote
+        fields = ["id", "title", "author", "created_at"]
