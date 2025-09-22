@@ -24,7 +24,5 @@ class StudyNoteListView(APIView):
             return Response({"detail": "스터디 그룹에 속한 사용자만 조회 가능합니다."}, status=403)
 
         notes = StudyNote.objects.filter(study_group=group).order_by("-created_at")
-        if not notes.exists():
-            return Response({"detail": "해당 스터디 그룹에 노트가 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND)
         serializer = StudyNoteListSerializer(notes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
