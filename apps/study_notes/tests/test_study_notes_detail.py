@@ -17,11 +17,10 @@ class StudyNoteDetailViewTests(TestCase):
 
     client: APIClient
 
-    def setUp(self) -> None:
-        self.client = APIClient()
-
+    @classmethod
+    def setUpTestData(cls) -> None:
         # 유저 생성
-        self.user = User.objects.create_user(
+        cls.user = User.objects.create_user(
             email="user1@example.com",
             password="password123",
             name="테스트유저1",
@@ -30,7 +29,7 @@ class StudyNoteDetailViewTests(TestCase):
             gender="남성",
             birthday="2000-01-01",
         )
-        self.other_user = User.objects.create_user(
+        cls.other_user = User.objects.create_user(
             email="user2@example.com",
             password="password123",
             name="테스트유저2",
@@ -41,28 +40,32 @@ class StudyNoteDetailViewTests(TestCase):
         )
 
         # 스터디 그룹 생성
-        self.study_group = StudyGroup.objects.create(
+        cls.study_group = StudyGroup.objects.create(
             name="테스트그룹",
             max_headcount=5,
             start_at=timezone.make_aware(datetime(2025, 9, 16, 12, 0, 0)),
             end_at=timezone.make_aware(datetime(2025, 9, 30, 12, 0, 0)),
         )
-        self.study_group.members.add(self.user)
+        cls.study_group.members.add(cls.user)
 
         # 테스트용 노트 생성
-        self.note = StudyNote.objects.create(
-            study_group=self.study_group,
-            author=self.user,
+        cls.note = StudyNote.objects.create(
+            study_group=cls.study_group,
+            author=cls.user,
             title="테스트 노트",
             content="테스트 내용",
         )
 
+        cls.detail_url = reverse("study-note-detail", kwargs={"group_uuid": str(cls.study_group.uuid), "note_id": cls.note.id})
+        cls.non_existent_note_url = reverse("study-note-detail", kwargs={"group_uuid": str(cls.study_group.uuid), "note_id": 9999})
+
+    def setUp(self) -> None:
+        self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
-    def test_retrieve_study_note_success(self) -> None:
+    def test_study_note_detail_success(self) -> None:
         """스터디 노트 상세 조회 성공"""
-        url = reverse("study-note-detail", kwargs={"group_uuid": str(self.study_group.uuid), "note_id": self.note.id})
-        response = cast(Response, self.client.get(url))
+        response = cast(Response, self.client.get(self.detail_url))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["title"], "테스트 노트")
@@ -70,17 +73,15 @@ class StudyNoteDetailViewTests(TestCase):
         # Check if created_at is in the correct format
         self.assertIn(datetime.now().strftime("%Y-%m-%d"), response.data["created_at"])
 
-    def test_retrieve_non_existent_note(self) -> None:
+    def test_study_note_exist(self) -> None:
         """존재하지 않는 스터디 노트 조회"""
-        url = reverse("study-note-detail", kwargs={"group_uuid": str(self.study_group.uuid), "note_id": 9999})
-        response = cast(Response, self.client.get(url))
+        response = cast(Response, self.client.get(self.non_existent_note_url))
 
         self.assertEqual(response.status_code, 404)
 
-    def test_retrieve_note_permission_denied(self) -> None:
+    def test_study_note_permission_denied(self) -> None:
         """다른 그룹의 스터디 노트 조회"""
         self.client.force_authenticate(user=self.other_user)
-        url = reverse("study-note-detail", kwargs={"group_uuid": str(self.study_group.uuid), "note_id": self.note.id})
-        response = cast(Response, self.client.get(url))
+        response = cast(Response, self.client.get(self.detail_url))
 
         self.assertEqual(response.status_code, 403)

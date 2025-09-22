@@ -18,11 +18,10 @@ class StudyNoteListViewTests(TestCase):
 
     client: APIClient
 
-    def setUp(self) -> None:
-        self.client = APIClient()
-
+    @classmethod
+    def setUpTestData(cls) -> None:
         # 유저 생성
-        self.user = User.objects.create_user(
+        cls.user = User.objects.create_user(
             email="user1@example.com",
             password="password123",
             name="테스트유저1",
@@ -31,7 +30,7 @@ class StudyNoteListViewTests(TestCase):
             gender="남성",
             birthday="2000-01-01",
         )
-        self.other_user = User.objects.create_user(
+        cls.other_user = User.objects.create_user(
             email="user2@example.com",
             password="password123",
             name="테스트유저2",
@@ -42,36 +41,39 @@ class StudyNoteListViewTests(TestCase):
         )
 
         # 스터디 그룹 생성
-        self.study_group = StudyGroup.objects.create(
+        cls.study_group = StudyGroup.objects.create(
             name="테스트그룹",
             max_headcount=5,
             start_at=timezone.make_aware(datetime(2025, 9, 16, 12, 0, 0)),
             end_at=timezone.make_aware(datetime(2025, 9, 30, 12, 0, 0)),
         )
-        self.study_group.members.add(self.user)
+        cls.study_group.members.add(cls.user)
 
         # 테스트용 노트 생성
-        self.note1 = StudyNote.objects.create(
-            study_group=self.study_group,
-            author=self.user,
+        cls.note1 = StudyNote.objects.create(
+            study_group=cls.study_group,
+            author=cls.user,
             title="노트 1",
             content="내용 1",
             ai_summary="요약 1",
         )
-        self.note2 = StudyNote.objects.create(
-            study_group=self.study_group,
-            author=self.user,
+        cls.note2 = StudyNote.objects.create(
+            study_group=cls.study_group,
+            author=cls.user,
             title="노트 2",
             content="내용 2",
             ai_summary="요약 2",
         )
 
+        cls.list_url = reverse("study-notes", kwargs={"group_uuid": str(cls.study_group.uuid)})
+
+    def setUp(self) -> None:
+        self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
-    def test_list_study_notes_success(self) -> None:
+    def test_study_notes_list_success(self) -> None:
         """스터디 그룹 멤버가 스터디 기록 전체 조회"""
-        url = reverse("study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
-        response = cast(Response, self.client.get(url))
+        response = cast(Response, self.client.get(self.list_url))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 2)
         self.assertEqual(response.data[0]["title"], "노트 2")
@@ -80,17 +82,15 @@ class StudyNoteListViewTests(TestCase):
         self.assertIn("author", response.data[0])
         self.assertEqual(response.data[0]["author"]["nickname"], "nick1")
 
-    def test_list_study_notes_empty(self) -> None:
+    def test_study_notes_list_empty(self) -> None:
         """노트가 없는 경우에도 빈 리스트 반환"""
         StudyNote.objects.all().delete()
-        url = reverse("study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
-        response = cast(Response, self.client.get(url))
+        response = cast(Response, self.client.get(self.list_url))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, [])
 
-    def test_list_study_notes_permission_denied(self) -> None:
+    def test_study_notes_permission_denied(self) -> None:
         """스터디 그룹에 속하지 않은 유저 조회 시 403"""
         self.client.force_authenticate(user=self.other_user)
-        url = reverse("study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
-        response = cast(Response, self.client.get(url))
+        response = cast(Response, self.client.get(self.list_url))
         self.assertEqual(response.status_code, 403)
