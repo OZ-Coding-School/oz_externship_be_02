@@ -4,7 +4,6 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.authentications import CookieJWTAuthentication
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.exceptions import (
     EmailVerificationCodeFailedError,
