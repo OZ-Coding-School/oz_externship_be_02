@@ -1,7 +1,7 @@
-from rest_framework.test import APITestCase, override_settings
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase, override_settings
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.tests.mixins.test_user_mixins import VerificationMixin
 from apps.users.models import User
@@ -10,9 +10,9 @@ from apps.users.models import User
 class AuthTokenViewsTests(APITestCase, VerificationMixin):
     @classmethod
     def setUpTestData(cls):
-        cls.email ="test@example.com"
+        cls.email = "test@example.com"
         cls.password = "testpassword"
-        cls.user = cls._create_test_user(email='test@example.com')
+        cls.user = cls._create_test_user(email="test@example.com")
         cls.refresh_url = reverse("token_refresh")
         cls.revoke_url = reverse("logout")
         cls.login_url = reverse("email_login")
@@ -21,7 +21,9 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         """
         로그인시 액세스 토큰은 응답바디 리프레시토큰은 쿠키인지 확인
         """
-        response = self.client.post(self.login_url, {"email": (email := self.email), "password" :(password:= self.password)})
+        response = self.client.post(
+            self.login_url, {"email": (email := self.email), "password": (password := self.password)}
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access", response.data)
@@ -31,16 +33,21 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         """
         로그인 실패 케이스
         """
-        response = self.client.post(self.login_url, {"email": (email := self.email), "password" :(password:= "wrongpassowrd")})
+        response = self.client.post(
+            self.login_url, {"email": (email := self.email), "password": (password := "wrongpassowrd")}
+        )
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("error", response.data)
+
     def test_refresh_access_token(self):
         """
         쿠키 기반 refresh로 access 토큰 재발급
         """
         # 1.로그인 해서 액세스,리프레시 토큰 발급(refresh만 쿠키로)
-        login_response = self.client.post(self.login_url, {"email" : (email :=self.email), "password" : (password :=self.password)})
+        login_response = self.client.post(
+            self.login_url, {"email": (email := self.email), "password": (password := self.password)}
+        )
         # 2. 발급받은 토큰으로 요청
         refresh_cookie = login_response.cookies.get("refresh").value
         # 3. 쿠키로 받은 리프레시 쿠키도 같이 요청
@@ -54,7 +61,9 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         """
         토큰 재발급 실패 케이스
         """
-        response = self.client.post(self.refresh_url, {"email": (email := self.email), "password" :(password:= self.password)})
+        response = self.client.post(
+            self.refresh_url, {"email": (email := self.email), "password": (password := self.password)}
+        )
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("error", response.data)
@@ -64,7 +73,9 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         로그아웃 성공 케이스
         """
         # 1. 로그인 -> refresh 토큰 발급
-        response = self.client.post(self.login_url, {"email": (email := self.email), "password" :(password:= self.password)})
+        response = self.client.post(
+            self.login_url, {"email": (email := self.email), "password": (password := self.password)}
+        )
 
         refresh_cookie = response.cookies.get("refresh")
 
@@ -78,7 +89,7 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
 
     def test_logout_without_refresh_cookie(self):
         """
-       쿠키에 refresh 토큰이 없는 경우
+        쿠키에 refresh 토큰이 없는 경우
         """
         response = self.client.post(self.revoke_url)
 
@@ -90,7 +101,7 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         블랙리스트 처리 또는 유효하지않은 refresh 인 경우
         """
         # 잘못된 토큰을 쿠키에 넣음
-        self.client.cookies['refresh'] = "invalidtoken123"
+        self.client.cookies["refresh"] = "invalidtoken123"
         response = self.client.post(self.revoke_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("리프레시 토큰이 유효하지 않습니다", response.data["error"])

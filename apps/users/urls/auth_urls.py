@@ -1,6 +1,12 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from apps.users.views.auth_view import (
+    CookieTokenRefreshAPIView,
+    EmailLoginAPIView,
+    LogoutAPIView,
+    UserSignupAPIView,
+)
 from apps.users.views.email_verification_view import (
     AccountRecoveryEmailVerificationSendAPIView,
     AccountRecoveryEmailVerificationVerifyAPIView,
@@ -9,12 +15,11 @@ from apps.users.views.email_verification_view import (
     SignUpEmailVerificationSendAPIView,
     SignUpEmailVerifiCationVerifyAPIView,
 )
-from apps.users.views.phone_verification_view import SendVerificationCodeAPIView, VerifyCodeAPIView
-from apps.users.views.auth_view import UserSignupAPIView, EmailLoginAPIView, CookieTokenRefreshAPIView
-from apps.users.views.auth_view import  LogoutAPIView
-from apps.users.views.withdrawals_view import WithdrawalAPIView
-
-from apps.users.views.withdrawals_view import AccountRecoveryAPIView
+from apps.users.views.phone_verification_view import (
+    SendVerificationCodeAPIView,
+    VerifyCodeAPIView,
+)
+from apps.users.views.withdrawals_view import AccountRecoveryAPIView, WithdrawalAPIView
 
 urlpatterns = [
     path("auth/email/send-code", SignUpEmailVerificationSendAPIView.as_view(), name="email_send_code"),
@@ -34,7 +39,6 @@ urlpatterns = [
         name="recover_account_verify",
     ),
     path("auth/recover", AccountRecoveryAPIView.as_view(), name="account_recovery"),
-
     path("auth/phone/send-code", SendVerificationCodeAPIView.as_view(), name="phone_send_code"),
     path("auth/phone/verify", VerifyCodeAPIView.as_view(), name="phone_verify_code"),
     path("auth/withdraw", WithdrawalAPIView.as_view(), name="account_withdrawals"),
