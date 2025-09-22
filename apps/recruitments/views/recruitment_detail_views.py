@@ -18,7 +18,7 @@ from ..services.recruitments_services import get_recruitment_detail
 
 
 class RecruitmentDetailView(APIView):
-    permission_classes = [AllowAny]  # 그냥 조회는 누구나 가능
+    permission_classes = [AllowAny]  # 그냥 조회는 누구나 가능합니다
     authentication_classes = ()
     parser_classes = [JSONParser, MultiPartParser]
 
@@ -42,7 +42,7 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH,  # type: ignore
+                location=OpenApiParameter.PATH,
                 description="조회할 공고의 고유 UUID",
             ),
         ],
@@ -64,7 +64,7 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH,  # type: ignore
+                location=OpenApiParameter.PATH,
                 description="수정할 공고의 고유 UUID",
             ),
         ],
@@ -99,7 +99,7 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH,  # type: ignore
+                location=OpenApiParameter.PATH,
                 description="삭제할 공고의 고유 UUID",
             ),
         ],
