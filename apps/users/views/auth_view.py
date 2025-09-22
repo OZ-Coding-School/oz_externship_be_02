@@ -18,6 +18,7 @@ login_service = AuthService()
 
 class UserSignupAPIView(APIView):
     permission_classes = (AllowAny,)
+    authentication_classes = ()
 
     def post(self, request: Request) -> Response:
         serializer = UserSignupSerializer(data=request.data)
@@ -39,16 +40,15 @@ class EmailLoginAPIView(APIView):
     이메일 로그인 + 토큰 발급
     """
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         serializer = EmailLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         try:
-            access_token, refresh_token = AuthService.email_login(**serializer.validated_data)
-        except Exception as e:
-            return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
+            tokens = AuthService.email_login(**serializer.validated_data)
+        except AuthenticationFailed as e:
+            return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
-        response = Response({"access": access_token}, status=status.HTTP_200_OK)
+        response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
 
         response.set_cookie("refresh", refresh_token, httponly=True)
         return response
@@ -61,7 +61,7 @@ class LogoutAPIView(APIView):
     로그아웃: Refresh  토큰 블랙리스트 처리
     """
 
-    def post(self, request):
+    def post(self, request:Request) -> Response:
         refresh = request.COOKIES.get("refresh")
 
         if not refresh:
@@ -84,7 +84,7 @@ class CookieTokenRefreshAPIView(APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         refresh_token = request.COOKIES.get("refresh")
 
         try:

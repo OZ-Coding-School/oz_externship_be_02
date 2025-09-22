@@ -63,3 +63,8 @@ class VerificationMixin(TestUserMixin):
     verification_code: ClassVar[str]
     signup_data: ClassVar[dict[str, Any]]
     url: ClassVar[str]
+    email: ClassVar[str]
+    password: ClassVar[str]
+    login_url: ClassVar[str]
+    refresh_url: ClassVar[str]
+    revoke_url: ClassVar[str]
