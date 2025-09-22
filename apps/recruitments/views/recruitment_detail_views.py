@@ -108,10 +108,10 @@ class RecruitmentDetailView(APIView):
         if not request.user.is_authenticated:
             return Response({"error": "인증이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        recruitment_to_delete = self._get_object(recruitment_uuid)
+        recruitment = self._get_object(recruitment_uuid)
 
-        if request.user != recruitment_to_delete.author:
+        if request.user != recruitment.author:
             return Response({"이 공고를 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
 
-        recruitment_to_delete.delete()
+        recruitment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
