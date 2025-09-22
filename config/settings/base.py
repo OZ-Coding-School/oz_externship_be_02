@@ -32,6 +32,7 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
     "django_filters",
     "django_celery_beat",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 CUSTOM_APPS = [
