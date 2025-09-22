@@ -19,3 +19,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+DATABASES["default"].update(
+    {
+        "HOST": "127.0.0.1",
+        "PORT": "5432",
+        "NAME": "ozcoding_externship",
+        "USER": "postgres",
+        "PASSWORD": "pw1234",
+    }
+)
