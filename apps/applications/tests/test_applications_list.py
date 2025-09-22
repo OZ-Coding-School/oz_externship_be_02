@@ -98,6 +98,11 @@ class RecruitmentApplicationListTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 2)
+
+        # 응답 데이터에 application_id가 포함되어 있는지, 그리고 그 값이 올바른지 확인
+        self.assertIn("application_id", response.data["results"][0])
+        self.assertEqual(response.data["results"][0]["application_id"], self.application2.id)
+
         # 최신순으로 반환되는지 확인 (application2가 나중에 생성됨)
         self.assertEqual(response.data["results"][0]["applicant"]["nickname"], "app2_nick")
         self.assertEqual(response.data["results"][1]["applicant"]["nickname"], "app1_nick")
