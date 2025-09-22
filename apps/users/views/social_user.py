@@ -1,4 +1,8 @@
+from typing import Any
+
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -37,8 +41,20 @@ class KakaoLoginCallbackView(APIView):
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        except Exception as e:
-            return Response(
-                {"message": f"잘못된 요청: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        except (ValidationError, DjangoValidationError) as e:
+            return Response({"message": f"잘못된 요청: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except APIException as e:
+            detail_obj: Any = getattr(e, "detail", None)
+            if isinstance(detail_obj, str):
+                detail_str: str = detail_obj
+            else:
+                detail_str = str(detail_obj if detail_obj is not None else e)
+
+            status_obj: Any = getattr(e, "status_code", None)
+            status_code: int = status_obj if isinstance(status_obj, int) else status.HTTP_400_BAD_REQUEST
+
+            return Response({"message": f"잘못된 요청: {detail_str}"}, status=status_code)
+
+        except Exception:
+            return Response({"message": "Internal server error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

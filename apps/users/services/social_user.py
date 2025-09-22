@@ -31,19 +31,16 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
             res.raise_for_status()
             body: dict[str, Any] = res.json()
             access_token = body.get("access_token")
-            refresh_token = body.get("refresh_token")
-            access_token_expires_in = body.get("expires_in")
-            refresh_token_expires_in = body.get("refresh_token_expires_in")
             if not access_token:
-                raise APIException("카카오 access_token 발급 실패")
+                raise ValidationError("카카오 access_token 발급 실패")
             return {
                 "access_token": access_token,
-                "refresh_token": refresh_token,
-                "access_token_expires_in": access_token_expires_in,
-                "refresh_token_expires_in": refresh_token_expires_in,
+                "refresh_token": body.get("refresh_token"),
+                "access_token_expires_in": body.get("expires_in"),
+                "refresh_token_expires_in": body.get("refresh_expires_in"),
             }
-        except requests.exceptions.RequestException as e:
-            raise APIException(f"Kakao API 호출 실패: {str(e)}")
+        except Exception as e:
+            raise ValidationError(f"카카오 토큰 발급 실패: {str(e)}")
 
     def get_user_info(self, access_token: str) -> dict[str, Any]:  # access_token으로 사용자 정보 조회
         try:
@@ -52,10 +49,10 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
             res.raise_for_status()
             body: dict[str, Any] = res.json()
             if not body.get("id"):
-                raise APIException("카카오 사용자 정보 조회 실패")
+                raise ValidationError("카카오 사용자 정보에 id가 없습니다.")
             return body
-        except requests.exceptions.RequestException as e:
-            raise APIException(f"Kakao API 호출 실패: {str(e)}")
+        except Exception as e:
+            raise ValidationError(f"카카오 사용자 정보 조회 실패: {str(e)}")
 
     def unique_nickname(self, base_nickname: str) -> str:
         # 닉네임 중복 방지
@@ -138,9 +135,7 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
         access_token_expires_in = tokens_from_kakao.get(
             "access_token_expires_in", 21599
         )  # 카카오에서 제공하는 access_token 기한 6시간
-        refresh_token_expires_in = tokens_from_kakao.get(
-            "refresh_token_expires_in", 5184000
-        )  # 카카오에서 제공하는 refresh_token 기한 60일
+        refresh_token_expires_in = tokens_from_kakao.get("refresh_token_expires_in") or 5184000
         # Redis 캐시에 카카오 토큰 저장 (회원탈퇴 때 사용)
         cache.set(
             f"kakao_access_token:{user.id}",
