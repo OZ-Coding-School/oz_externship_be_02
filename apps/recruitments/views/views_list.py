@@ -3,7 +3,7 @@ from xmlrpc.client import Boolean
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import filters, serializers
+from rest_framework import filters, serializers, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
@@ -13,10 +13,10 @@ from rest_framework.views import APIView
 from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
 from apps.recruitments.services.services_list import (
-    active_get_my_query,
-    active_get_query,
     filter_is_closed,
     filter_tag,
+    get_my_recm_list,
+    get_recm_list,
 )
 
 
@@ -31,7 +31,7 @@ class RecruitmentView(APIView):
     @extend_schema(
         tags=["스터디 구인 공고"],
         summary="구인 공고 목록 조회",
-        description="모든 유저는 스터디 구인 공고 메뉴에 접속하여 등록된 스터디 구인 공고들을 가로로 긴 카드 형태의 목록으로 확인할 수 있습니다.\n\n"
+        description="스터디 구인 공고 목록을 조회할 수 있습니다.\n\n"
         "<참고 사항> 이미지가 없을 경우 img키의 값이 None로 응답합니다. 이 경우 프론트엔드에서 기본 이미지를 처리해주세요.\n\n"
         "### 주요 기능\n\n"
         "1. 마감된 공고는 목록에 노출하지 않음\n\n"
@@ -82,17 +82,17 @@ class RecruitmentView(APIView):
     )
     def get(self: typing.Self, request: Request) -> Response:
         # 조회
-        optimized_queryset: RecruitmentListQuerySet = active_get_query()
+        get_list_queryset: RecruitmentListQuerySet = get_recm_list()
 
         # 필터
         # 'tag' 파라미터 확인
         tag = request.query_params.get("tag", None)
         if tag is not None and tag != "":
-            optimized_queryset = filter_tag(optimized_queryset, tag)
+            get_list_queryset = filter_tag(get_list_queryset, tag)
 
         # 검색
         search_filter = filters.SearchFilter()
-        searched_queryset = search_filter.filter_queryset(request, optimized_queryset, self)
+        searched_queryset = search_filter.filter_queryset(request, get_list_queryset, self)
 
         # 정렬
         ordering_filter = filters.OrderingFilter()
@@ -120,7 +120,7 @@ class MyRecruitmentView(APIView):
     @extend_schema(
         tags=["스터디 구인 공고"],
         summary="내가 등록한 스터디 구인 공고 목록 조회",
-        description="모든 유저는 스터디 구인 공고 메뉴에 접속하여 '공고 관리' 메뉴를 클릭하면 내가 등록한 스터디 구인 공고들을 가로로 긴 카드 형태의 목록으로 확인할 수 있습니다.\n\n"
+        description="로그인 유저가 등록한 스터디 구인 공고의 목록을 조회할 수 있습니다.\n\n"
         "<참고 사항> 이미지가 없을 경우 img키의 값이 None로 응답합니다. 이 경우 프론트엔드에서 기본 이미지를 처리해주세요.\n\n"
         "### 주요 기능\n\n"
         "1. 페이지네이션 기능\n\n"
@@ -164,17 +164,21 @@ class MyRecruitmentView(APIView):
     def get(self: typing.Self, request: Request) -> Response:
         assert request.user.is_authenticated
         # 조회
-        optimized_queryset: RecruitmentListQuerySet = active_get_my_query(request.user)
+        get_mylist_queryset: RecruitmentListQuerySet = get_my_recm_list(request.user)
 
         # 필터
         is_closed = request.query_params.get("is_closed", None)
         if is_closed is not None and is_closed != "":
-            is_closed_bool = is_closed.lower() in ["true", "1"]
-            optimized_queryset = filter_is_closed(optimized_queryset, is_closed_bool)
+            if is_closed.lower() in ["true", "1"]:
+                get_mylist_queryset = filter_is_closed(get_mylist_queryset, True)
+            elif is_closed.lower() in ["false", "0"]:
+                get_mylist_queryset = filter_is_closed(get_mylist_queryset, False)
+            else:
+                return Response({"error": "잘못된 is_closed 입력값"}, status=status.HTTP_400_BAD_REQUEST)
 
         # 정렬
         ordering_filter = filters.OrderingFilter()
-        ordering_queryset = ordering_filter.filter_queryset(request, optimized_queryset, self)
+        ordering_queryset = ordering_filter.filter_queryset(request, get_mylist_queryset, self)
 
         # 페이지네이션
         paginator = PageNumberPagination()
