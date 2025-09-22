@@ -16,6 +16,12 @@ class StudyNoteDetailViewTests(TestCase):
     """StudyNoteDetailView 테스트"""
 
     client: APIClient
+    user: User
+    other_user: User
+    study_group: StudyGroup
+    note: StudyNote
+    detail_url: str
+    non_existent_note_url: str
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -56,8 +62,12 @@ class StudyNoteDetailViewTests(TestCase):
             content="테스트 내용",
         )
 
-        cls.detail_url = reverse("study-note-detail", kwargs={"group_uuid": str(cls.study_group.uuid), "note_id": cls.note.id})
-        cls.non_existent_note_url = reverse("study-note-detail", kwargs={"group_uuid": str(cls.study_group.uuid), "note_id": 9999})
+        cls.detail_url = reverse(
+            "study-note-detail", kwargs={"group_uuid": str(cls.study_group.uuid), "note_id": cls.note.id}
+        )
+        cls.non_existent_note_url = reverse(
+            "study-note-detail", kwargs={"group_uuid": str(cls.study_group.uuid), "note_id": 9999}
+        )
 
     def setUp(self) -> None:
         self.client = APIClient()

@@ -17,6 +17,12 @@ class StudyNoteListViewTests(TestCase):
     """StudyNoteListView 전체 조회 테스트"""
 
     client: APIClient
+    user: User
+    other_user: User
+    study_group: StudyGroup
+    note1: StudyNote
+    note2: StudyNote
+    list_url: str
 
     @classmethod
     def setUpTestData(cls) -> None:
