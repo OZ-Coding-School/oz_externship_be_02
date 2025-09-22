@@ -1,14 +1,11 @@
-from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken, TokenError
-from rest_framework_simplejwt.settings import api_settings
+from typing import Dict, Optional, Tuple
+
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from apps.users.models import User
-from typing import Dict, Tuple, Optional
-from django.contrib.auth import authenticate
-from rest_framework.exceptions import AuthenticationFailed
-
-
 
 
 class AuthService:
@@ -18,7 +15,7 @@ class AuthService:
 
     @staticmethod
     def email_login(email: str, password: str) -> Tuple[str, str]:
-        user =authenticate(email=email, password=password)
+        user = authenticate(email=email, password=password)
 
         if not user:
             raise AuthenticationFailed("이메일 또는 비밀번호가 틀립니다")
@@ -26,8 +23,6 @@ class AuthService:
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
         return access_token, refresh_token
-
-
 
     @staticmethod
     def revoke_refresh_tokens(refresh_token: Optional[str]) -> None:
@@ -51,7 +46,6 @@ class JWTService:
             return str(token.access_token)
         except Exception as e:
             msg = str(e).lower()
-            if 'expired' in msg:
+            if "expired" in msg:
                 raise AuthenticationFailed("리프레시 토큰이 만료되었습니다")
             raise AuthenticationFailed("유효하지 않은 토큰입니다")
-
