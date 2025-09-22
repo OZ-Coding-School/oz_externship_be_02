@@ -4,7 +4,7 @@ from rest_framework_simplejwt.settings import api_settings
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 
 from apps.users.models import User
-from typing import Dict
+from typing import Dict, Tuple, Optional
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -17,16 +17,20 @@ class AuthService:
     """
 
     @staticmethod
-    def email_login(email: str, password: str) -> dict[str, str]:
+    def email_login(email: str, password: str) -> Tuple[str, str]:
         user =authenticate(email=email, password=password)
 
         if not user:
             raise AuthenticationFailed("이메일 또는 비밀번호가 틀립니다")
-        return RefreshToken.for_user(user)
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        return access_token, refresh_token
+
 
 
     @staticmethod
-    def revoke_refresh_tokens(refresh_token: str) -> None:
+    def revoke_refresh_tokens(refresh_token: Optional[str]) -> None:
         try:
             token = RefreshToken(refresh_token)
             token.blacklist()
