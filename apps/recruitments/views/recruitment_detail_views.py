@@ -42,7 +42,7 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH, #type: ignore
+                location=OpenApiParameter.PATH,  # type: ignore
                 description="조회할 공고의 고유 UUID",
             ),
         ],
@@ -64,7 +64,7 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH, # type: ignore
+                location=OpenApiParameter.PATH,  # type: ignore
                 description="수정할 공고의 고유 UUID",
             ),
         ],
@@ -99,7 +99,7 @@ class RecruitmentDetailView(APIView):
             OpenApiParameter(
                 name="recruitment_uuid",
                 type=UUID,
-                location=OpenApiParameter.PATH, # type: ignore
+                location=OpenApiParameter.PATH,  # type: ignore
                 description="삭제할 공고의 고유 UUID",
             ),
         ],
