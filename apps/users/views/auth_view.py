@@ -1,4 +1,4 @@
-from typing import cast, Any
+from typing import Any, cast
 
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
@@ -64,7 +64,7 @@ class LogoutAPIView(APIView):
     로그아웃: Refresh  토큰 블랙리스트 처리
     """
 
-    def post(self, request:Request) -> Response:
+    def post(self, request: Request) -> Response:
         refresh = request.COOKIES.get("refresh")
 
         if not refresh:

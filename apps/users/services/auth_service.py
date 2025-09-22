@@ -2,14 +2,15 @@ from typing import Optional, cast
 
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
-from rest_framework_simplejwt.tokens import RefreshToken, Token
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken, Token
 
 
 class AuthService:
     """
     이메일 로그인
     """
+
     @staticmethod
     def email_login(email: str, password: str) -> dict[str, str]:
         user = authenticate(email=email, password=password)
@@ -19,7 +20,7 @@ class AuthService:
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
 
-        return {"access" : access_token, "refresh" : refresh_token}
+        return {"access": access_token, "refresh": refresh_token}
 
     @staticmethod
     def revoke_refresh_tokens(refresh_token: Optional[str]) -> None:
