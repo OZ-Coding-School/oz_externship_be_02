@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, Final, Union
 
+from django.db.models import QuerySet
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -20,7 +21,7 @@ class RecruitmentsListTestCase(APITestCase):
     # 클래스에 속성이 존재할 것을 선언하고 타입 명시
     study_groups: list[StudyGroup]
     lectures: list[Lecture]
-    recruitments: list[Recruitment]
+    recruitments: QuerySet[Recruitment]
     tags: list[Tag]
     users: list[User]
     recruitment_bookmarks: list[RecruitmentBookmark]
@@ -120,14 +121,16 @@ class RecruitmentsListTestCase(APITestCase):
             recruitments.append(
                 Recruitment(
                     study_group=cls.study_groups[1],
-                    author=cls.users[0],
-                    title=f"test recruitment{i + 1+RECRUITMENT_CASE_1}",
+                    author=cls.users[1],
+                    title=f"test recruitment{i + RECRUITMENT_CASE_1 +1}",
                     content="test content",
                     estimated_fee=50000,
                     expected_headcount=5,
                 )
             )
-        cls.recruitments = Recruitment.objects.bulk_create(recruitments)
+        Recruitment.objects.bulk_create(recruitments)
+        Recruitment.objects.filter(title=f"test recruitment{RECRUITMENT_CASE_1 + 1}").update(is_closed=True)
+        cls.recruitments = Recruitment.objects.all()
 
         tags = [Tag(name="tag1"), Tag(name="tag2"), Tag(name="tag3"), Tag(name="tag4")]
         cls.tags = Tag.objects.bulk_create(tags)
@@ -136,6 +139,7 @@ class RecruitmentsListTestCase(APITestCase):
         for i in range(RECRUITMENT_CASE_1):
             for j in range(3):
                 recruitment_tags.append(RecruitmentTag(tag=cls.tags[j], recruitment=cls.recruitments[i]))
+
         for i in range(RECRUITMENT_CASE_2):
             recruitment_tags.append(
                 RecruitmentTag(tag=cls.tags[3], recruitment=cls.recruitments[i + RECRUITMENT_CASE_1])
@@ -150,13 +154,16 @@ class RecruitmentsListTestCase(APITestCase):
                 )
         RecruitmentBookmark.objects.bulk_create(recruitment_bookmarks)
 
+    def setUp(self) -> None:
+        self.client.force_authenticate(user=self.users[1])
+
     def test_list_get(self) -> None:
         url = reverse("recruitment-list")
-        query_params = {"page": 1}
+        query_params: Dict[str, Union[int, str]] = {"page": 1, "ordering": "created_at"}
         res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
         results = res.data["results"]
-        data = results[5]  # case1
+        data = results[0]  # case1
         self.assertEqual(len(data["lectures"]), 2)
         self.assertEqual(len(data["tags"]), 3)
 
@@ -194,8 +201,27 @@ class RecruitmentsListTestCase(APITestCase):
 
         query_params = {"page": 1, "tag": "tag4"}
         res = self.client.get(url, query_params)
-        self.assertEqual(res.data["count"], 5)
+        self.assertEqual(res.data["count"], 4)  # 5개 중 하나는 마감되어서 4개
 
         query_params = {"page": 1, "tag": "없는 태그"}
         res = self.client.get(url, query_params)
         self.assertEqual(res.data["count"], 0)
+
+    def test_my_list_get(self) -> None:
+        url = reverse("recruitment-mylist")
+        query_params = {"page": 1}
+        # 조회
+        res = self.client.get(url, query_params)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["count"], 5)
+
+        # 필터링
+        query_params = {"page": 1, "is_closed": False}
+        res = self.client.get(url, query_params)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["count"], 4)
+
+        query_params = {"page": 1, "is_closed": True}
+        res = self.client.get(url, query_params)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["count"], 1)

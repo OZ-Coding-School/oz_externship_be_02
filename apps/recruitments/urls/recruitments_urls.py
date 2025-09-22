@@ -7,6 +7,7 @@ from apps.recruitments.views.views_list import RecruitmentView
 
 urlpatterns = [
     path("", RecruitmentView.as_view(), name="recruitment-list"),
+    path("/me", MyRecruitmentView.as_view(), name="recruitment-mylist"),
     path("/<uuid:recruitment_uuid>/applications", include("apps.applications.urls")),
     path("/<uuid:recruitment_uuid>", RecruitmentDetailView.as_view(), name="recruitment-detail"),
     path("/attachments", RecruitmentFileView.as_view(), name="recruitment-attachments-upload"),
