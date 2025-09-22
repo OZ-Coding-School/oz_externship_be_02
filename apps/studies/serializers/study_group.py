@@ -9,7 +9,7 @@ from apps.lectures.models import Lecture
 from apps.studies.models import GroupMember, StudyGroup, StudyLecture
 
 
-class StudyGroupCreateSerializer(serializers.ModelSerializer[StudyGroup]):
+class StudyGroupCreateUpdateSerializer(serializers.ModelSerializer[StudyGroup]):
     """
     스터디 그룹 Serializer
     """

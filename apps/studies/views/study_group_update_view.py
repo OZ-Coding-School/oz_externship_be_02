@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.studies.models import StudyGroup
-from apps.studies.serializers.study_group import StudyGroupCreateSerializer
+from apps.studies.serializers.study_group import StudyGroupCreateUpdateSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +21,13 @@ class UpdateStudyGroupView(APIView):
     @extend_schema(
         summary="스터디 그룹 정보 수정 API",
         description="스터디 그룹의 리더는 스터디 그룹 상세 조회 페이지 내에서 스터디 그룹 정보 수정페이지로 이동하여 그룹 정보를 수정할 수 있습니다.",
-        request=StudyGroupCreateSerializer,
+        request=StudyGroupCreateUpdateSerializer,
         tags=["Study Group"],
-        responses=StudyGroupCreateSerializer,
+        responses=StudyGroupCreateUpdateSerializer,
     )
     def patch(self, request: Request, group_uuid: str) -> Response:
         study_group_data = get_object_or_404(StudyGroup, uuid=group_uuid)
-        serializer = StudyGroupCreateSerializer(instance=study_group_data, data=request.data, partial=True)
+        serializer = StudyGroupCreateUpdateSerializer(instance=study_group_data, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

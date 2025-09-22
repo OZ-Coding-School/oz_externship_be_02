@@ -15,7 +15,7 @@ from apps.core.utils import create_temp_image
 from apps.lectures.models import Lecture
 from apps.lectures.models.crawled_lectures import DifficultyChoices, PlatformChoices
 from apps.studies.models import GroupMember, StudyGroup, StudyLecture
-from apps.studies.serializers.study_group import StudyGroupCreateSerializer
+from apps.studies.serializers.study_group import StudyGroupCreateUpdateSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class CreateStudyGroupTestFalse(TestCase, TestUserMixin):
         ]
 
         for case in fail_data:
-            serializer = StudyGroupCreateSerializer(data=case["study_group"])
+            serializer = StudyGroupCreateUpdateSerializer(data=case["study_group"])
             self.assertFalse(serializer.is_valid())
 
 
@@ -119,7 +119,7 @@ class CreateStudyGroupTestSuccess(TestCase, TestUserMixin):
         ]
 
         for data in success_data:
-            serializer = StudyGroupCreateSerializer(
+            serializer = StudyGroupCreateUpdateSerializer(
                 data=data,
             )
             self.assertTrue(serializer.is_valid(raise_exception=True))
@@ -254,10 +254,10 @@ class CreateStudyGroupAPITestSuccess(APITestCase, TestUserMixin):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["name"], "Python 개념 잡기")
         self.assertEqual(StudyGroup.objects.count(), 1)
-        created_study_group = cast(StudyGroup, StudyGroup.objects.filter(id=response.data["id"]).first())
+        created_study_group = cast(StudyGroup, StudyGroup.objects.filter(uuid=response.data["uuid"]).first())
         self.assertIsNotNone(created_study_group.profile_img_url)
         self.assertEqual(created_study_group.lectures.count(), 1)
         created_member = cast(
-            GroupMember, GroupMember.objects.filter(user=self.user, study_group_id=response.data["id"]).first()
+            GroupMember, GroupMember.objects.filter(user=self.user, study_group_id=created_study_group.id).first()
         )
         self.assertTrue(created_member.is_leader)
