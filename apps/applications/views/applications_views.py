@@ -3,7 +3,7 @@ from uuid import UUID
 
 from django.db import IntegrityError
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -27,7 +27,7 @@ class ApplicationAPIView(APIView):
     지원서 생성(POST) 및 특정 공고의 지원자 목록 조회(GET)를 처리하는 View
     """
 
-    def get_permissions(self):
+    def get_permissions(self) -> list[BasePermission]:
         if self.request.method == "GET":
             return [IsAuthenticated(), IsRecruitmentAuthor()]
         return [IsAuthenticated()]
