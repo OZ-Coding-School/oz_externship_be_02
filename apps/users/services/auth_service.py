@@ -1,6 +1,6 @@
 from typing import Dict, Optional, Tuple
 
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import authenticate
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
@@ -14,15 +14,15 @@ class AuthService:
     """
 
     @staticmethod
-    def email_login(email: str, password: str) -> Tuple[str, str]:
+    def email_login(email: str, password: str) -> dict[str, str]:
         user = authenticate(email=email, password=password)
-
-        if not user:
+        if user is None:
             raise AuthenticationFailed("이메일 또는 비밀번호가 틀립니다")
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
-        return access_token, refresh_token
+
+        return {"access" : access_token, "refresh" : refresh_token}
 
     @staticmethod
     def revoke_refresh_tokens(refresh_token: Optional[str]) -> None:
@@ -35,7 +35,7 @@ class AuthService:
 
 class JWTService:
     @staticmethod
-    def refresh_access_token(refresh_token: str) -> str:
+    def refresh_access_token(refresh_token: Optional[str]) -> str:
         """
         쿠키의 refresh 토큰으로 새로운 access 토큰 발급
         """
