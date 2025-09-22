@@ -25,7 +25,7 @@ class UserSignupAPIView(APIView):
 
         return Response({"detail": "회원가입이 완료되었습니다", "user_": serializer.data}, status=status.HTTP_201_CREATED)
 
-from apps.users.services.auth_service import SimpleJWTService
+from apps.users.services.auth_service import JWTService
 
 
 class EmailLoginAPIView(APIView):
@@ -39,13 +39,13 @@ class EmailLoginAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            tokens = AuthService.email_login(**serializer.validated_data)
+            access_token, refresh_token = AuthService.email_login(**serializer.validated_data)
         except Exception as e:
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
 
-        response = Response({"access" : tokens["access"]},status=status.HTTP_200_OK)
+        response = Response({"access" : access_token },status=status.HTTP_200_OK)
 
-        response.set_cookie('refresh', tokens['refresh'], httponly=True)
+        response.set_cookie('refresh', refresh_token, httponly=True)
         return response
 
 
@@ -62,7 +62,7 @@ class LogoutAPIView(APIView):
         if  not refresh:
             return Response({"error" : "refresh 토큰이 필요합니다"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            SimpleJWTService.revoke_refresh_tokens(refresh)
+            login_service.revoke_refresh_tokens(refresh)
         except ValidationError as e:
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
 
