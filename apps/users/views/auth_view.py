@@ -53,12 +53,11 @@ class EmailLoginAPIView(APIView):
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-
         response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
 
-        response.set_cookie("refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site",
-        secure=True,
-        samesite="None")
+        response.set_cookie(
+            "refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
+        )
 
         return response
 
@@ -79,7 +78,6 @@ class LogoutAPIView(APIView):
             login_service.revoke_refresh_tokens(refresh)
         except AuthenticationFailed as e:
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
-
 
         response = Response({"detail": "로그아웃이 완료되었습니다"}, status=status.HTTP_200_OK)
         response.delete_cookie("refresh")
