@@ -2,7 +2,8 @@ from typing import Any
 
 from django.contrib.auth.models import (
     AbstractBaseUser,
-    BaseUserManager, PermissionsMixin,
+    BaseUserManager,
+    PermissionsMixin,
 )
 from django.db import models
 
