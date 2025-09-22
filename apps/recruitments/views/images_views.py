@@ -16,7 +16,14 @@ class RecruitmentImageView(APIView):
 
     @extend_schema(
         request=ImagePreUploadSerializer,
-        responses={200: {"image_url": str}},
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'image_url': {'type': 'string', 'format': 'uri'}
+                }
+            }
+        },
         description="S3에 이미지를 업로드하고 URL을 반환합니다.",
         tags=["Recruitment Images"],
     )
