@@ -1,11 +1,10 @@
-import typing
-from xmlrpc.client import Boolean
+from typing import Self, cast
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import filters, serializers, status
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +17,7 @@ from apps.recruitments.services.services_list import (
     get_my_recm_list,
     get_recm_list,
 )
+from apps.users.models.user import User
 
 
 class RecruitmentView(APIView):
@@ -80,7 +80,7 @@ class RecruitmentView(APIView):
             )
         },
     )
-    def get(self: typing.Self, request: Request) -> Response:
+    def get(self, request: Request) -> Response:
         # 조회
         get_list_queryset: RecruitmentListQuerySet = get_recm_list()
 
@@ -158,13 +158,16 @@ class MyRecruitmentView(APIView):
                     "previous": serializers.URLField(default="https://api.example.org/accounts/?page=3"),
                     "results": RecruitmentListSerializer(many=True),
                 },
-            )
+            ),
+            400: inline_serializer(
+                name="get_my_pagelist", fields={"error": serializers.CharField(default="잘못된 is_closed 입력값")}
+            ),
         },
     )
-    def get(self: typing.Self, request: Request) -> Response:
-        assert request.user.is_authenticated
+    def get(self, request: Request) -> Response:
         # 조회
-        get_mylist_queryset: RecruitmentListQuerySet = get_my_recm_list(request.user)
+        user = cast(User, request.user)
+        get_mylist_queryset: RecruitmentListQuerySet = get_my_recm_list(user)
 
         # 필터
         is_closed = request.query_params.get("is_closed", None)
