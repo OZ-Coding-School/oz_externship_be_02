@@ -34,8 +34,14 @@ class ApplicationAPIView(APIView):
 
     def get(self, request: Request, recruitment_uuid: UUID) -> Response:
         """특정 공고에 대한 지원자 목록을 조회한다."""
-        # IsRecruitmentAuthor permission에서 이미 recruitment 객체를 조회하여 request에 담아주므로 DB를 다시 조회할 필요가 없습니다.
-        recruitment = request.recruitment
+        try:
+            recruitment = Recruitment.objects.get(uuid=recruitment_uuid)
+        except Recruitment.DoesNotExist:
+            return Response({"error": "해당 스터디 공고를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+        # self.check_object_permissions가 IsRecruitmentAuthor를 호출하여 권한을 검사한다.
+        self.check_object_permissions(request, recruitment)
+
         queryset = Application.objects.get_applications_for_recruitment(recruitment_uuid=recruitment.uuid)
 
         paginator = DefaultCursorPagination()
@@ -53,22 +59,19 @@ class ApplicationAPIView(APIView):
             recruitment = Recruitment.objects.get(uuid=recruitment_uuid)
         except Recruitment.DoesNotExist:
             return Response(
-                {"error_code": "RECRUITMENT_NOT_FOUND", "message": "해당 스터디 공고를 찾을 수 없습니다."},
+                {"error": "해당 스터디 공고를 찾을 수 없습니다."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer = ApplicationCreateSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {"error_code": "INVALID_INPUT", "message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST
-            )
+        user = cast(User, request.user)
+        if Application.objects.has_applied(user=user, recruitment=recruitment):
+            return Response({"error": "이미 해당 공고에 지원한 이력이 있습니다."}, status=status.HTTP_409_CONFLICT)
 
-        try:
-            user = cast(User, request.user)
-            service = ApplicationService()
-            application = service.create_application(user=user, recruitment=recruitment, **serializer.validated_data)
-        except IntegrityError as e:
-            return Response({"error_code": "DUPLICATE_APPLICATION", "message": str(e)}, status=status.HTTP_409_CONFLICT)
+        serializer = ApplicationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        service = ApplicationService()
+        application = service.create_application(user=user, recruitment=recruitment, **serializer.validated_data)
 
         return Response(
             {"application_id": application.id, "message": "스터디 공고 참여 신청 성공"}, status=status.HTTP_201_CREATED
