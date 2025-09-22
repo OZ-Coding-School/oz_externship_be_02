@@ -70,5 +70,5 @@ class StudyNoteNotificationTests(TransactionTestCase):
         assert n1 is not None
         self.assertIn(self.author.nickname, n1.content)
         self.assertIn(self.group.name, n1.content)
-        self.assertEqual(n1.back_url_link, f"/study-group/{self.group.uuid}")
+        self.assertEqual(n1.back_url_link, f"/study-group/{self.group.id}")
         self.assertFalse(n1.is_read)
