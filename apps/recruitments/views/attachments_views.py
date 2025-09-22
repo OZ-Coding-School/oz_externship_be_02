@@ -18,14 +18,7 @@ class RecruitmentFileView(APIView):
 
     @extend_schema(
         request=AttachmentPreUploadSerializer,
-        responses={
-            200: {
-                'type': 'object',
-                'properties': {
-                    'file_url': {'type': 'string', 'format': 'uri'}
-                }
-            }
-        },
+        responses={200: {"type": "object", "properties": {"file_url": {"type": "string", "format": "uri"}}}},
         description="S3에 파일을 업로드하고 URL을 반환합니다.",
         tags=["Recruitment Files"],
     )

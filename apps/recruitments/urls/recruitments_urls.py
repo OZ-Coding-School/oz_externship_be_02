@@ -2,8 +2,8 @@ from django.urls import include, path
 
 from apps.recruitments.views.attachments_views import RecruitmentFileView
 from apps.recruitments.views.images_views import RecruitmentImageView
-from apps.recruitments.views.recruitment_views import MyRecruitmentView, RecruitmentView
 from apps.recruitments.views.recruitment_detail_views import RecruitmentDetailView
+from apps.recruitments.views.recruitment_views import MyRecruitmentView, RecruitmentView
 
 urlpatterns = [
     path("", RecruitmentView.as_view(), name="recruitment-list"),
