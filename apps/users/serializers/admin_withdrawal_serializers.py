@@ -5,10 +5,11 @@ from apps.users.utils.enums import Permission, UserStatus
 
 
 class AdminWithdrawalListSerializer(serializers.ModelSerializer[Withdrawals]):
-    email = serializers.SerializerMethodField(help_text="탈퇴 유저 이메일")
-    name = serializers.SerializerMethodField(help_text="탈퇴 유저 이름")
+    email = serializers.CharField(source="user.email", read_only=True)
+    name = serializers.CharField(source="user.name", read_only=True)
+    birthday = serializers.DateField(source="user.birthday", read_only=True)
+
     permission = serializers.SerializerMethodField(help_text="탈퇴 유저 권한")
-    birthday = serializers.SerializerMethodField(help_text="탈퇴 유저 생년월일")
 
     class Meta:
         model = Withdrawals
@@ -22,17 +23,8 @@ class AdminWithdrawalListSerializer(serializers.ModelSerializer[Withdrawals]):
             "created_at",
         ]
 
-    def get_email(self, obj: Withdrawals) -> str:
-        return obj.user.email
-
-    def get_name(self, obj: Withdrawals) -> str:
-        return obj.user.name
-
     def get_permission(self, obj: Withdrawals) -> str:
         return Permission.from_user(obj.user).value[0]
-
-    def get_birthday(self, obj: Withdrawals) -> str:
-        return obj.user.birthday.isoformat()
 
 
 class AdminWithdrawalDetailSerializer(serializers.ModelSerializer[Withdrawals]):
