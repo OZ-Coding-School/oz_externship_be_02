@@ -31,6 +31,7 @@ class UserInfoSerializer(serializers.ModelSerializer[User]):
 
 
 class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
+    author = UserInfoSerializer(read_only=True)
     images = StudyNoteImageSerializer(many=True, read_only=True)
     attachments = StudyNoteAttachmentSerializer(many=True, read_only=True)
     image_files: serializers.ListField = serializers.ListField(
@@ -39,6 +40,8 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
     attachment_files: serializers.ListField = serializers.ListField(
         child=serializers.FileField(), write_only=True, required=False
     )
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
 
     class Meta:
         model = StudyNote
@@ -56,7 +59,7 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "study_group", "author", "ai_summary", "created_at", "updated_at"]
+        read_only_fields = ["id", "study_group", "ai_summary"]
 
     # 이미지 유효성 검사
     def validate_image_files(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
