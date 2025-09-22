@@ -83,7 +83,7 @@ class StudyReviewRequestServiceTests(TestCase):
             back_url_link=f"/my-page/completed-study",  # 멱등 기준의 링크와 동일해야 제외됨
         )
 
-        created = Svc.send_review_requests_for_groups(group=self.group, today=today)
+        created = Svc.create_review_request_notifications_for_group(group=self.group, today=today)
         self.assertEqual(created, 2)  # u1, u3 만 새로 생성
 
         # 총 알림 수: 기존 1 + 새로 2 = 3
@@ -98,8 +98,8 @@ class StudyReviewRequestServiceTests(TestCase):
         """
         today, _, _ = kst_today_range()
 
-        first = Svc.send_review_requests_for_groups(group=self.group, today=today)
-        second = Svc.send_review_requests_for_groups(group=self.group, today=today)
+        first = Svc.create_review_request_notifications_for_group(group=self.group, today=today)
+        second = Svc.create_review_request_notifications_for_group(group=self.group, today=today)
 
         # 첫 실행: 3명 생성, 두 번째 실행: 0명
         self.assertEqual(first, 3)
@@ -120,7 +120,7 @@ class StudyReviewRequestServiceTests(TestCase):
             status=StudyGroup.StatusChoices.ONGOING,
         )
 
-        created = Svc.send_review_requests_for_groups(group=empty_group, today=today)
+        created = Svc.create_review_request_notifications_for_group(group=empty_group, today=today)
         self.assertEqual(created, 0)
         self.assertEqual(Notification.objects.count(), 0)
 
