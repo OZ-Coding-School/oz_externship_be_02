@@ -174,3 +174,23 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
         for case in test_data:
             response = self.client.patch(self.url, data=case)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_permission_fail(self) -> None:
+        """
+        리더 권한이 없는 경우 수정 실패 테스트
+        :return:
+        """
+        self.new_user = self._create_test_user(email='kimshineday@test.com', nickname='김빛날', phone_number='01098765432') # 새로운 유저를 생성
+        self.client.force_authenticate(user=self.new_user) # 새로운 유저로 로그인
+        test_data = [
+            {"name": "인원 수정", "max_headcount": 5},
+            {"name": "프로필 사진 추가", "profile_img": create_temp_image()},
+            {"name": "스터디 일정 수정", "start_at": "2025-10-01T00:00:00Z", "end_at": "2025-10-31T00:00:00Z"},
+        ]
+        for case in test_data:
+            response = self.client.patch(self.url, data=case)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.study_group.refresh_from_db()
+            self.assertEqual(self.study_group.name, "Python 개념 잡기")
+            logger.debug(response.data)
+
