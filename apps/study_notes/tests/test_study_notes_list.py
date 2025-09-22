@@ -2,19 +2,21 @@ from datetime import datetime
 from typing import cast
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.test import APIClient
 
 from apps.studies.models import StudyGroup
-from apps.users.models.user import User
 from apps.study_notes.models.study_notes import StudyNote
 from apps.study_notes.serializers.study_notes_serializers import StudyNoteListSerializer
-from django.urls import reverse
+from apps.users.models.user import User
 
 
 class StudyNoteListViewTests(TestCase):
     """StudyNoteListView 전체 조회 테스트"""
+
+    client: APIClient
 
     def setUp(self) -> None:
         self.client = APIClient()
@@ -68,7 +70,7 @@ class StudyNoteListViewTests(TestCase):
 
     def test_list_study_notes_success(self) -> None:
         """스터디 그룹 멤버가 스터디 기록 전체 조회"""
-        url = reverse("list-study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
+        url = reverse("study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
         response = cast(Response, self.client.get(url))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 2)
@@ -81,7 +83,7 @@ class StudyNoteListViewTests(TestCase):
     def test_list_study_notes_empty(self) -> None:
         """노트가 없는 경우에도 빈 리스트 반환"""
         StudyNote.objects.all().delete()
-        url = reverse("list-study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
+        url = reverse("study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
         response = cast(Response, self.client.get(url))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, [])
@@ -89,6 +91,6 @@ class StudyNoteListViewTests(TestCase):
     def test_list_study_notes_permission_denied(self) -> None:
         """스터디 그룹에 속하지 않은 유저 조회 시 403"""
         self.client.force_authenticate(user=self.other_user)
-        url = reverse("list-study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
+        url = reverse("study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
         response = cast(Response, self.client.get(url))
         self.assertEqual(response.status_code, 403)
