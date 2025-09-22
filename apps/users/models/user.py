@@ -2,7 +2,7 @@ from typing import Any
 
 from django.contrib.auth.models import (
     AbstractBaseUser,
-    BaseUserManager,
+    BaseUserManager, PermissionsMixin,
 )
 from django.db import models
 
@@ -10,7 +10,7 @@ from apps.core.models.base import UUIDBaseModel
 from apps.users.managers.user_manager import UserManager
 
 
-class User(UUIDBaseModel, AbstractBaseUser):
+class User(UUIDBaseModel, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(
         help_text="email address",
         max_length=255,

@@ -1,9 +1,12 @@
+from typing import cast, Any
+
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import Token
 
 from apps.users.serializers.auth_serializers import EmailLoginSerializer
 from apps.users.serializers.signup_serializers import UserSignupSerializer
@@ -50,7 +53,7 @@ class EmailLoginAPIView(APIView):
 
         response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
 
-        response.set_cookie("refresh", refresh_token, httponly=True)
+        response.set_cookie("refresh", tokens["refresh"], httponly=True)
         return response
 
 
