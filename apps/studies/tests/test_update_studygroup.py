@@ -180,8 +180,10 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
         리더 권한이 없는 경우 수정 실패 테스트
         :return:
         """
-        self.new_user = self._create_test_user(email='kimshineday@test.com', nickname='김빛날', phone_number='01098765432') # 새로운 유저를 생성
-        self.client.force_authenticate(user=self.new_user) # 새로운 유저로 로그인
+        self.new_user = self._create_test_user(
+            email="kimshineday@test.com", nickname="김빛날", phone_number="01098765432"
+        )  # 새로운 유저를 생성
+        self.client.force_authenticate(user=self.new_user)  # 새로운 유저로 로그인
         test_data = [
             {"name": "인원 수정", "max_headcount": 5},
             {"name": "프로필 사진 추가", "profile_img": create_temp_image()},
@@ -193,4 +195,3 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
             self.study_group.refresh_from_db()
             self.assertEqual(self.study_group.name, "Python 개념 잡기")
             logger.debug(response.data)
-
