@@ -19,7 +19,7 @@ class RecruitmentListQuerySet(models.QuerySet["Recruitment"]):
     def order_last(self) -> RecruitmentListQuerySet:
         return self.order_by("-created_at")
 
-    def optimized_queryset(self) -> RecruitmentListQuerySet:
+    def recm_list_queryset(self) -> RecruitmentListQuerySet:
         # 순환참조를 피하기 위해서 'images'라는 역방향 관계 필드를 이용해 모델 class 이용
         reverse_relation = self.model._meta.get_field("images")
         RecruitmentImage = cast("RecruitmentImage", reverse_relation.related_model)
