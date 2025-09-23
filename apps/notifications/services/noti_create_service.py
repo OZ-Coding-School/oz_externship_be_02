@@ -186,7 +186,7 @@ class StudyReviewNotificationService:
 
     @classmethod
     def create_review_request_notifications_for_group(cls, group: StudyGroup, today: date) -> int:
-        member_ids: Set[int] = {m.user_id for m in group.groupmember_set.all()}
+        member_ids = group.members.values_list("id", flat=True).distinct()
         if not member_ids:
             return 0
 
