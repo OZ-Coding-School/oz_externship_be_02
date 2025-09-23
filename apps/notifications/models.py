@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.models import Index
 
 from apps.core.models.base import BaseModel
 from apps.notifications.managers import NotificationManager
@@ -35,7 +34,9 @@ class Notification(BaseModel):
     class Meta:
         db_table = "notifications"
         ordering = ["-created_at", "-id"]
-        Index(
-            name="idx_noti_type_link_created_user",
-            fields=["notification_type", "back_url_link", "created_at", "user"],
-        )
+        indexes = [
+            models.Index(
+                name="index_noti_list_view",
+                fields=["user", "-created_at"],
+            ),
+        ]

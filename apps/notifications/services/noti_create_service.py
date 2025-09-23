@@ -166,22 +166,6 @@ class StudyReviewNotificationService:
         )
 
     @classmethod
-    def list_notified_users(cls, today: date, user_ids: Iterable[int]) -> Set[int]:
-        if not user_ids:
-            return set()
-
-        start, end = cls.day_range(today)
-        return set(
-            Notification.objects.filter(
-                notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST,
-                back_url_link=get_notification_back_url(Notification.NotificationType.STUDY_REVIEW_REQUEST),
-                created_at__gte=start,
-                created_at__lt=end,
-                user_id__in=set(user_ids),
-            ).values_list("user_id", flat=True)
-        )
-
-    @classmethod
     def notify_study_review(cls, study_group_name: str, target_user_ids: Iterable[int]) -> int:
         ids = set(target_user_ids)
         if not ids:
@@ -206,14 +190,9 @@ class StudyReviewNotificationService:
         if not member_ids:
             return 0
 
-        already: Set[int] = cls.list_notified_users(today=today, user_ids=member_ids)
-        targets: List[int] = [uid for uid in member_ids if uid not in already]
-        if not targets:
-            return 0
-
         return cls.notify_study_review(
             study_group_name=group.name,
-            target_user_ids=targets,
+            target_user_ids=member_ids,
         )
 
     @classmethod

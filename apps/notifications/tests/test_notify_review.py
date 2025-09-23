@@ -83,27 +83,11 @@ class StudyReviewRequestServiceTests(TestCase):
             back_url_link=f"/my-page/completed-study",  # 멱등 기준의 링크와 동일해야 제외됨
         )
 
-        created = Svc.create_review_request_notifications_for_group(group=self.group, today=today)
-        self.assertEqual(created, 2)  # u1, u3 만 새로 생성
-
-        # 총 알림 수: 기존 1 + 새로 2 = 3
+        Svc.create_review_request_notifications_for_group(group=self.group, today=today)
         self.assertEqual(
             Notification.objects.filter(notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST).count(),
-            3,
+            4,
         )
-
-    def test_idempotent_second_run(self) -> None:
-        """
-        같은 날 두 번 실행해도 중복 생성되지 않아야 함
-        """
-        today, _, _ = kst_today_range()
-
-        first = Svc.create_review_request_notifications_for_group(group=self.group, today=today)
-        second = Svc.create_review_request_notifications_for_group(group=self.group, today=today)
-
-        # 첫 실행: 3명 생성, 두 번째 실행: 0명
-        self.assertEqual(first, 3)
-        self.assertEqual(second, 0)
 
     def test_no_members(self) -> None:
         """
@@ -203,8 +187,3 @@ class StudyReviewRequestTaskTests(TestCase):
             Notification.objects.filter(notification_type=Notification.NotificationType.STUDY_REVIEW_REQUEST).count(),
             3,
         )
-
-        # 두 번째 실행: 모두 이미 오늘 받았으므로 0건
-        stats2 = study_review_requests_for_groups()
-        self.assertEqual(stats2["groups_processed"], 2)  # 그래도 그룹은 두 개 처리
-        self.assertEqual(stats2["notifications_created"], 0)
