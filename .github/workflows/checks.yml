@@ -198,7 +198,7 @@ jobs:
           source .venv/bin/activate
           cd ${{ github.workspace }}
           echo "🚀 Running tests for ${{ matrix.app }}..."
-          poetry run coverage run --source="apps/${{ matrix.app }}" --append manage.py test "apps.${{ matrix.app }}" --parallel=auto --verbosity=2 || echo "::error::Tests failed for ${{ matrix.app }}"
+          poetry run coverage run --concurrency=multiprocessing --source="apps/${{ matrix.app }}" --append manage.py test "apps.${{ matrix.app }}" --parallel=auto --verbosity=2 || echo "::error::Tests failed for ${{ matrix.app }}"
           echo "📊 Generating coverage report for ${{ matrix.app }}..."
           poetry run coverage report -m --include="apps/${{ matrix.app }}/*"
           poetry run coverage xml -o coverage-${{ matrix.app }}.xml --include="apps/${{ matrix.app }}/*"
