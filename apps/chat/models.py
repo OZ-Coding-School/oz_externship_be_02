@@ -2,6 +2,8 @@
 from django.db import models
 
 from apps.core.models.base import BaseModel
+from apps.studies.models import StudyGroup
+from apps.users.models import User
 
 
 class ChatMessage(BaseModel):
@@ -31,4 +33,17 @@ class ChatMessage(BaseModel):
 
         indexes = [
             models.Index(fields=["study_group", "-created_at"]),
+        ]
+
+
+class LastReadMessage(BaseModel):
+    message_id = models.BigIntegerField()
+    user = models.ForeignKey(User, related_name="last_read_messages", on_delete=models.CASCADE)
+    study_group = models.ForeignKey(StudyGroup, related_name="last_read_informations", on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = "last_group_messages"
+
+        indexes = [
+            models.Index(fields=["study_group", "user"]),
         ]

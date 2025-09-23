@@ -1,21 +1,30 @@
 from rest_framework import serializers
+
+from ..studies.models import StudyGroup
+from ..users.models import User
 from .models import ChatMessage
-from apps.studies.models import StudyGroup # study groups 이름을 가지고 오기 위해 import
-from apps.users.models import User # user의 이름을 가지고 오기 위해서 import 했음
+
+
+class SenderInfoSerializer(serializers.ModelSerializer[User]):
+    class Meta:
+        model = User
+        fields = ["uuid", "nickname", "name", "gender"]
+
 
 class ChatMessageSerializer(serializers.ModelSerializer[ChatMessage]):
-    study_group_name = serializers.SerializerMethodField(read_only=True) # study group 이름
-    # last_message = serializers.SerializerMethodField(read_only=True) # 가장 최근에 온 메세지(content) # 상황에 따라서 view에서 처리 (N+1 문제 방지)
-    is_read = serializers.SerializerMethodField(read_only=True) # 읽음 여부
+    sender = SenderInfoSerializer(read_only=True)
 
     class Meta:
         model = ChatMessage
-        fields = ["study_group_name", "updated_at", "created_at", "is_read", "content"]
+        fields = ["id", "content", "sender", "created_at"]
 
 
-    def get_study_group_name(self, obj): # 스터디 그룹 이름 조회
-        return obj.study_group.name
+class ChatRoomSerializer(serializers.ModelSerializer[StudyGroup]):
+    last_message = ChatMessageSerializer(
+        source="chat_messages.first", read_only=True
+    )  # 가장 최근에 온 메세지(content) # 상황에 따라서 view에서 처리 (N+1 문제 방지)
+    unread_message_count = serializers.IntegerField(read_only=True)
 
-    def get_is_read(self, obj): # 읽음처리 어떻게 할지 의논해야함
-        return False
-
+    class Meta:
+        model = StudyGroup
+        fields = ["uuid", "name", "unread_message_count", "last_message"]
