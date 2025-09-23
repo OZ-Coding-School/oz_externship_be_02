@@ -1,4 +1,4 @@
-# apps/study_notes/managers.py
+# apps/study_notes/bookmark_manager.py
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
