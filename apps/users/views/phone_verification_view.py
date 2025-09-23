@@ -26,6 +26,7 @@ class SendVerificationCodeAPIView(APIView):
     permission_classes = [AllowAny]
     serializer_class = PhoneVerificationSerializer
     authentication_classes = ()
+
     @extend_schema(
         tags=["auth"],
         summary="휴대폰 인증번호 전송",
@@ -36,7 +37,6 @@ class SendVerificationCodeAPIView(APIView):
             400: {"type": "object", "properties": {"error": {"type": "string"}}},
         },
     )
-
     def post(self, request: Request) -> Response:
         serializer = PhoneVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -52,6 +52,7 @@ class VerifyCodeAPIView(APIView):
     permission_classes = [AllowAny]
     serializer_class = VerifyCodeSerializer
     authentication_classes = ()
+
     @extend_schema(
         tags=["auth"],
         summary="휴대폰 인증번호 검증",
@@ -62,7 +63,6 @@ class VerifyCodeAPIView(APIView):
             400: {"type": "object", "properties": {"error": {"type": "string"}}},
         },
     )
-
     def post(self, request: Request) -> Response:
         serializer = VerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
