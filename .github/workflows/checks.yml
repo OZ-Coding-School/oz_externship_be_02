@@ -196,14 +196,19 @@ jobs:
           test_files=$(find "$app_path" -type f -name "test*.py")
           if [ -n "$test_files" ] && grep -q -r "def test_" $app_path; then
             echo "✅ Running tests for $app_name"
+            # 1. 테스트 실행 및 병렬 데이터 파일 생성
             poetry run coverage run --parallel-mode --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
             
+            # 2. 현재 잡에서 생성된 병렬 데이터 파일들을 .coverage 파일로 병합
+            echo "🔄 Combining coverage data for this job..."
+            poetry run coverage combine
+            
             echo "📊 Coverage report for $app_name:"
-            # 1. 로그 출력을 위해 리포트 생성 (실패하지 않음)
+            # 3. 병합된 .coverage 파일을 기반으로 리포트 생성 (로그 출력용)
             poetry run coverage report -m --include="$app_path/*" || true
 
             echo "🔎 Validating coverage for $app_name..."
-            # 2. 커버리지 기준 검증 (기준 미달 시 실패)
+            # 4. 병합된 .coverage 파일을 기반으로 커버리지 기준 검증
             poetry run coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }} --include="$app_path/*"
           else
             echo "⚠️ No test functions found in $app_name. Skipping coverage generation."
