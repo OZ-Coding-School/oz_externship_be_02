@@ -49,14 +49,21 @@ class StudyNoteView(APIView):
         """스터디 그룹에 속한 유저가 그룹원들의 스터디 기록을 전체 조회"""
         group = get_object_or_404(StudyGroup, uuid=group_uuid)
 
-        # 권한 체크: 그룹에 속한 유저
-        assert isinstance(request.user, User)
-        if request.user not in group.members.all():
+        assert request.user.id is not None
+        is_member = group.members.filter(id=request.user.id).exists()
+        if not is_member:
             return Response(
-                {"detail": "스터디 그룹에 속한 사용자만 조회 가능합니다."}, status=status.HTTP_403_FORBIDDEN
+                {"detail": "스터디 그룹에 속한 사용자만 조회 가능합니다."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        notes = StudyNote.objects.filter(study_group=group).order_by("-created_at")
+        notes = (
+            StudyNote.objects.filter(study_group=group)
+            .select_related("author")
+            .prefetch_related("images", "attachments")
+            .order_by("-created_at")
+        )
+
         serializer = StudyNoteListSerializer(notes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

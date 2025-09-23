@@ -52,14 +52,11 @@ class StudyNoteDetailView(APIView):
     )
     def get(self, request: Request, group_uuid: UUID, note_id: int) -> Response:
         group = get_object_or_404(StudyGroup, uuid=group_uuid)
-        note = get_object_or_404(StudyNote, id=note_id, study_group=group)
-
-        # 권한 체크: 그룹에 속한 유저
-        assert isinstance(request.user, User)
-        if request.user not in group.members.all():
-            return Response(
-                {"detail": "스터디 그룹에 속한 사용자만 조회 가능합니다."}, status=status.HTTP_403_FORBIDDEN
-            )
-
+        note = get_object_or_404(
+            StudyNote.objects.select_related("author").prefetch_related("images", "attachments"),
+            id=note_id,
+            study_group=group,
+            study_group__groupmember__user=request.user,
+        )
         serializer = StudyNoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)

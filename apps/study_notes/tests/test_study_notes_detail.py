@@ -94,4 +94,4 @@ class StudyNoteDetailViewTests(TestCase):
         self.client.force_authenticate(user=self.other_user)
         response = cast(Response, self.client.get(self.detail_url))
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
