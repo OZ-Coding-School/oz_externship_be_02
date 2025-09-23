@@ -9,10 +9,13 @@ from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from apps.lectures.managers.Lecture_manager import LectureQuerySet
 from apps.lectures.models.categories import Category
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.lectures.models.lecture_categories import LectureCategory
 from apps.lectures.serializers.crawled_lecture import LectureSerializer
+from apps.lectures.services.lecture_list_service import get_lectures
+from apps.lectures.views.lecture_list import LectureListView
 from apps.users.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -70,160 +73,95 @@ class LectureTestCase(TestCase):
         LectureCategory.objects.create(lecture=self.lecture2, category=self.category_ds)
         LectureCategory.objects.create(lecture=self.lecture2, category=self.category_web)
 
-    @patch("apps.lectures.views.lecture_list.redis.Redis")  # Redis mocking
-    def test_get_lecture_list_success(self, mock_redis: MagicMock) -> None:
-        # Given
-        fake_redis = mock_redis.return_value
-        # When
-        fake_redis.get.return_value = None
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        # Then
-        self.assertIn("results", data)
-        self.assertIsInstance(data["results"], list)
-        self.assertGreaterEqual(len(data["results"]), 2)
-        fake_redis.set.assert_called_once()
-
-    @patch("apps.lectures.views.lecture_list.redis.Redis")
-    def test_get_lecture_list_with_cache(self, mock_redis: MagicMock) -> None:
-        # Given
-        fake_redis = mock_redis.return_value
-        cached_data = [{"title": "Cached Lecture", "instructor": "Charlie", "updated_at": "2025-09-01"}]
-        fake_redis.get.return_value = json.dumps(cached_data)
-        # When
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        # Then
-        self.assertEqual(data["results"][0]["title"], "Cached Lecture")
-
-    @patch("apps.lectures.views.lecture_list.redis.Redis")
-    def test_redis_connection_error(self, mock_redis: MagicMock) -> None:
-        # Given
-        fake_redis = mock_redis.return_value
-        fake_redis.get.side_effect = redis.exceptions.ConnectionError
-        # When + Then
-        with self.assertLogs("apps.lectures.views.lecture_list", level="WARNING") as cm:
-            response = self.client.get(self.url)
+    def test_lecture_list_view_get(self) -> None:
+        """필터 없이 LectureListView 호출 시 전체 강의 반환 확인"""
+        response = self.client.get(self.url)  # Client로 GET 요청
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(
-            "ERROR:apps.lectures.views.lecture_list:\nLectureLog: Redis connection failed, fallback to DB:",
-            cm.output[0],
-        )
+        self.assertIn("results", response.json())
+        self.assertEqual(len(response.json()["results"]), 2)
 
-    @patch("apps.lectures.views.lecture_list.redis.Redis")
-    def test_invalid_cached_data(self, mock_redis: MagicMock) -> None:
-        # Given
-        fake_redis = mock_redis.return_value
-        fake_redis.get.return_value = "{invalid-json}"
-        fake_redis.set.side_effect = redis.exceptions.ConnectionError  # set()에서 예외
+        titles = [item["title"] for item in response.json()["results"]]
+        self.assertIn(self.lecture1.title, titles)
+        self.assertIn(self.lecture2.title, titles)
 
-        # When
-        with self.assertLogs("apps.lectures.views.lecture_list", level="WARNING") as cm:
-            response = self.client.get(self.url)
-        # Then
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(any("LectureLog: Failed to set lectures in Redis cache, skipping" in msg for msg in cm.output))
+    @patch("apps.lectures.services.lecture_list_service.cache")
+    def test_get_lectures_from_cache(self, mock_cache: MagicMock) -> None:
+        """캐시에 데이터가 있으면 캐시 데이터를 반환"""
+        fake_data = json.dumps([{"title": "캐시 강의"}])
+        mock_cache.get.return_value = fake_data
 
-    @patch("apps.lectures.views.lecture_list.redis.Redis")
-    @patch("apps.lectures.views.lecture_list.Category.objects")
-    def test_ordering_and_filtering(self, mock_category_objects: MagicMock, mock_redis: MagicMock) -> None:
-        # Given
-        fake_redis = mock_redis.return_value
-        fake_redis.get.return_value = None
-        fake_redis.set.return_value = None
+        result = get_lectures()
 
-        mock_category_objects.filter.return_value.values_list.return_value = [self.category_ai.id]
-        mock_serializer_data = [
-            {
-                "title": self.lecture1.title,
-                "instructor": self.lecture1.instructor,
-                "average_rating": self.lecture1.average_rating,
-                "original_price": self.lecture1.original_price,
-                "updated_at": "2025-09-04T11:27:49.614835+09:00",
-                "categories": [self.category_ai.id, self.category_ds.id],  # 중요: categories에 ID 리스트를 포함
-            },
-            {
-                "title": self.lecture2.title,
-                "instructor": self.lecture2.instructor,
-                "average_rating": self.lecture2.average_rating,
-                "original_price": self.lecture2.original_price,
-                "updated_at": "2025-09-04T14:27:49.615546+09:00",
-                "categories": [self.category_ds.id, self.category_web.id],
-            },
-        ]
-        # Data_Driven
-        sorting_test_cases: List[Dict[str, Any]] = [
-            {"ordering_param": "price_desc", "expected_title": "Django로 웹 서비스 만들기"},
-            {"ordering_param": "price_asc", "expected_title": "PyTorch를 활용한 AI 모델 학습"},
-            {"ordering_param": "rating_desc", "expected_title": "PyTorch를 활용한 AI 모델 학습"},
-            {"ordering_param": "rating_asc", "expected_title": "Django로 웹 서비스 만들기"},
-            {"ordering_param": "oldest", "expected_title": "PyTorch를 활용한 AI 모델 학습"},
-            {"ordering_param": "oldest_desc", "expected_title": "Django로 웹 서비스 만들기"},  # default 정렬
-            {"ordering_param": "updated_at", "expected_title": "Django로 웹 서비스 만들기"},  # default 정렬
-            {"ordering_param": None, "expected_title": "Django로 웹 서비스 만들기"},  # default 정렬
-        ]
-        with patch.object(LectureSerializer, "data", new=mock_serializer_data):
-            for case in sorting_test_cases:
-                # When
-                ordering_param = case["ordering_param"]
-                url = f"{self.url}?search=AI&category=AI"
-                if ordering_param:
-                    url += f"&ordering={ordering_param}"
+        self.assertEqual(result, [{"title": "캐시 강의"}])
+        mock_cache.get.assert_called_once_with("lectures:list")
 
-                response = self.client.get(url)
-                data = response.json()
-                # Then
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(len(data["results"]), 1)
-                self.assertEqual(data["results"][0]["title"], "PyTorch를 활용한 AI 모델 학습")
+    @patch("apps.lectures.services.lecture_list_service.cache")
+    def test_get_lectures_from_cache_invalid_json(self, mock_cache: MagicMock) -> None:
+        """캐시 JSON이 잘못된 경우 DB에서 조회 fallback"""
+        mock_cache.get.return_value = "INVALID_JSON"
 
-    @patch("apps.lectures.views.lecture_list.LectureListView.paginate")
-    @patch("apps.lectures.views.lecture_list.redis.Redis")
-    def test_empty_page_scenario(self, mock_redis: MagicMock, mock_paginate: MagicMock) -> None:
-        # Given
-        fake_redis = mock_redis.return_value
-        fake_redis.get.return_value = None
-        fake_redis.set.return_value = None
-        # When
-        mock_paginate.return_value = (None, MagicMock())
-        response = self.client.get(self.url)
-        data = response.json()
-        # Then
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(data["results"], [])
-        self.assertIsNone(data["next"])
-        self.assertIsNone(data["previous"])
+        result = get_lectures()
 
-    @patch("apps.lectures.views.lecture_list.redis.Redis")
-    def test_invalid_page_number_returns_first_page(self, mock_redis: MagicMock) -> None:
-        # Given
-        fake_redis = mock_redis.return_value
-        fake_redis.get.return_value = None
-        fake_redis.set.return_value = None
-        # When
-        url = f"{self.url}?page=abc"
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        # Then
-        self.assertEqual(data["count"], 2)
-        self.assertEqual(len(data["results"]), 2)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["title"], self.lecture1.title)
 
-    @patch("apps.lectures.views.lecture_list.redis.Redis")
-    def test_out_of_range_page_returns_empty_response(self, mock_redis: MagicMock) -> None:
-        # Given
-        fake_redis = mock_redis.return_value
-        fake_redis.get.return_value = None
-        fake_redis.set.return_value = None
-        # When
-        url = f"{self.url}?page=3"
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        # Then
-        self.assertEqual(data["results"], [])
-        self.assertIsNone(data["next"])
-        self.assertIsNone(data["previous"])
+    @patch("apps.lectures.services.lecture_list_service.cache")
+    def test_get_lectures_cache_set_error(self, mock_cache: MagicMock) -> None:
+        """캐시 set 시 예외 발생 → warning 로그 확인 및 DB fallback"""
+        mock_cache.get.return_value = None
+        mock_cache.set.side_effect = Exception("Cache set failed")
+
+        with patch("apps.lectures.services.lecture_list_service.logger") as mock_logger:
+            result = get_lectures()
+
+            self.assertEqual(len(result), 2)
+            self.assertEqual(result[0]["title"], self.lecture1.title)
+
+            mock_logger.warning.assert_called_once()
+            args, _ = mock_logger.warning.call_args
+            self.assertIn("Failed to set lectures in cache", args[0])
+
+
+class LectureQuerySetManagerTest(LectureTestCase):  # 기존 LectureTestCase 활용
+    def test_search_queryset(self) -> None:
+        qs = Lecture.objects.search("PyTorch")
+        self.assertIn(self.lecture1, qs)
+        self.assertNotIn(self.lecture2, qs)
+
+        qs = Lecture.objects.search("코딩 파트너2")
+        self.assertIn(self.lecture2, qs)
+        self.assertNotIn(self.lecture1, qs)
+
+        qs = Lecture.objects.search("")
+        self.assertEqual(qs.count(), 2)  # keyword 없으면 전체 반환
+
+    def test_filter_by_categories_queryset(self) -> None:
+        qs = Lecture.objects.filter_by_categories("AI")
+        self.assertIn(self.lecture1, qs)
+        self.assertNotIn(self.lecture2, qs)
+
+        qs = Lecture.objects.filter_by_categories("데이터 사이언스")
+        self.assertIn(self.lecture1, qs)
+        self.assertIn(self.lecture2, qs)
+
+        qs = Lecture.objects.filter_by_categories("")
+        self.assertEqual(qs.count(), 2)  # 빈 문자열이면 전체 반환
+
+    def test_sort_by_ordering_queryset(self) -> None:
+        #
+        # price_asc
+        qs = Lecture.objects.all().sort_by_ordering("price_asc")  # type: ignore
+        self.assertEqual(list(qs), [self.lecture1, self.lecture2])
+        # price_desc
+        qs = Lecture.objects.all().sort_by_ordering("price_desc")  # type: ignore
+        self.assertEqual(list(qs), [self.lecture2, self.lecture1])
+        # rating_desc
+        qs = Lecture.objects.all().sort_by_ordering("rating_desc")  # type: ignore
+        self.assertEqual(list(qs), [self.lecture1, self.lecture2])
+        # rating_asc
+        qs = Lecture.objects.all().sort_by_ordering("rating_asc")  # type: ignore
+        self.assertEqual(list(qs), [self.lecture2, self.lecture1])
+        # default
+        qs = Lecture.objects.all().sort_by_ordering(None)  # type: ignore
+        self.assertEqual(list(qs), [self.lecture2, self.lecture1])

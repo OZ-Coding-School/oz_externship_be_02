@@ -1,6 +1,7 @@
 from django.db import models
 
 from apps.core.models.base import UUIDBaseModel
+from apps.lectures.managers.Lecture_manager import LectureManager
 from apps.lectures.models.categories import Category
 
 
@@ -33,6 +34,8 @@ class Lecture(UUIDBaseModel):
         through="lectures.LectureCategory",  # 얘를 통해 ㅎㅎ
         related_name="lectures",
     )
+
+    objects = LectureManager()
 
     class Meta:
         db_table = "crawled_lectures"
