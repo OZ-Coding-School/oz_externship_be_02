@@ -35,6 +35,8 @@ class LectureSerializer(serializers.ModelSerializer[Lecture]):
             "url_link",
             "instructor",
             "thumbnail_img_url",
+            "original_price",
+            "discount_price",
         ]
 
 

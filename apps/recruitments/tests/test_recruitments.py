@@ -73,6 +73,8 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
             platform="inflearn",
             url_link="https://example.com/lecture",
             thumbnail_img_url="https://example.com/thumbnail.jpg",
+            original_price=50000,
+            discount_price=39000,
         )
         # 생성한 강의를 스터디 그룹에 연결
         study_group.lectures.add(lecture)
@@ -111,6 +113,17 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
         response = self.client.get(url)
         # THEN
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        study_lectures = response.data.get("study_lectures")
+        self.assertIsNotNone(study_lectures)
+        self.assertEqual(len(study_lectures), 1)
+
+        lecture_data = study_lectures[0]
+        self.assertIn("original_price", lecture_data)
+        self.assertIn("discount_price", lecture_data)
+        self.assertEqual(lecture_data["original_price"], 50000)
+        self.assertEqual(lecture_data["discount_price"], 39000)
+
         self.assertEqual(response.data, expected_data)
 
     def test_get_recruitment_detail_not_found(self) -> None:
