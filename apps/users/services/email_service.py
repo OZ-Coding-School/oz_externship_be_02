@@ -40,8 +40,8 @@ class EmailVerificationService:
             "recover_account": f"탈퇴 계정 복구를 위해 인증 코드를 입력해주세요 {verification_code}",
         }
 
-        subject = subject_map[purpose]
-        message = message_map[purpose]
+        subject = subject_map[str(purpose.value)]
+        message = message_map[str(purpose.value)]
         from_email = settings.EMAIL_HOST_USER
         recipient_list = [email]
 
