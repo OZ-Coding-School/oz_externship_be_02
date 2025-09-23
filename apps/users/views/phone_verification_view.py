@@ -1,6 +1,7 @@
 import logging
 
 from django.core.cache import cache
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -26,6 +27,16 @@ class SendVerificationCodeAPIView(APIView):
     serializer_class = PhoneVerificationSerializer
     authentication_classes = ()
 
+    @extend_schema(
+        tags=["auth"],
+        summary="휴대폰 인증번호 전송",
+        description="사용자가 입력한 휴대폰 번호로 인증번호를 전송합니다.",
+        request=PhoneVerificationSerializer,
+        responses={
+            200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = PhoneVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -42,6 +53,16 @@ class VerifyCodeAPIView(APIView):
     serializer_class = VerifyCodeSerializer
     authentication_classes = ()
 
+    @extend_schema(
+        tags=["auth"],
+        summary="휴대폰 인증번호 검증",
+        description="사용자가 입력한 인증번호가 올바른지 확인합니다.",
+        request=VerifyCodeSerializer,
+        responses={
+            200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = VerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

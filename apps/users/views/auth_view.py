@@ -1,3 +1,4 @@
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework.permissions import AllowAny
@@ -5,7 +6,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.serializers.auth_serializers import EmailLoginSerializer
+from apps.users.serializers.auth_serializers import (
+    EmailLoginSerializer,
+)
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.auth_service import AuthService, JWTService
 
@@ -14,6 +17,16 @@ class UserSignupAPIView(APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
 
+    @extend_schema(
+        tags=["auth"],
+        summary="회원가입",
+        description="이메일/휴대폰 인증 후 회원가입을 진행합니다",
+        request=UserSignupSerializer,
+        responses={
+            201: UserSignupSerializer,
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = UserSignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -25,12 +38,30 @@ class UserSignupAPIView(APIView):
 
 
 class EmailLoginAPIView(APIView):
-    permission_classes = (AllowAny,)
-    authentication_classes = ()
     """
     이메일 로그인 + 토큰 발급
     """
 
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    @extend_schema(
+        tags=["auth"],
+        summary="이메일 로그인",
+        description="이메일과 비밀번호로 로그인하여 액세스 토큰 발급",
+        request=EmailLoginSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="로그인 성공",
+                response={
+                    "type": "object",
+                    "properties": {"access": {"type": "string", "example": "jwt.access.token.value"}},
+                },
+            ),
+            401: OpenApiResponse(description="인증 실패"),
+            400: OpenApiResponse(description="잘못된 요청"),
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = EmailLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -51,12 +82,23 @@ class EmailLoginAPIView(APIView):
 
 
 class LogoutAPIView(APIView):
-    permission_classes = (AllowAny,)
-    authentication_classes = ()
     """
     로그아웃: Refresh  토큰 블랙리스트 처리
     """
 
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    @extend_schema(
+        tags=["auth"],
+        summary="로그아웃",
+        description="쿠키에 저장된 리프레시 토큰을 사용하여 로그아웃 처리",
+        responses={
+            200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+            401: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
     def post(self, request: Request) -> Response:
         refresh = request.COOKIES.get("refresh")
 
@@ -80,6 +122,22 @@ class CookieTokenRefreshAPIView(APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
 
+    @extend_schema(
+        tags=["auth"],
+        summary="액세스토큰 재발급",
+        description="쿠키에 있는 리프레시 토큰으로 액세스토큰 재발급",
+        responses={
+            200: OpenApiResponse(
+                description="토큰 재발급 성공",
+                response={
+                    "type": "object",
+                    "properties": {"access": {"type": "string", "example": "jwt.new.access.token"}},
+                },
+            ),
+            401: OpenApiResponse(description="인증 실패"),
+            400: OpenApiResponse(description="잘못된 요청"),
+        },
+    )
     def post(self, request: Request) -> Response:
         refresh_token = request.COOKIES.get("refresh")
 
