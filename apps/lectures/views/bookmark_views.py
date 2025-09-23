@@ -81,7 +81,7 @@ def _extract_cursor(link: str | None, param: str = "cursor") -> str | None:
 
 
 class BookmarkCursorPagination(CursorPagination):
-    ordering = "-created_at"
+    ordering = ("-created_at", "-pk")
     page_size: int = 10
     page_size_query_param: str = "page_size"
     cursor_query_param: str = "cursor"
@@ -137,7 +137,7 @@ class BookmarkListView(ListAPIView[LectureBookmark]):
     def get_queryset(self) -> QuerySet[LectureBookmark]:
         user = cast(UserModel, self.request.user)
         qs: QuerySet[LectureBookmark] = (
-            LectureBookmark.objects.filter(user=user).select_related("lecture").order_by("-created_at")
+            LectureBookmark.objects.filter(user=user).select_related("lecture").order_by("-created_at", "-pk")
         )
 
         keyword = self.request.query_params.get("search")

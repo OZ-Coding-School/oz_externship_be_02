@@ -1361,6 +1361,18 @@ asgiref = ">=3.6"
 django = ">=4.2"
 
 [[package]]
+name = "django-cursor-pagination"
+version = "0.3.0"
+description = "Cursor based pagination for Django"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "django_cursor_pagination-0.3.0-py3-none-any.whl", hash = "sha256:ce88147adc1e41c58427217cf54d7cbb4d04d5cf0a3a2c794d81602ad347658e"},
+    {file = "django_cursor_pagination-0.3.0.tar.gz", hash = "sha256:b09293ea9aa93cd0f3a9f4197e1f11f09283678e6c991cf4d4517a0fe90244c1"},
+]
+
+[[package]]
 name = "django-debug-toolbar"
 version = "5.2.0"
 description = "A configurable set of panels that display various debug information about the current request/response."
@@ -4144,4 +4156,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "b6cb52ce6a3b0c51bad75c160b48d9de01541f150ce1dc37a9821b7a1608815e"
+content-hash = "3b11d93237d577c134fb8b33387a0124fb0a8c96f0effe399d02a5a9d14a04df"
