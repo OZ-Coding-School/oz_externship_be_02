@@ -1,6 +1,7 @@
-from .views import StudyGroupScheduleCreateView, StudyGroupScheduleListView
+from .views import (
+    StudyGroupScheduleCreateView,
+    StudyGroupScheduleDetailView,
+    StudyGroupScheduleListView,
+)
 
-__all__ = [
-    "StudyGroupScheduleCreateView",
-    "StudyGroupScheduleListView",
-]
+__all__ = ["StudyGroupScheduleCreateView", "StudyGroupScheduleListView", "StudyGroupScheduleDetailView"]
