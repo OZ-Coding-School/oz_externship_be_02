@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 from uuid import UUID
 
 from django.core.files.uploadedfile import UploadedFile
@@ -49,8 +49,8 @@ class StudyNoteView(APIView):
         """스터디 그룹에 속한 유저가 그룹원들의 스터디 기록을 전체 조회"""
         group = get_object_or_404(StudyGroup, uuid=group_uuid)
 
-        assert request.user.id is not None
-        is_member = group.members.filter(id=request.user.id).exists()
+        user = cast(User, request.user)
+        is_member = group.members.filter(id=user.id).exists()
         if not is_member:
             return Response(
                 {"detail": "스터디 그룹에 속한 사용자만 조회 가능합니다."},
