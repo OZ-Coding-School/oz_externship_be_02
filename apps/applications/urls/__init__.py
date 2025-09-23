@@ -1,3 +1,3 @@
-from .recruitments_uuid_urls import urlpatterns
+from apps.applications.urls.applications_urls import urlpatterns as applications_urls
 
-__all__ = ["urlpatterns"]
+urlpatterns = applications_urls
