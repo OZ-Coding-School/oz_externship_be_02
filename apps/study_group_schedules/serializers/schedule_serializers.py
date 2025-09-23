@@ -1,10 +1,9 @@
 from datetime import date, datetime, time, timedelta
-from typing import Any, Dict
+from typing import Any
 
 from rest_framework import serializers
-from rest_framework.serializers import ModelSerializer
 
-from apps.studies.models.study_groups import StudyGroup
+from apps.studies.models import GroupMember
 from apps.study_group_schedules.enums import ScheduleOrdering
 from apps.study_group_schedules.models import GroupSchedule
 
@@ -90,3 +89,66 @@ class StudyGroupScheduleListQueryParamsSerializer(serializers.Serializer[GroupSc
                 raise serializers.ValidationError("시작 날짜는 종료 날짜보다 이전이어야 합니다.")
 
         return data
+
+
+class ScheduleParticipantSerializer(serializers.ModelSerializer[GroupMember]):
+    """스케줄 참여자 정보 시리얼라이저"""
+
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    user_nickname = serializers.CharField(source="user.nickname", read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+    is_leader = serializers.BooleanField(source="is_leader", read_only=True)
+
+    class Meta:
+        model = GroupMember
+        fields = [
+            "user_id",
+            "user_nickname",
+            "user_email",
+            "is_leader",
+        ]
+
+
+class StudyGroupScheduleDetailSerializer(serializers.ModelSerializer[GroupSchedule]):
+    """
+    스케줄 상세조회용 시리얼라이저
+    - 기본 정보 + 참여자 목록 + 참여자 수 포함
+    - 상세조회에서만 사용하는 추가 정보들을 포함
+    """
+
+    # 스터디 그룹 기본 정보
+    study_group_uuid = serializers.UUIDField(source="study_group.uuid", read_only=True)
+    study_group_name = serializers.CharField(source="study_group.name", read_only=True)
+    study_group_description = serializers.CharField(source="study_group.description", read_only=True)
+    study_group_leader_nickname = serializers.CharField(source="study_group.leader.nickname", read_only=True)
+
+    # 참여자 관련 정보
+    participant_count = serializers.IntegerField(read_only=True)
+    participants = ScheduleParticipantSerializer(many=True, read_only=True)
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._today = date.today()  # 인스턴스 생성 시 한 번만 계산
+
+    class Meta:
+        model = GroupSchedule
+        fields = [
+            # 기본 스케줄 정보
+            "id",
+            "title",
+            "objective",
+            "session_date",
+            "start_time",
+            "end_time",
+            # 스터디 그룹 정보
+            "study_group_uuid",
+            "study_group_name",
+            "study_group_description",
+            "study_group_leader_nickname",
+            # 참여자 정보
+            "participant_count",
+            "participants",
+            # 메타 정보
+            "created_at",
+            "updated_at",
+        ]
