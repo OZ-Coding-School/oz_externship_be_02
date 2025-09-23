@@ -126,3 +126,59 @@ class WithdrawalAdminAPITest(APITestCase):
         # 탈퇴 요청일(created_at) 오름차순 정렬
         response = self.client.get(self.list_url, {"ordering": "created_at"})
         self.assertEqual(response.data["results"][0]["email"], self.withdrawn_staff.email)
+
+    def test_restore_user_success_as_admin(self) -> None:
+        """탈퇴 유저 신청한 유저 복구 테스트"""
+        # 관리자 권한 유저 복구 기능 테스트
+        self.client.force_authenticate(user=self.superuser)
+
+        # 복구 대상으로 지정할 객체
+        withdrawal_obj = Withdrawals.objects.get(user=self.withdrawn_staff)
+
+        # restore에 대한 URL 생성
+        restore_url = reverse("admin_user:admin-withdrawal-restore", kwargs={"pk": withdrawal_obj.pk})
+
+        # POST 요청 실행
+        response = self.client.post(restore_url)
+
+        # 1. 성공 응답
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["message"], "유저 복구가 완료 되었습니다.")
+
+        # 2. Withdrawals 테이블에서 해당 유저 삭제 여부 확인
+        self.assertFalse(Withdrawals.objects.filter(pk=withdrawal_obj.pk).exists())
+        self.withdrawn_staff.refresh_from_db()
+        self.assertTrue(self.withdrawn_staff.is_active)
+
+    def test_restore_user_success_as_staff(self) -> None:
+        # 스태프 권한 유저 복구 기능 테스트
+        self.client.force_authenticate(user=self.staff_user)
+
+        # 복구 대상으로 지정할 객체
+        withdrawal_obj = Withdrawals.objects.get(user=self.withdrawn_staff)
+
+        # restore에 대한 URL 생성
+        restore_url = reverse("admin_user:admin-withdrawal-restore", kwargs={"pk": withdrawal_obj.pk})
+
+        # POST 요청 실행
+        response = self.client.post(restore_url)
+
+        # 1. 성공 응답
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # 2. Withdrawals 테이블에서 해당 유저 삭제 여부 확인
+        self.assertFalse(Withdrawals.objects.filter(pk=withdrawal_obj.pk).exists())
+
+        # 3. User 모델의 is_active 상태 True 변경 여부 확인
+        self.withdrawn_staff.refresh_from_db()
+        self.assertTrue(self.withdrawn_staff.is_active)
+
+    def test_restore_user_fail_for_general_user(self) -> None:
+        """권한이 없는 유저가 복구 시도시 403 에러 반환 테스트"""
+        self.client.force_authenticate(user=self.general_user)
+
+        withdrawal_obj = Withdrawals.objects.get(user=self.withdrawn_staff)
+        restore_url = reverse("admin_user:admin-withdrawal-restore", kwargs={"pk": withdrawal_obj.pk})
+
+        response = self.client.post(restore_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

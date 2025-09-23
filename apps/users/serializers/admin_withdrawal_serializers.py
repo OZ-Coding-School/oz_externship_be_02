@@ -40,7 +40,6 @@ class AdminWithdrawalDetailSerializer(serializers.ModelSerializer[Withdrawals]):
     class Meta:
         model = Withdrawals
         fields = [
-            "id",
             "name",
             "gender",
             "nickname",
@@ -49,6 +48,7 @@ class AdminWithdrawalDetailSerializer(serializers.ModelSerializer[Withdrawals]):
             "status",
             "user_joined_at",
             "profile_img_url",
+            "id",
             "created_at",
             "reason",
             "reason_detail",
