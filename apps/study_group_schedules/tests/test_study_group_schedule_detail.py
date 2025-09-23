@@ -177,4 +177,4 @@ class StudyGroupScheduleDetailTestCase(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn("authentication credentials", str(response.data["detail"]))
+        self.assertIn("authentication credentials", str(response.content))
