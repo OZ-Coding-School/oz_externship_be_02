@@ -104,7 +104,7 @@ class StudyGroupScheduleListView(ListAPIView[GroupSchedule]):
 @extend_schema(
     responses={
         200: StudyGroupScheduleDetailSerializer,
-        401: {"description": "사용자 인증이 필요합니다."},
+        401: {"description": "인증되지 않은 사용자입니다."},
         403: {"description": "해당 스케줄에 대한 접근 권한이 없습니다."},
         404: {"description": "해당 스케줄을 찾을 수 없습니다."},
     },
