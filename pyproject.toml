@@ -29,6 +29,7 @@ dependencies = [
     "celery (>=5.5.3,<6.0.0)",
     "google-generativeai (>=0.8.5,<0.9.0)",
     "google-genai (>=1.38.0,<2.0.0)",
+    "django-cursor-pagination (>=0.3.0,<0.4.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]
