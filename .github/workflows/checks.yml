@@ -179,7 +179,7 @@ jobs:
             poetry run coverage run --parallel-mode --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
             
             echo "🔄 Combining coverage data for this job..."
-            poetry run coverage combine
+            poetry run coverage combine --keep
             
             echo "📊 Coverage report for $app_name:"
             poetry run coverage report -m --include="$app_path/*" || true
