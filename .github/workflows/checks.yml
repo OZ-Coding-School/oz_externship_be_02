@@ -50,7 +50,7 @@ jobs:
           path: /home/runner/.cache/pypoetry/virtualenvs/
 
       - name: Install dependencies
-        run: poetry install --no-root  # --only=dev 제거: main dependencies (celery 포함) 설치
+        run: poetry install --no-root  # main + dev 설치
 
       - name: Setup environment
         run: |
@@ -200,7 +200,7 @@ jobs:
               mv .coverage ".coverage-$app_name"
             fi
             echo "📊 Coverage for $app_name:"
-            poetry run coverage report -m --include="$app_path/*" || true
+            poetry run coverage report -m --include="$app_path/*" || true  # 로그에 개별 커버리지 출력
             poetry run coverage xml -o "coverage-$app_name.xml" --include="$app_path/*" || true
           else
             echo "⚠️ No test functions found in $app_name"
@@ -245,18 +245,16 @@ jobs:
         run: |
           set -euo pipefail
           echo "📥 Collected coverage files:"
-          find coverage-reports -maxdepth 1 -type f -name ".coverage-*" -print || true
-          # Combine raw data files like .coverage-<app>
+          find coverage-reports -type f -name ".coverage-*" -print || true  # 더 상세한 파일 목록 로그
           if compgen -G "coverage-reports/.coverage-*" > /dev/null; then
-            # coverage combine will pick up .coverage.* files by default name if copied/renamed
-            # Normalize to .coverage.<suffix> for auto-discovery
             tmpdir=$(mktemp -d)
             for f in coverage-reports/.coverage-*; do
               base=$(basename "$f")
               mv "$f" "$tmpdir/.coverage.${base#.coverage-}"
             done
-            coverage combine "$tmpdir"
-            coverage report -m || true
+            coverage combine "$tmpdir" || true
+            echo "📊 Combined Coverage Report:"
+            coverage report -m || true  # 로그에 통합 커버리지 출력 (다운로드 없이 확인 가능)
             coverage xml -o coverage.xml || true
             echo "✅ Combined coverage generated: coverage.xml"
           else
