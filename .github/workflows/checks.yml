@@ -38,7 +38,7 @@ jobs:
           path: ~/.local/
 
       - name: Install Poetry
-        run: curl -sSL https://install.python-poetry.org | python3 -
+        run: curl -sSL https://install.python-poetry.org | python3 -  # Markdown 링크 제거
 
       - name: Add Poetry to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -50,7 +50,7 @@ jobs:
           path: /home/runner/.cache/pypoetry/virtualenvs/
 
       - name: Install dependencies
-        run: poetry install --no-root  # main + dev 설치
+        run: poetry install --no-root
 
       - name: Setup environment
         run: |
@@ -157,7 +157,7 @@ jobs:
           path: ~/.local/
 
       - name: Install Poetry
-        run: curl -sSL https://install.python-poetry.org | python3 -
+        run: curl -sSL https://install.python-poetry.org | python3 -  # Markdown 링크 제거
 
       - name: Add Poetry to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -192,20 +192,26 @@ jobs:
           app_name="${{ matrix.app }}"
           app_path="apps/$app_name"
           echo "🚀 Testing $app_name..."
+          
+          # 테스트 파일 확인
           test_files=$(find "$app_path" -type f \( -name "tests.py" -o -name "test_*.py" \) 2>/dev/null)
           if [ -n "$test_files" ] && grep -q "def test_" $test_files 2>/dev/null; then
             echo "✅ Running tests for $app_name"
-            poetry run coverage run --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
-            if [ -f ".coverage" ]; then
-              mv .coverage ".coverage-$app_name"
-            fi
+            # --parallel 옵션 추가로 고유 파일명 생성
+            poetry run coverage run --parallel-mode --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
             echo "📊 Coverage for $app_name:"
-            poetry run coverage report -m --include="$app_path/*" || true  # 로그에 개별 커버리지 출력
+            poetry run coverage report -m --include="$app_path/*" || true
             poetry run coverage xml -o "coverage-$app_name.xml" --include="$app_path/*" || true
           else
             echo "⚠️ No test functions found in $app_name"
+            # 빈 XML과 더미 .coverage 파일 생성 (combine을 위해 필요)
             echo '<?xml version="1.0"?><coverage></coverage>' > "coverage-$app_name.xml"
+            touch ".coverage.dummy.$app_name"
           fi
+          
+          # 생성된 coverage 파일 확인 및 이름 정규화
+          echo "📂 Generated coverage files:"
+          ls -la .coverage* 2>/dev/null || echo "No .coverage files found"
 
       - name: Upload coverage artifacts for ${{ matrix.app }}
         uses: actions/upload-artifact@v4
@@ -213,7 +219,7 @@ jobs:
           name: coverage-${{ matrix.app }}
           path: |
             coverage-${{ matrix.app }}.xml
-            .coverage-${{ matrix.app }}
+            .coverage*
           retention-days: 3
 
   finalize:
@@ -244,21 +250,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "📥 Collected coverage files:"
-          find coverage-reports -type f -name ".coverage-*" -print || true  # 더 상세한 파일 목록 로그
-          if compgen -G "coverage-reports/.coverage-*" > /dev/null; then
-            tmpdir=$(mktemp -d)
-            for f in coverage-reports/.coverage-*; do
-              base=$(basename "$f")
-              mv "$f" "$tmpdir/.coverage.${base#.coverage-}"
-            done
-            coverage combine "$tmpdir" || true
+          echo "📥 Downloaded artifacts contents:"
+          ls -la coverage-reports/ || echo "No coverage-reports directory"
+          find coverage-reports -type f -print || echo "No files found in coverage-reports"
+          
+          # parallel mode로 생성된 .coverage.* 파일들 확인
+          coverage_files=$(find coverage-reports -type f -name ".coverage.*" 2>/dev/null || echo "")
+          if [ -n "$coverage_files" ]; then
+            echo "📊 Found coverage files to combine:"
+            echo "$coverage_files"
+            
+            # coverage combine 실행 (현재 디렉터리로 복사 후)
+            cp coverage-reports/.coverage.* . 2>/dev/null || true
+            coverage combine || true
+            
             echo "📊 Combined Coverage Report:"
-            coverage report -m || true  # 로그에 통합 커버리지 출력 (다운로드 없이 확인 가능)
+            coverage report -m || true
             coverage xml -o coverage.xml || true
             echo "✅ Combined coverage generated: coverage.xml"
           else
             echo "⚠️ No raw coverage data found to combine"
+            echo "This might indicate that tests were not run or parallel mode failed"
           fi
 
       - name: Upload combined coverage
