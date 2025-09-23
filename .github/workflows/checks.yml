@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - develop
+  # 워크플로우를 수동으로 실행할 수 있도록 workflow_dispatch 추가
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -94,10 +96,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apps=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \; 2>/dev/null || echo "")
+          # 'apps' 디렉터리 내의 모든 하위 디렉터리를 찾음
+          apps=$(find apps -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null || echo "")
           if [ -z "$apps" ]; then
             echo "No apps found"
-            echo "matrix=" >> $GITHUB_OUTPUT
+            echo "matrix={\"app\":[]}" >> $GITHUB_OUTPUT
             echo "count=0" >> $GITHUB_OUTPUT
           else
             echo "Found apps: $apps"
@@ -120,8 +123,7 @@ jobs:
     services:
       db:
         image: postgres:14
-        ports:
-          - 5432:5432
+        ports: ['5432:5432']
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: pw1234
@@ -134,8 +136,7 @@ jobs:
           --health-retries 5
       redis:
         image: redis:latest
-        ports:
-          - 6379:6379
+        ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s
@@ -192,37 +193,24 @@ jobs:
           app_name="${{ matrix.app }}"
           app_path="apps/$app_name"
           echo "🚀 Testing $app_name..."
-          
-          # 테스트 파일 확인
-          test_files=$(find "$app_path" -type f \( -name "tests.py" -o -name "test_*.py" \) 2>/dev/null)
-          if [ -n "$test_files" ] && grep -q "def test_" $test_files 2>/dev/null; then
-            echo "✅ Running tests for $app_name"
-            # --parallel-mode 추가로 고유 파일명 생성
-            poetry run coverage run --parallel-mode --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
-            echo "📊 Coverage for $app_name:"
-            poetry run coverage report -m --include="$app_path/*" || true
-            poetry run coverage xml -o "coverage-$app_name.xml" --include="$app_path/*" || true
-          else
-            echo "⚠️ No test functions found in $app_name"
-            # 빈 XML과 더미 .coverage 파일 생성 (combine을 위해 필요)
-            echo '<?xml version="1.0"?><coverage></coverage>' > "coverage-$app_name.xml"
-            touch ".coverage.dummy.$app_name"
-          fi
-          
-          # 생성된 모든 .coverage.* 파일을 루트로 이동 (하위 디렉터리 포함)
-          find . -type f -name ".coverage.*" -exec mv {} . \; 2>/dev/null || true
-          
-          # 생성된 coverage 파일 확인
-          echo "📂 Generated coverage files:"
-          ls -la .coverage* 2>/dev/null || echo "No .coverage files found"
 
-      - name: Upload coverage artifacts for ${{ matrix.app }}
+          # 앱 디렉터리 내에 테스트 파일 및 테스트 함수가 있는지 확인
+          test_files=$(find "$app_path" -type f -name "test*.py")
+          if [ -n "$test_files" ] && grep -q -r "def test_" $app_path; then
+            echo "✅ Running tests for $app_name"
+            poetry run coverage run --parallel-mode --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
+          else
+            echo "⚠️ No test functions found in $app_name. Skipping coverage generation."
+          fi
+
+      - name: Upload coverage data for ${{ matrix.app }}
+        # 'always()'를 사용하여 테스트 실패 시에도 커버리지 데이터 업로드
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.app }}
-          path: |
-            **/coverage-${{ matrix.app }}.xml  # 재귀 검색
-            **/.coverage.*                    # 모든 .coverage 파일 재귀 포함
+          name: coverage-data-${{ matrix.app }}
+          path: .coverage.*
+          if-no-files-found: ignore # 테스트가 없는 앱의 경우 무시
           retention-days: 3
 
   finalize:
@@ -245,45 +233,47 @@ jobs:
       - name: Download all coverage artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: coverage-*
+          # 'coverage-data-' 패턴으로 시작하는 모든 아티팩트를 다운로드
+          pattern: coverage-data-*
           path: coverage-reports
           merge-multiple: true
 
       - name: Generate combined coverage report
+        id: combined-coverage
         shell: bash
         run: |
           set -euo pipefail
-          echo "📥 Downloaded artifacts contents:"
-          ls -la coverage-reports/ || echo "No coverage-reports directory"
-          find coverage-reports -type f -print || echo "No files found in coverage-reports"
-          
-          # parallel mode로 생성된 .coverage.* 파일들 확인
-          coverage_files=$(find coverage-reports -type f -name ".coverage.*" 2>/dev/null || echo "")
-          if [ -n "$coverage_files" ]; then
-            echo "📊 Found coverage files to combine:"
-            echo "$coverage_files"
+          echo "📥 Downloaded artifacts contents into 'coverage-reports':"
+          ls -laR coverage-reports/ || echo "No coverage-reports directory found."
+
+          # coverage combine 명령어에 데이터 파일이 있는 디렉터리를 직접 지정
+          echo "📊 Combining coverage data from 'coverage-reports' directory..."
+          coverage combine coverage-reports --keep
+
+          if [ -f ".coverage" ]; then
+            echo "✅ Coverage data combined successfully."
+            ls -la .coverage
             
-            # coverage combine 실행 (현재 디렉터리로 복사 후)
-            cp coverage-reports/.coverage.* . 2>/dev/null || true
-            coverage combine || true
-            
-            echo "📊 Combined Coverage Report:"
-            coverage report -m || true
-            coverage xml -o coverage.xml || true
-            echo "✅ Combined coverage generated: coverage.xml"
+            echo "📊 Generating Combined Coverage Report:"
+            coverage report -m
+            coverage xml -o coverage.xml
+            echo "✅ Combined coverage report generated: coverage.xml"
+            echo "combined=true" >> $GITHUB_OUTPUT
           else
-            echo "⚠️ No raw coverage data found to combine"
-            echo "This might indicate that tests were not run or parallel mode failed"
+            echo "⚠️ Failed to combine coverage data. No '.coverage' file was created."
+            echo "Checking for raw data files in coverage-reports..."
+            find coverage-reports -type f -name ".coverage.*" -print || echo "No raw .coverage.* files found."
+            echo "combined=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Upload combined coverage
+      - name: Upload combined coverage artifact
+        if: steps.combined-coverage.outputs.combined == 'true'
         uses: actions/upload-artifact@v4
-        if: success()
         with:
-          name: coverage-combined
+          name: combined-coverage-report
           path: |
             coverage.xml
-            coverage-reports/
+            .coverage
           retention-days: 30
 
       - name: Check overall CI status
@@ -295,3 +285,4 @@ jobs:
             echo "❌ CI failed - Code Quality: ${{ needs.code-quality.result }}, Tests: ${{ needs.test.result }}"
             exit 1
           fi
+
