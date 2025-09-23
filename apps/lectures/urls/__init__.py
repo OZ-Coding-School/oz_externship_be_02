@@ -1,7 +1,5 @@
-from django.urls import URLPattern, URLResolver, include, path
+from django.urls import URLPattern, URLResolver
 
-app_name = "lectures"
+from apps.lectures.urls.bookmarks_urls import urlpatterns as bookmark_urls
 
-urlpatterns: list[URLPattern | URLResolver] = [
-    path("", include("apps.lectures.urls.v1_bookmarks")),
-]
+urlpatterns: list[URLPattern | URLResolver] = [*bookmark_urls]
