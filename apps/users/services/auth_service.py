@@ -29,7 +29,7 @@ class AuthService:
             token = RefreshToken(refresh_token_str)
             token.blacklist()
         except TokenError:
-            raise ValidationError("리프레시 토큰이 유효하지 않습니다")
+            raise AuthenticationFailed("리프레시 토큰이 유효하지 않습니다")
 
 
 class JWTService:
