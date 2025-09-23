@@ -1,13 +1,13 @@
+import uuid
 from datetime import timedelta
 
-from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from apps.studies.models import StudyGroup, StudyReview
-
-User = get_user_model()
+from apps.users.models.user import User
 
 
 class TestStudyReviewCreateAPI(APITestCase):
@@ -17,7 +17,7 @@ class TestStudyReviewCreateAPI(APITestCase):
     """
 
     def setUp(self) -> None:
-        self.client = APIClient()
+        self.client = self.client_class()
         self.user = User.objects.create_user(
             email="test@test.com", password="1234", birthday="2000-01-01", name="테스트유저", nickname="tester"
         )
@@ -32,13 +32,12 @@ class TestStudyReviewCreateAPI(APITestCase):
             end_at=timezone.now() - timedelta(days=1),
             status=StudyGroup.StatusChoices.ENDED,
         )
-        self.url = reverse("review-create")
+        self.url = reverse("review-create-list", kwargs={"group_uuid": self.study_group.uuid})
 
     def test_create_review_success(self) -> None:
         # 성공 케이스
         data = {
-            "study_group_id": self.study_group.id,
-            "rating": 5,
+            "star_rating": 5,
             "content": "정말 유익한 스터디였습니다!",
         }
         response = self.client.post(self.url, data, format="json")
@@ -49,23 +48,23 @@ class TestStudyReviewCreateAPI(APITestCase):
 
     def test_create_review_unauthenticated(self) -> None:
         # 실패: 비로그인
-        client = APIClient()
-        data = {"study_group_id": self.study_group.id, "rating": 5, "content": "로그인 안 했어요"}
-        response = client.post(self.url, data, format="json")
+        self.client.logout()
+        data = {"star_rating": 5, "content": "로그인 안 했어요"}
+        response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, 401)
 
     def test_create_review_duplicate(self) -> None:
         # 실패: 중복 리뷰
         StudyReview.objects.create(user=self.user, study_group=self.study_group, star_rating=5, content="첫 리뷰")
-        data = {"study_group_id": self.study_group.id, "rating": 5, "content": "중복 리뷰 시도"}
+        data = {"star_rating": 5, "content": "중복 리뷰 시도"}
         response = self.client.post(self.url, data, format="json")
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("이미 리뷰를 작성한", str(response.data))
+        self.assertIn("이미 작성된 리뷰가 있습니다.", str(response.data))
 
-    def test_create_review_invalid_rating(self) -> None:
+    def test_create_review_invalid_star_rating(self) -> None:
         # 실패: 잘못된 평점 일부러 존재하지않는 점수 부여함 ㅋ
-        data = {"study_group_id": self.study_group.id, "rating": 10, "content": "잘못된 평점"}
+        data = {"star_rating": 10, "content": "잘못된 평점"}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, 400)
 
@@ -79,23 +78,12 @@ class TestStudyReviewCreateAPI(APITestCase):
             end_at=timezone.now() + timedelta(days=7),
             status=StudyGroup.StatusChoices.ONGOING,
         )
-        data = {"study_group_id": active_group.id, "rating": 5, "content": "아직 끝나지 않았어요"}
+        self.url = reverse("review-create-list", kwargs={"group_uuid": active_group.uuid})
+        data = {"star_rating": 5, "content": "아직 끝나지 않았어요"}
         response = self.client.post(self.url, data, format="json")
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("종료되지 않은", str(response.data))
-
-    def test_create_review_triggers_create_method(self) -> None:
-        # 성공 케이스에서 create() 메서드까지 실행 확인
-        data = {"study_group_id": self.study_group.id, "rating": 4, "content": "create 메서드 확인"}
-        response = self.client.post(self.url, data, format="json")
-
-        self.assertEqual(response.status_code, 201)
-        review = StudyReview.objects.first()
-        assert review is not None  # mypy 통과용
-
-        self.assertEqual(review.user, self.user)
-        self.assertEqual(review.star_rating, 4)
 
     def test_create_review_exact_error_messages(self) -> None:
         # 실패 케이스에서 ValidationError 메시지 구조까지 검증
@@ -107,16 +95,102 @@ class TestStudyReviewCreateAPI(APITestCase):
             end_at=timezone.now() + timedelta(days=5),
             status=StudyGroup.StatusChoices.ONGOING,
         )
+        self.url = reverse("review-create-list", kwargs={"group_uuid": active_group.uuid})
         data = {
-            "study_group_id": active_group.id,
-            "rating": 5,
+            "star_rating": 5,
             "content": "에러 메시지 확인",
         }
         response = self.client.post(self.url, data, format="json")
 
         self.assertEqual(response.status_code, 400)
 
-        # 기존: self.assertIn("study_group_id", response.data)
-        # 수정: "detail" 키와 메시지 내용 확인
-        self.assertIn("detail", response.data)
-        self.assertIn("종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다.", response.data["detail"])
+        # "error" 키와 메시지 내용 확인
+        self.assertIn("error", response.data)
+        self.assertIn("종료되지 않은 스터디 그룹에는 리뷰를 작성할 수 없습니다.", response.data["error"])
+
+    def test_create_review_when_invalid_group_uuid(self) -> None:
+        self.invalid_url = reverse("review-create-list", kwargs={"group_uuid": (uuid_val := uuid.uuid4())})
+        data = {
+            "star_rating": 5,
+            "content": "에러 메시지 확인",
+        }
+        response = self.client.post(self.invalid_url, data, format="json")
+        self.assertEqual(response.status_code, 400)
+
+
+class TestStudyGroupReviewListAPI(APITestCase):
+    """
+    [REQ-REVW-00] 스터디 그룹 리뷰 목록 조회 API
+
+    검증 포인트
+    - 성공: 200 OK + 응답 구조/필드/포맷
+    - 성공: 리뷰 없음 -> 200 OK + 빈 리스트 (study_group_uuid 포함)
+    - 실패: 잘못된 group_uuid -> 404 Not Found
+    - 실패: 비인증 -> 401 Unauthorized
+    """
+
+    def setUp(self) -> None:
+        self.client = self.client_class()
+        self.user = User.objects.create_user(
+            email="test@test.com",
+            password="1234",
+            birthday="2000-01-01",
+            name="테스트유저",
+            nickname="tester",
+            phone_number="01000000001",
+        )
+        self.study_group = StudyGroup.objects.create(
+            name="테스트 그룹",
+            introduction="소개",
+            max_headcount=5,
+            start_at=timezone.now() - timedelta(days=10),
+            end_at=timezone.now() - timedelta(days=1),
+            status=StudyGroup.StatusChoices.ENDED,
+        )
+        self.url = reverse("review-create-list", kwargs={"group_uuid": self.study_group.uuid})
+
+    def test_success_review_list(self) -> None:
+        # 성공 케이스: 스터디 그룹 리뷰 목록 조회
+        StudyReview.objects.create(
+            user=self.user,
+            study_group=self.study_group,
+            content="정말 유익한 스터디였습니다.",
+            star_rating=5,
+        )
+
+        user2 = User.objects.create_user(
+            email="other@test.com",
+            password="1234",
+            name="다른유저",
+            nickname="other",
+            birthday="2001-01-01",
+            phone_number="01000000002",
+        )
+        StudyReview.objects.create(
+            user=user2,
+            study_group=self.study_group,
+            content="좋았지만 시간이 조금 촉박했어요.",
+            star_rating=4,
+        )
+
+        resp = self.client.get(self.url, format="json")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 2)
+        self.assertIn("study_group_uuid", resp.data[0])
+        self.assertEqual(resp.data[0]["study_group_uuid"], str(self.study_group.uuid))
+
+    def test_success_review_list_no_reviews(self) -> None:
+        # 성공: 리뷰가 없는 경우 -> 200 OK + 빈 리스트 (study_group_uuid 포함)
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 0)
+
+    def test_fail_review_list_invalid_uuid(self) -> None:
+        # 실패: 존재하지 않는 그룹 uuid (404)
+        bad_url = reverse(
+            "review-create-list",
+            kwargs={"group_uuid": "11111111-1111-1111-1111-111111111111"},
+        )
+        resp = self.client.get(bad_url)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
