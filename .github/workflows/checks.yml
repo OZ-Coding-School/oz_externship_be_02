@@ -1,74 +1,144 @@
 name: Code Quality Checks
-
-# develop, main 브랜치를 상대로 풀 리퀘스트가 생성될 때 CI가 실행됩니다.
 on:
   pull_request:
     branches:
-      - "main"
-      - "develop"
-
+      - main
+      - develop
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+env:
+  PYTHON_VERSION: "3.12"
+  UV_CACHE_DIR: ${{ github.workspace }}/.cache/uv
+  MAX_PARALLEL: 4  # 그룹당 최대 앱 수 (runner 내 병렬)
 jobs:
-  ci:
-    # 가장 최신 버전의 Ubuntu를 OS 환경으로 설정합니다.
+  code-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Cache Poetry
-        id: cache-poetry
-        uses: actions/cache@v3
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Configure uv cache
+        uses: actions/cache@v4
         with:
-          key: poetry-2.0.0
-          path: ~/.local/ # poetry 의 실제 설치 경로를 통째로 캐시함.
-
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-cache-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            uv-cache-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            uv-cache-${{ runner.os }}-
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3.1.3
       - name: Install Poetry
-        if: steps.cache-poetry.outputs.cache-hit != 'true'
-        run: | # 개행을 하여 여러줄로 명령어를 사용하고 싶을때 파이프라인 기호 | 를 사용한다.
-          curl -sSL https://install.python-poetry.org | python3 -
-
-      # 포에트리 환경변수를 깃허브 패스(.zshrc 같은 쉘 설정파일)에 기입하여 포에트리 명령어를 사용할 수 있게 합니다.
-      - name: Register Poetry bin
-        run: echo "${HOME}/.poetry/bin" >> $GITHUB_PATH
-
-      - name: Cache dependencies
-        id: cache-venv
-        uses: actions/cache@v3
+        uses: snok/install-poetry@v1.4.1
         with:
-          # hashFiles를 사용하여 파일의 해시값을 비교하여 파이썬 버전이 바뀌었을 때, lock 파일이나 toml 파일이 바뀌었을때 종속성을 재설치합니다.
-          # 바뀐 것이 없는 경우에는 캐싱된 종속성을 사용합니다.
-          key: python-${{ steps.setup-python.outputs.python-version }}-poetry-lock-${{ hashFiles('poetry.lock') }}-toml-${{ hashFiles('pyproject.toml') }}-poetry-2.0.0
-          path: /home/runner/.cache/pypoetry/virtualenvs/
-
-      - name: Install dependencies
-        if: steps.cache-venv.outputs.cache-hit != 'true'
-        run: poetry install --no-root
-
-      - name: Run isort (Import sorting)
+          virtualenvs-create: false
+      - name: Install Poetry export plugin
+        run: poetry self add poetry-plugin-export
+      - name: Export and install dependencies
         run: |
-          poetry run isort . --check --diff
-
-      - name: Run black (Code formatting)
+          poetry export -f requirements.txt --output requirements.txt --with dev --without-hashes
+          uv venv .venv
+          source .venv/bin/activate
+          uv pip install -r requirements.txt
+      - name: Setup environment variables file
         run: |
-          poetry run black . --check
-
-      - name: Set multiline environment variable
+          mkdir -p envs
+          echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
+          export PYTHONPATH="${{ github.workspace }}:$PYTHONPATH"
+      - name: Run code quality checks in parallel
         run: |
-          mkdir envs
-          echo "${{ secrets.DJANGO_ENVS }}" >> envs/.local.env
-
-      - name: Run Mypy
-        run: poetry run mypy .
-
+          source .venv/bin/activate
+          
+          echo "::group::Running isort"
+          timeout 300 python -m isort . --check --diff || echo "::error::isort failed"
+          echo "::endgroup::"
+          
+          echo "::group::Running black"
+          timeout 300 python -m black . --check || echo "::error::black failed"
+          echo "::endgroup::"
+          
+          echo "::group::Running mypy"
+          timeout 300 python -m mypy . || echo "::error::mypy failed"
+          echo "::endgroup::"
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ Code quality checks failed"
+            exit 1
+          else
+            echo "✅ All code quality checks passed!"
+          fi
+      - name: Clean up uv cache
+        if: always()
+        run: uv cache prune --ci || true
+  discover-apps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Discover and group apps with tests
+        id: set-matrix
+        run: |
+          echo "🔍 Discovering apps with tests..."
+          app_names=()
+          if [ -d "apps" ]; then
+            for app_dir in apps/*/; do
+              if [ -d "$app_dir" ]; then
+                app_name=$(basename "$app_dir")
+                app_path="apps/$app_name"
+                
+                test_files=$(find "$app_path" -type f \( -name "tests.py" -o -name "test_*.py" \) 2>/dev/null)
+                
+                if [ -n "$test_files" ] && grep -rq "def test_" "$app_path" 2>/dev/null; then
+                  app_names+=("$app_name")
+                  echo "  ✅ Found tests in: $app_name"
+                fi
+              fi
+            done
+          fi
+          
+          if [ ${#app_names[@]} -eq 0 ]; then
+            echo "⚠️ No apps with tests found. Skipping tests."
+            echo "matrix={}" >> $GITHUB_OUTPUT
+          else
+            # 그룹화: MAX_PARALLEL(4)개씩 분할
+            groups=()
+            group=()
+            for app in "${app_names[@]}"; do
+              group+=("$app")
+              if [ ${#group[@]} -eq ${{ env.MAX_PARALLEL }} ]; then
+                groups+=("$(printf '%s ' "${group[@]}")")
+                group=()
+              fi
+            done
+            if [ ${#group[@]} -gt 0 ]; then
+              groups+=("$(printf '%s ' "${group[@]}")")
+            fi
+            
+            matrix_json=$(jq -nc --argjson groups "$(printf '%s\n' "${groups[@]}" | jq -R . | jq -s .)" '{group: $groups}')
+            echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
+            echo "✅ Discovered ${#app_names[@]} apps, grouped into ${#groups[@]} groups"
+          fi
   test:
     runs-on: ubuntu-latest
+    needs: discover-apps
+    if: needs.discover-apps.outputs.matrix != '{}'
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 4  # Matrix job 동시 실행 제한
+      matrix: ${{ fromJson(needs.discover-apps.outputs.matrix) }}
     services:
-      # postgresql db service
       db:
         image: postgres:14
         ports:
@@ -78,13 +148,11 @@ jobs:
           POSTGRES_PASSWORD: pw1234
           POSTGRES_DB: ozcoding_externship
           TZ: Asia/Seoul
-        # health check
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      # redis service
       redis:
         image: redis:latest
         ports:
@@ -96,74 +164,166 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Cache Poetry
-        id: cache-poetry
-        uses: actions/cache@v3
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Configure uv cache
+        uses: actions/cache@v4
         with:
-          key: poetry-2.0.0
-          path: ~/.local/
-
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-cache-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            uv-cache-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            uv-cache-${{ runner.os }}-
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3.1.3
       - name: Install Poetry
-        if: steps.cache-poetry.outputs.cache-hit != 'true'
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-
-      # 포에트리 환경변수를 깃허브 패스(.zshrc 같은 쉘 설정파일)에 기입하여 포에트리 명령어를 사용할 수 있게 합니다.
-      - name: Register Poetry bin
-        run: echo "${HOME}/.poetry/bin" >> $GITHUB_PATH
-
-      - name: Cache dependencies
-        id: cache-venv
-        uses: actions/cache@v3
+        uses: snok/install-poetry@v1.4.1
         with:
-          key: python-${{ steps.setup-python.outputs.python-version }}-poetry-lock-${{ hashFiles('poetry.lock') }}-toml-${{ hashFiles('pyproject.toml') }}-poetry-2.0.0
-          path: /home/runner/.cache/pypoetry/virtualenvs/
-
-      - name: Install dependencies
-        if: steps.cache-venv.outputs.cache-hit != 'true'
-        run: poetry install --no-root
-
-      - name: Set multiline environment variable
+          virtualenvs-create: false
+      - name: Install Poetry export plugin
+        run: poetry self add poetry-plugin-export
+      - name: Export and install dependencies
         run: |
-          mkdir envs
-          echo "${{ secrets.DJANGO_ENVS }}" >> envs/.local.env
-
-      # run migration
-      - name: Run Django Migration
+          poetry export -f requirements.txt --output requirements.txt --with dev --without-hashes
+          uv venv .venv
+          source .venv/bin/activate
+          uv pip install -r requirements.txt
+          uv pip install coverage  # For coverage run
+      - name: Setup environment variables file
         run: |
-          poetry run python manage.py migrate
-
-      - name: Check each app has test & Run coverage
+          mkdir -p envs
+          echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
+          export PYTHONPATH="${{ github.workspace }}:$PYTHONPATH"
+          export DJANGO_SETTINGS_MODULE="config.settings.local"  # Settings location
+      - name: Wait for services
         run: |
-          ran_tests=false
-          apps=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
-      
-          for app_name in $apps; do
-            app_path="apps/$app_name"
-            test_files=$(find "$app_path" -type f \( -name "tests.py" -o -name "test_*.py" \))
-            if [ -n "$test_files" ] && grep -q "def test_" $test_files 2>/dev/null; then
-              echo "✅ Running tests for $app_name"
-              poetry run coverage run --source="$app_path" --append manage.py test "apps.$app_name"
-              ran_tests=true
-              echo "📊 Coverage for $app_name:"
-              poetry run coverage report -m --include="$app_path/*"
-              echo ""
-            else
-              echo "⚠️  No test functions found in $app_name"
+          timeout 60 bash -c 'until nc -z localhost 5432; do sleep 1; done'
+          timeout 60 bash -c 'until nc -z localhost 6379; do sleep 1; done'
+          echo "✅ Database and Redis are ready"
+      - name: Run Django migrations
+        run: |
+          source .venv/bin/activate
+          cd ${{ github.workspace }}
+          poetry run python manage.py migrate --verbosity=2
+      - name: Run tests for group
+        run: |
+          source .venv/bin/activate
+          cd ${{ github.workspace }}
+          
+          group_apps=(${{ matrix.group }})
+          echo "🚀 Running tests for group: ${{ matrix.group }}"
+          
+          pids=()
+          for app in "${group_apps[@]}"; do
+            echo "Starting tests for $app..."
+            poetry run coverage run --source="apps/$app" --append manage.py test "apps.$app" --verbosity=2 > "test_$app.log" 2>&1 &
+            pids+=($!)
+          done
+          
+          FAILED=0
+          for pid in "${pids[@]}"; do
+            if ! wait $pid; then
+              FAILED=1
             fi
           done
-      
-          if [ "$ran_tests" = true ]; then
-            echo "======================="
-            echo "📊 Total Coverage Report:"
-            poetry run coverage report -m
+          
+          if [ $FAILED -eq 1 ]; then
+            echo "❌ Some tests failed:"
+            for app in "${group_apps[@]}"; do
+              echo "=== Test log for $app ==="
+              cat "test_$app.log"
+            done
+            exit 1
+          fi
+          
+          echo "📊 Generating coverage reports..."
+          for app in "${group_apps[@]}"; do
+            poetry run coverage report -m --include="apps/$app/*"
+            poetry run coverage xml -o "coverage-$app.xml" --include="apps/$app/*"
+          done
+          
+          echo "✅ Tests completed for group"
+      - name: Rename coverage data files
+        run: |
+          group_apps=(${{ matrix.group }})
+          for app in "${group_apps[@]}"; do
+            if [ -f .coverage ]; then
+              mv .coverage ".coverage.$app"
+              echo "✅ Renamed .coverage to .coverage.$app"
+            fi
+          done
+      - name: Upload coverage artifacts for group
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-group-${{ matrix.group }}
+          path: |
+            .coverage.*
+            coverage-*.xml
+          retention-days: 1
+      - name: Clean up uv cache
+        if: always()
+        run: uv cache prune --ci || true
+  coverage-merge:
+    runs-on: ubuntu-latest
+    needs: test
+    if: always() && needs.test.result == 'success' && needs.discover-apps.outputs.matrix != '{}'
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install coverage
+        run: pip install coverage
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-group-*
+          path: coverage-artifacts
+          merge-multiple: true
+      - name: Debug artifact contents
+        run: |
+          echo "📂 Artifact contents:"
+          ls -la coverage-artifacts/ || echo "❌ coverage-artifacts directory not found"
+          find coverage-artifacts -name ".coverage*" 2>/dev/null || echo "⚠️ No .coverage files found"
+      - name: Combine coverage reports
+        run: |
+          echo "🔄 Combining coverage data..."
+          if [ -d coverage-artifacts ] && [ -n "$(find coverage-artifacts -name '.coverage*' 2>/dev/null)" ]; then
+            coverage combine coverage-artifacts/.coverage*
+            coverage report -m
+            coverage xml -o coverage.xml
+            coverage html -d htmlcov
+            echo "✅ Coverage reports generated successfully"
           else
-            echo "🚫 No tests were run. Skipping coverage report."
+            echo "⚠️ No coverage data files found"
+            exit 0
+          fi
+      - name: Upload combined coverage report
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: coverage-report-combined
+          path: |
+            htmlcov/
+            coverage.xml
+          retention-days: 30
+  ci-success:
+    runs-on: ubuntu-latest
+    needs: [code-quality, discover-apps, test, coverage-merge]
+    if: always()
+    timeout-minutes: 5
+    steps:
+      - name: Check CI results
+        run: |
+          if [[ "${{ needs.code-quality.result }}" == "success" && ( "${{ needs.test.result }}" == "skipped" || "${{ needs.test.result }}" == "success" ) && ( "${{ needs.coverage-merge.result }}" == "skipped" || "${{ needs.coverage-merge.result }}" == "success" ) ]]; then
+            echo "✅ All CI checks passed!"
+          else
+            echo "❌ CI failed. Check logs for details."
+            exit 1
           fi
