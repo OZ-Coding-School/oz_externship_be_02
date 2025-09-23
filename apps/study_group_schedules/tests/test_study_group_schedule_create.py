@@ -70,9 +70,9 @@ class StudyGroupScheduleCreateTest(APITestCase):
 
         super().tearDownClass()
 
-    def tearDown(self) -> None:
-        """각 테스트 후 생성된 스케줄 정리"""
-        GroupSchedule.objects.all().delete()
+    # def tearDown(self) -> None:
+    #     """각 테스트 후 생성된 스케줄 정리"""
+    #     GroupSchedule.objects.all().delete()
 
     def test_create_schedule_success(self) -> None:
         """스케줄 생성 성공 테스트"""
