@@ -1,5 +1,5 @@
 from datetime import date, datetime, time, timedelta
-from typing import Dict, Iterable, List, Set, Tuple
+from typing import Dict, Iterable, Tuple
 
 from django.db.models import Prefetch, QuerySet
 from django.utils import timezone
@@ -8,6 +8,7 @@ from apps.applications.models.applications import Application
 from apps.notifications.const import get_notification_back_url
 from apps.notifications.models import Notification
 from apps.studies.models import GroupMember, StudyGroup
+from apps.study_group_schedules.models import GroupSchedule
 from apps.study_notes.models import StudyNote
 
 
@@ -213,6 +214,69 @@ class StudyReviewNotificationService:
         for group in groups.iterator(chunk_size=chunk_size):
             created = cls.create_review_request_notifications_for_group(group=group, today=today)
             stats["groups_processed"] += 1
+            stats["notifications_created"] += created
+
+        return stats
+
+
+class ScheduleTodayNotificationService:
+    @staticmethod
+    def time_format(d: date, t: time) -> str:
+        tz = timezone.get_current_timezone()
+        dt = timezone.make_aware(datetime.combine(d, t), tz)
+        ampm = "오전" if dt.hour < 12 else "오후"
+        h12 = (dt.hour - 1) % 12 + 1
+        return f"{ampm} {h12:02d}:{dt:%M}"
+
+    @classmethod
+    def build_notification_content(cls, gs: GroupSchedule) -> str:
+        start = cls.time_format(gs.session_date, gs.start_time)
+        end = cls.time_format(gs.session_date, gs.end_time)
+        group_name = gs.study_group.name
+        title = gs.title
+        return f"금일 {start}부터 {end}까지 {group_name}에서 {title}이(가) 예정되어 있습니다! 잊지말고 참여해주세요!"
+
+    @classmethod
+    def get_today_schedules(cls, d: date) -> QuerySet[GroupSchedule]:
+        return (
+            GroupSchedule.objects.filter(session_date=d)
+            .select_related("study_group")
+            .only("id", "title", "session_date", "start_time", "end_time", "study_group_id", "study_group__name")
+            .prefetch_related(Prefetch("participants", queryset=GroupMember.objects.only("id", "user_id")))
+        )
+
+    @classmethod
+    def notify_today_schedules(cls, gs: GroupSchedule) -> int:
+        member_ids = gs.participants.values_list("user_id", flat=True).distinct()
+        if not member_ids:
+            return 0
+
+        msg = cls.build_notification_content(gs)
+        notis = [
+            Notification(
+                user_id=uid,
+                content=msg,
+                notification_type=Notification.NotificationType.TODAY_SCHEDULE,
+                back_url_link=get_notification_back_url(
+                    Notification.NotificationType.TODAY_SCHEDULE, group_id=gs.study_group_id
+                ),
+            )
+            for uid in member_ids
+        ]
+        Notification.objects.bulk_create(notis, batch_size=1000)
+        return len(notis)
+
+    @classmethod
+    def notify_all_today_schedules(cls, today: date | None = None, chunk_size: int = 200) -> Dict[str, int]:
+        if today is None:
+            today = timezone.localdate()
+
+        schedules = cls.get_today_schedules(today)
+        stats = {"schedules_processed": 0, "notifications_created": 0}
+
+        for gs in schedules.iterator(chunk_size=chunk_size):
+            created = cls.notify_today_schedules(gs)
+            stats["schedules_processed"] += 1
             stats["notifications_created"] += created
 
         return stats
