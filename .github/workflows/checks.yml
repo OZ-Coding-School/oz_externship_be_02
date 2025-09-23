@@ -1,58 +1,79 @@
 name: Code Quality Checks
+
 on:
   pull_request:
     branches:
       - main
       - develop
+
 permissions:
   contents: read
-  actions: read
+  actions: write
   pull-requests: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
 env:
   PYTHON_VERSION: "3.12"
+
 jobs:
-  # 코드 품질 체크 (테스트와 병렬 실행)
   code-quality:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Cache Poetry
         uses: actions/cache@v4
         with:
           key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: ~/.local/
+
       - name: Install Poetry
         run: curl -sSL https://install.python-poetry.org | python3 -
+
       - name: Add Poetry to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: /home/runner/.cache/pypoetry/virtualenvs/
+
       - name: Install dependencies
         run: poetry install --no-root --only=dev
+
       - name: Setup environment
         run: |
           mkdir -p envs
           echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
-      - name: Run code quality checks
-        run: |
-          poetry run isort . --check --diff &
-          poetry run black . --check &
-          poetry run mypy . &
-          wait  # 모든 백그라운드 작업 완료 대기
+          echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
 
-  # 앱 발견 (원래 로직 사용)
+      - name: Run code quality checks (parallel & fail-fast)
+        shell: bash
+        run: |
+          set -euo pipefail
+          pids=()
+          poetry run isort . --check --diff & pids+=($!)
+          poetry run black . --check & pids+=($!)
+          poetry run mypy . & pids+=($!)
+          status=0
+          for pid in "${pids[@]}"; do
+            if ! wait "$pid"; then
+              status=1
+            fi
+          done
+          exit $status
+
   discover-apps:
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -62,19 +83,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
       - name: Find apps with tests
         id: find-apps
+        shell: bash
         run: |
-          # 원래 코드와 동일한 방식으로 앱 찾기
+          set -euo pipefail
           apps=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \; 2>/dev/null || echo "")
-          
           if [ -z "$apps" ]; then
             echo "No apps found"
             echo "matrix=" >> $GITHUB_OUTPUT
             echo "count=0" >> $GITHUB_OUTPUT
           else
             echo "Found apps: $apps"
-            # JSON 배열 생성
             app_list=$(echo "$apps" | jq -R . | jq -s . | jq -c .)
             matrix_json="{\"app\":$app_list}"
             echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
@@ -82,7 +108,6 @@ jobs:
             echo "Generated matrix: $matrix_json"
           fi
 
-  # 테스트 (앱별 병렬 실행)
   test:
     runs-on: ubuntu-latest
     needs: discover-apps
@@ -90,7 +115,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      max-parallel: 10  # 최대 병렬성
+      max-parallel: 10
       matrix: ${{ fromJson(needs.discover-apps.outputs.matrix) }}
     services:
       db:
@@ -119,68 +144,78 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Cache Poetry
         uses: actions/cache@v4
         with:
           key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: ~/.local/
+
       - name: Install Poetry
         run: curl -sSL https://install.python-poetry.org | python3 -
+
       - name: Add Poetry to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: /home/runner/.cache/pypoetry/virtualenvs/
+
       - name: Install dependencies
         run: poetry install --no-root
+
       - name: Setup environment
         run: |
           mkdir -p envs
           echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
-          export DJANGO_SETTINGS_MODULE="config.settings.local"
+          echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
+
       - name: Wait for services
         run: |
           timeout 30 bash -c 'until nc -z localhost 5432; do sleep 1; done'
           timeout 30 bash -c 'until nc -z localhost 6379; do sleep 1; done'
+
       - name: Run migrations
         run: poetry run python manage.py migrate
+
       - name: Run tests for ${{ matrix.app }}
+        shell: bash
         run: |
+          set -eo pipefail
           app_name="${{ matrix.app }}"
           app_path="apps/$app_name"
-          
           echo "🚀 Testing $app_name..."
-          
-          # 원래 로직과 동일한 테스트 검증
           test_files=$(find "$app_path" -type f \( -name "tests.py" -o -name "test_*.py" \) 2>/dev/null)
           if [ -n "$test_files" ] && grep -q "def test_" $test_files 2>/dev/null; then
             echo "✅ Running tests for $app_name"
             poetry run coverage run --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
-            
+            if [ -f ".coverage" ]; then
+              mv .coverage ".coverage-$app_name"
+            fi
             echo "📊 Coverage for $app_name:"
-            poetry run coverage report -m --include="$app_path/*"
-            
-            # 개별 커버리지 XML 생성
-            poetry run coverage xml -o "coverage-$app_name.xml" --include="$app_path/*"
+            poetry run coverage report -m --include="$app_path/*" || true
+            poetry run coverage xml -o "coverage-$app_name.xml" --include="$app_path/*" || true
           else
             echo "⚠️ No test functions found in $app_name"
-            # 빈 커버리지 파일 생성 (아티팩트 업로드 일관성 위해)
             echo '<?xml version="1.0"?><coverage></coverage>' > "coverage-$app_name.xml"
           fi
-      - name: Upload coverage for ${{ matrix.app }}
+
+      - name: Upload coverage artifacts for ${{ matrix.app }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.app }}
-          path: coverage-${{ matrix.app }}.xml
-          retention-days: 1
+          path: |
+            coverage-${{ matrix.app }}.xml
+            .coverage-${{ matrix.app }}
+          retention-days: 3
 
-  # 커버리지 통합 및 최종 검증
   finalize:
     runs-on: ubuntu-latest
     needs: [code-quality, test]
@@ -189,35 +224,55 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Install coverage
         run: pip install coverage
-      - name: Download all coverage reports
+
+      - name: Download all coverage artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: coverage-*
           path: coverage-reports
           merge-multiple: true
+
       - name: Generate combined coverage report
+        shell: bash
         run: |
-          if [ -d coverage-reports ] && [ "$(find coverage-reports -name '*.xml' | wc -l)" -gt 0 ]; then
-            echo "📊 Generating combined coverage report..."
-            # 간단한 커버리지 요약만 출력
-            find coverage-reports -name "*.xml" -exec echo "Found: {}" \;
-            echo "✅ Coverage reports collected successfully"
+          set -euo pipefail
+          echo "📥 Collected coverage files:"
+          find coverage-reports -maxdepth 1 -type f -name ".coverage-*" -print || true
+          # Combine raw data files like .coverage-<app>
+          if compgen -G "coverage-reports/.coverage-*" > /dev/null; then
+            # coverage combine will pick up .coverage.* files by default name if copied/renamed
+            # Normalize to .coverage.<suffix> for auto-discovery
+            tmpdir=$(mktemp -d)
+            for f in coverage-reports/.coverage-*; do
+              base=$(basename "$f")
+              mv "$f" "$tmpdir/.coverage.${base#.coverage-}"
+            done
+            coverage combine "$tmpdir"
+            coverage report -m || true
+            coverage xml -o coverage.xml || true
+            echo "✅ Combined coverage generated: coverage.xml"
           else
-            echo "⚠️ No coverage reports found"
+            echo "⚠️ No raw coverage data found to combine"
           fi
+
       - name: Upload combined coverage
         uses: actions/upload-artifact@v4
         if: success()
         with:
           name: coverage-combined
-          path: coverage-reports/
+          path: |
+            coverage.xml
+            coverage-reports/
           retention-days: 30
+
       - name: Check overall CI status
         run: |
           if [[ "${{ needs.code-quality.result }}" == "success" && 
