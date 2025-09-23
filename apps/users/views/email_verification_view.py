@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.permissions import AllowAny
@@ -20,12 +21,21 @@ email_service = EmailVerificationService()
 
 
 class SignUpEmailVerificationSendAPIView(APIView):
-    permission_classes = (AllowAny,)
-    authentication_classes = ()
-    serializer_class = EmailVerificationRequestSerializer
     """
     회원가입 이메일 코드 전송
     """
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+    @extend_schema(
+        tags=["auth"],
+        summary="이메일 인증 요청",
+        description="회원가입을 하기위해 이메일 인증 코드 발송",
+        request=EmailVerificationRequestSerializer,
+        responses={
+            200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
 
     def post(self, request: Request) -> Response:
         serializer = EmailVerificationRequestSerializer(data=request.data)
@@ -40,12 +50,20 @@ class SignUpEmailVerificationSendAPIView(APIView):
 
 
 class SignUpEmailVerifiCationVerifyAPIView(APIView):
-    permission_classes = (AllowAny,)
-    authentication_classes = ()
-    serializer_class = EmailVerificationRequestSerializer
     """
     회원가입 이메일 전송 코드 검증
     """
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+    @extend_schema(
+        tags=["auth"],
+        summary="이메일 검증 요청",
+        description="회원가입을 하기 위해 이메일 인증 코드 검증",
+        request=EmailVerifyCodeSerializer,
+        responses={200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
 
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
@@ -60,12 +78,21 @@ class SignUpEmailVerifiCationVerifyAPIView(APIView):
 
 
 class PasswordResetEmailVerificationSendAPIView(APIView):
+    """
+    비밀번호 찾기 이메일 코드 전송
+    """
     permission_classes = [AllowAny]
     authentication_classes = ()
-    serializer_class = EmailVerificationRequestSerializer
-    """
-    비밀번호 찾기 이메일 코드 전송 
-    """
+    @extend_schema(
+        tags=["auth"],
+        summary="이메일 인증 요청",
+        description="비밀번호를 찾기 위해 이메일 인증 코드 발송",
+        request=EmailVerificationRequestSerializer,
+        responses={
+            200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
 
     def post(self, request: Request) -> Response:
         serializer = EmailVerificationRequestSerializer(data=request.data)
@@ -81,13 +108,21 @@ class PasswordResetEmailVerificationSendAPIView(APIView):
 
 
 class PassowrdResetEmailVerificationVerifyAPIView(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = ()
-    serializer_class = EmailVerificationRequestSerializer
     """
     비밀번호 찾기 이메일 전송 코드 검증
     """
-
+    permission_classes = [AllowAny]
+    authentication_classes = ()
+    @extend_schema(
+        tags=["auth"],
+        summary="이메일 검증 요청",
+        description="비밀번호를 찾기 위해 이메일 인증 코드 검증",
+        request=EmailVerifyCodeSerializer,
+        responses={
+            200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+       },
+    )
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -101,13 +136,21 @@ class PassowrdResetEmailVerificationVerifyAPIView(APIView):
 
 
 class AccountRecoveryEmailVerificationSendAPIView(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = ()
-    serializer_class = EmailVerificationRequestSerializer
     """
     계정 복구 이메일 코드 전송
     """
-
+    permission_classes = [AllowAny]
+    authentication_classes = ()
+    @extend_schema(
+        tags=["auth"],
+        summary="이메일 인증 요청",
+        description="계정복구를 하기 위해 이메일 인증 코드 발송",
+        request=EmailVerificationRequestSerializer,
+        responses={
+            200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = EmailVerificationRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -122,13 +165,21 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
 
 
 class AccountRecoveryEmailVerificationVerifyAPIView(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = ()
-    serializer_class = EmailVerificationRequestSerializer
     """
     계정 복구 이메일 코드 검증
     """
-
+    permission_classes = [AllowAny]
+    authentication_classes = ()
+    @extend_schema(
+        tags=["auth"],
+        summary="이메일 검증 요청",
+        description="계정복구를 하기 위해 이메일 인증 코드 검증",
+        request=EmailVerifyCodeSerializer,
+        responses={
+            200: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
