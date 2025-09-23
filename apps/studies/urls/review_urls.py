@@ -1,11 +1,8 @@
 from django.urls import path
 
-from apps.studies.views.review_views import (
-    ReviewCreateAPIView,
-    StudyGroupReviewListView,
-)
+from apps.studies.views.review_views import ReviewCreateListAPIView
 
 urlpatterns = [
-    path("/reviews", ReviewCreateAPIView.as_view(), name="review-create"),
-    path("/reviews/<uuid:group_uuid>/", StudyGroupReviewListView.as_view(), name="study-group-review-list"),
+    path("/<uuid:group_uuid>/reviews", ReviewCreateListAPIView.as_view(), name="review-create-list"),
+    # path("/<uuid:group_uuid>/reviews", name="study-group-review-list"),
 ]
