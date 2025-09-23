@@ -1,8 +1,12 @@
-from typing import Type, Union
+from typing import Any, Type, Union
 
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser
+from rest_framework.request import Request
+from rest_framework.response import Response
 
 from apps.users.filters import WithdrawalFilter
 from apps.users.models import Withdrawals
@@ -32,3 +36,21 @@ class WithdrawalAdminViewSet(viewsets.ReadOnlyModelViewSet[Withdrawals]):
         if self.action == "retrieve":
             return AdminWithdrawalDetailSerializer
         return AdminWithdrawalListSerializer
+
+    # 'restore 요청에 복구 로직을 구현
+    @action(detail=True, methods=["post"])
+    def restore(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        """
+        URL: POST /api/v1/admin/withdrawals/{id}/restore
+        선택한 탈퇴 유저를 복구
+        """
+        with transaction.atomic():
+            withdrawal = self.get_object()
+            user = withdrawal.user
+
+            withdrawal.delete()
+
+            user.is_active = True
+            user.save(update_fields=["is_active", "updated_at"])
+
+        return Response({"message": "유저 복구가 완료 되었습니다."})
