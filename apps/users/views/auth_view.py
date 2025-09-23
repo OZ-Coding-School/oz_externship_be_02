@@ -5,7 +5,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.serializers.auth_serializers import EmailLoginSerializer
+from apps.users.serializers.auth_serializers import EmailLoginSerializer, AccessTokenSerializer
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.auth_service import AuthService, JWTService
 
@@ -13,6 +13,7 @@ from apps.users.services.auth_service import AuthService, JWTService
 class UserSignupAPIView(APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
+    serializer_class = UserSignupSerializer
 
     def post(self, request: Request) -> Response:
         serializer = UserSignupSerializer(data=request.data)
@@ -27,6 +28,7 @@ class UserSignupAPIView(APIView):
 class EmailLoginAPIView(APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
+    serializer_class = EmailLoginSerializer
     """
     이메일 로그인 + 토큰 발급
     """
@@ -79,6 +81,7 @@ class CookieTokenRefreshAPIView(APIView):
 
     permission_classes = (AllowAny,)
     authentication_classes = ()
+    serializer_class = AccessTokenSerializer
 
     def post(self, request: Request) -> Response:
         refresh_token = request.COOKIES.get("refresh")
