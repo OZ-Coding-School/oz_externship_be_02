@@ -10,5 +10,9 @@ urlpatterns: List[URLPattern] = [
     # POST /api/v1/schedules
     path("", views.StudyGroupScheduleCreateView.as_view(), name="create_schedule"),
     # GET /api/v1/schedules/<uuid:study_group_id>
-    path("<uuid:study_group_id>", views.StudyGroupScheduleListView.as_view(), name="schedule_list"),
+    path("/<uuid:study_group_id>", views.StudyGroupScheduleListView.as_view(), name="schedule_list"),
+    # GET /api/v1/schedules/<uuid:study_group_id>/<int:schedule_id>
+    path(
+        "/<uuid:study_group_id>/<int:schedule_id>", views.StudyGroupScheduleDetailView.as_view(), name="schedule_detail"
+    ),
 ]
