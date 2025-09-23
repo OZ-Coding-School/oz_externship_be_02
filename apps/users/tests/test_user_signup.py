@@ -50,7 +50,7 @@ class UserSignupTestCase(APITestCase, VerificationMixin):
         response = self.client.post(self.url, self.signup_data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn("user", response.data)
+        self.assertIn("email", serializer.data)
 
 
 class UserSignupFailureTestCase(APITestCase, VerificationMixin):
