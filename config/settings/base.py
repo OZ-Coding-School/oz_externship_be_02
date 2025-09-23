@@ -248,4 +248,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.study_review_requests_for_groups",
         "schedule": crontab(hour=0, minute=10),
     },
+    "notify_today_schedules": {
+        "task": "apps.notifications.tasks.notify_today_schedules",
+        "schedule": crontab(hour=0, minute=1),
+    },
 }
