@@ -14,7 +14,6 @@ concurrency:
 env:
   PYTHON_VERSION: "3.12"
   UV_CACHE_DIR: ${{ github.workspace }}/.cache/uv
-  MAX_PARALLEL: 4  # 그룹당 최대 앱 수 (runner 내 병렬)
 jobs:
   code-quality:
     runs-on: ubuntu-latest
@@ -86,7 +85,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Discover and group apps with tests
+      - name: Discover apps with tests
         id: set-matrix
         run: |
           echo "🔍 Discovering apps with tests..."
@@ -111,23 +110,9 @@ jobs:
             echo "⚠️ No apps with tests found. Skipping tests."
             echo "matrix={}" >> $GITHUB_OUTPUT
           else
-            # 그룹화: MAX_PARALLEL(4)개씩 분할
-            groups=()
-            group=()
-            for app in "${app_names[@]}"; do
-              group+=("$app")
-              if [ ${#group[@]} -eq ${{ env.MAX_PARALLEL }} ]; then
-                groups+=("$(printf '%s ' "${group[@]}")")
-                group=()
-              fi
-            done
-            if [ ${#group[@]} -gt 0 ]; then
-              groups+=("$(printf '%s ' "${group[@]}")")
-            fi
-            
-            matrix_json=$(jq -nc --argjson groups "$(printf '%s\n' "${groups[@]}" | jq -R . | jq -s .)" '{group: $groups}')
+            matrix_json=$(jq -nc --argjson apps "$(printf '%s\n' "${app_names[@]}" | jq -R . | jq -s .)" '{app: $apps}')
             echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
-            echo "✅ Discovered ${#app_names[@]} apps, grouped into ${#groups[@]} groups"
+            echo "✅ Discovered ${#app_names[@]} apps: ${app_names[*]}"
           fi
   test:
     runs-on: ubuntu-latest
@@ -136,7 +121,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      max-parallel: 4  # Matrix job 동시 실행 제한
+      max-parallel: 4
       matrix: ${{ fromJson(needs.discover-apps.outputs.matrix) }}
     services:
       db:
@@ -208,60 +193,29 @@ jobs:
           source .venv/bin/activate
           cd ${{ github.workspace }}
           poetry run python manage.py migrate --verbosity=2
-      - name: Run tests for group
+      - name: Run tests for ${{ matrix.app }}
         run: |
           source .venv/bin/activate
           cd ${{ github.workspace }}
-          
-          group_apps=(${{ matrix.group }})
-          echo "🚀 Running tests for group: ${{ matrix.group }}"
-          
-          pids=()
-          for app in "${group_apps[@]}"; do
-            echo "Starting tests for $app..."
-            poetry run coverage run --source="apps/$app" --append manage.py test "apps.$app" --verbosity=2 > "test_$app.log" 2>&1 &
-            pids+=($!)
-          done
-          
-          FAILED=0
-          for pid in "${pids[@]}"; do
-            if ! wait $pid; then
-              FAILED=1
-            fi
-          done
-          
-          if [ $FAILED -eq 1 ]; then
-            echo "❌ Some tests failed:"
-            for app in "${group_apps[@]}"; do
-              echo "=== Test log for $app ==="
-              cat "test_$app.log"
-            done
-            exit 1
-          fi
-          
-          echo "📊 Generating coverage reports..."
-          for app in "${group_apps[@]}"; do
-            poetry run coverage report -m --include="apps/$app/*"
-            poetry run coverage xml -o "coverage-$app.xml" --include="apps/$app/*"
-          done
-          
-          echo "✅ Tests completed for group"
-      - name: Rename coverage data files
+          echo "🚀 Running tests for ${{ matrix.app }}..."
+          poetry run coverage run --source="apps/${{ matrix.app }}" --append manage.py test "apps.${{ matrix.app }}" --parallel=auto --verbosity=2 || echo "::error::Tests failed for ${{ matrix.app }}"
+          echo "📊 Generating coverage report for ${{ matrix.app }}..."
+          poetry run coverage report -m --include="apps/${{ matrix.app }}/*"
+          poetry run coverage xml -o coverage-${{ matrix.app }}.xml --include="apps/${{ matrix.app }}/*"
+          echo "✅ Tests completed for ${{ matrix.app }}"
+      - name: Rename coverage data file
         run: |
-          group_apps=(${{ matrix.group }})
-          for app in "${group_apps[@]}"; do
-            if [ -f .coverage ]; then
-              mv .coverage ".coverage.$app"
-              echo "✅ Renamed .coverage to .coverage.$app"
-            fi
-          done
-      - name: Upload coverage artifacts for group
+          if [ -f .coverage ]; then
+            mv .coverage .coverage.${{ matrix.app }}
+            echo "✅ Renamed .coverage to .coverage.${{ matrix.app }}"
+          fi
+      - name: Upload coverage artifact for ${{ matrix.app }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-group-${{ matrix.group }}
+          name: coverage-${{ matrix.app }}
           path: |
-            .coverage.*
-            coverage-*.xml
+            .coverage.${{ matrix.app }}
+            coverage-${{ matrix.app }}.xml
           retention-days: 1
       - name: Clean up uv cache
         if: always()
@@ -283,7 +237,7 @@ jobs:
       - name: Download coverage artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: coverage-group-*
+          pattern: coverage-*
           path: coverage-artifacts
           merge-multiple: true
       - name: Debug artifact contents
