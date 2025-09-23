@@ -18,7 +18,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.12"
-  COVERAGE_FAIL_UNDER: 80 # 커버리지 최소 기준을 환경 변수로 설정
+  COVERAGE_FAIL_UNDER: 80
 
 jobs:
   code-quality:
@@ -27,39 +27,31 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Cache Poetry
         uses: actions/cache@v4
         with:
           key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: ~/.local/
-
       - name: Install Poetry
         run: curl -sSL https://install.python-poetry.org | python3 -
-
       - name: Add Poetry to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: /home/runner/.cache/pypoetry/virtualenvs/
-
       - name: Install dependencies
         run: poetry install --no-root
-
       - name: Setup environment
         run: |
           mkdir -p envs
           echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
           echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
-
       - name: Run code quality checks (parallel & fail-fast)
         shell: bash
         run: |
@@ -85,12 +77,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Install jq
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
-
       - name: Find apps with tests
         id: find-apps
         shell: bash
@@ -144,47 +134,37 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Cache Poetry
         uses: actions/cache@v4
         with:
           key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: ~/.local/
-
       - name: Install Poetry
         run: curl -sSL https://install.python-poetry.org | python3 -
-
       - name: Add Poetry to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: /home/runner/.cache/pypoetry/virtualenvs/
-
       - name: Install dependencies
         run: poetry install --no-root
-
       - name: Setup environment
         run: |
           mkdir -p envs
           echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
           echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
-
       - name: Wait for services
         run: |
           timeout 30 bash -c 'until nc -z localhost 5432; do sleep 1; done'
           timeout 30 bash -c 'until nc -z localhost 6379; do sleep 1; done'
-
       - name: Run migrations
         run: poetry run python manage.py migrate
-
       - name: Run tests and check coverage for ${{ matrix.app }}
         shell: bash
         run: |
@@ -196,24 +176,26 @@ jobs:
           test_files=$(find "$app_path" -type f -name "test*.py")
           if [ -n "$test_files" ] && grep -q -r "def test_" $app_path; then
             echo "✅ Running tests for $app_name"
-            # 1. 테스트 실행 및 병렬 데이터 파일 생성
             poetry run coverage run --parallel-mode --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
             
-            # 2. 현재 잡에서 생성된 병렬 데이터 파일들을 .coverage 파일로 병합
             echo "🔄 Combining coverage data for this job..."
             poetry run coverage combine
             
             echo "📊 Coverage report for $app_name:"
-            # 3. 병합된 .coverage 파일을 기반으로 리포트 생성 (로그 출력용)
             poetry run coverage report -m --include="$app_path/*" || true
 
             echo "🔎 Validating coverage for $app_name..."
-            # 4. 병합된 .coverage 파일을 기반으로 커버리지 기준 검증
-            poetry run coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }} --include="$app_path/*"
+            coverage_pct=$(poetry run coverage report --include="$app_path/*" | tail -n 1 | awk '{print $4}' | tr -d '%')
+            echo "Parsed coverage = ${coverage_pct}%"
+            if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
+              echo "✅ ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족, CI 통과"
+            else
+              echo "❌ ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달, CI 실패"
+              poetry run coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }} --include="$app_path/*"
+            fi
           else
             echo "⚠️ No test functions found in $app_name. Skipping coverage generation."
           fi
-
       - name: Upload coverage data for ${{ matrix.app }}
         if: always()
         uses: actions/upload-artifact@v4
@@ -232,29 +214,31 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Install coverage
         run: pip install coverage
-
       - name: Download all coverage artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: coverage-data-*
           path: coverage-reports
           merge-multiple: true
-
       - name: Generate and check combined coverage report
         id: combined-coverage
         shell: bash
         run: |
           set -euo pipefail
+          if [ ! -d "coverage-reports" ] || [ -z "$(ls -A coverage-reports)" ]; then
+            echo "⚠️ No coverage artifacts were downloaded. Skipping combine step."
+            echo "combined=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
           echo "📥 Downloaded artifacts contents into 'coverage-reports':"
-          ls -laR coverage-reports/ || echo "No coverage-reports directory found."
+          ls -laR coverage-reports/
 
           echo "📊 Combining coverage data from 'coverage-reports' directory..."
           coverage combine --keep coverage-reports
@@ -263,10 +247,16 @@ jobs:
             echo "✅ Coverage data combined successfully."
             
             echo "📊 Generating and Checking Combined Coverage Report:"
-            # 1. 전체 커버리지 리포트를 로그에 출력
             coverage report -m
-            # 2. 전체 커버리지 기준 검증 (기준 미달 시 실패)
-            coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }}
+            
+            coverage_pct=$(coverage report | tail -n 1 | awk '{print $4}' | tr -d '%')
+            echo "Parsed coverage = ${coverage_pct}%"
+            if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
+              echo "✅ ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족, CI 통과"
+            else
+              echo "❌ ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달, CI 실패"
+              coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }}
+            fi
             
             coverage xml -o coverage.xml
             echo "✅ Combined coverage report generated: coverage.xml"
@@ -275,7 +265,6 @@ jobs:
             echo "⚠️ Failed to combine coverage data. No '.coverage' file was created."
             exit 1
           fi
-
       - name: Upload combined coverage artifact
         if: steps.combined-coverage.outputs.combined == 'true'
         uses: actions/upload-artifact@v4
@@ -286,7 +275,6 @@ jobs:
             .coverage
           include-hidden-files: true
           retention-days: 30
-
       - name: Check overall CI status
         run: |
           if [[ "${{ needs.code-quality.result }}" == "success" && 
