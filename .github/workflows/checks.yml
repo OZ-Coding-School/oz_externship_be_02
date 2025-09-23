@@ -50,7 +50,7 @@ jobs:
           path: /home/runner/.cache/pypoetry/virtualenvs/
 
       - name: Install dependencies
-        run: poetry install --no-root --only=dev
+        run: poetry install --no-root  # --only=dev 제거: main dependencies (celery 포함) 설치
 
       - name: Setup environment
         run: |
