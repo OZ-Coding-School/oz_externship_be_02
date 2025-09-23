@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional
 
 from django.urls import reverse  # 사용자님의 좋은 방식
 from django.utils import timezone
@@ -16,8 +16,17 @@ from apps.users.models import User
 
 
 class ApplicationDetailAPITest(APITestCase):
-    @staticmethod
+    applicant: ClassVar[User]
+    author: ClassVar[User]
+    other: ClassVar[User]
+    study_group: ClassVar[StudyGroup]
+    recruitment: ClassVar[Recruitment]
+    application: ClassVar[Application]
+    url: ClassVar[str]
+
+    @classmethod
     def create_test_user(
+        cls,
         email: str,
         nickname: str,
         gender: str = "male",
@@ -28,7 +37,8 @@ class ApplicationDetailAPITest(APITestCase):
         password: str = "testpass123",
     ) -> User:
         if phone_number is None:
-            phone_number = f"010{1000 + User.objects.count():04d}{1000 + User.objects.count():04d}"
+            count = User.objects.count()
+            phone_number = f"010{1000 + count:04d}{1000 + count:04d}"
 
         return User.objects.create_user(
             email=email,
@@ -45,30 +55,31 @@ class ApplicationDetailAPITest(APITestCase):
     def get_expected_application_data(application: Application) -> Dict[str, Any]:
         return ApplicationDetailSerializer(application).data
 
-    def setUp(self) -> None:
-        self.applicant = self.create_test_user(email="applicant@example.com", nickname="지원자")
-        self.author = self.create_test_user(email="recruiter@example.com", nickname="작성자")
-        self.other = self.create_test_user(email="other@example.com", nickname="외부인")
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.applicant = cls.create_test_user(email="applicant@example.com", nickname="지원자")
+        cls.author = cls.create_test_user(email="recruiter@example.com", nickname="작성자")
+        cls.other = cls.create_test_user(email="other@example.com", nickname="외부인")
 
-        self.study_group = StudyGroup.objects.create(
+        cls.study_group = StudyGroup.objects.create(
             name="테스트 스터디",
             max_headcount=5,
             start_at=timezone.now(),
             end_at=timezone.now() + timedelta(days=30),
         )
 
-        self.recruitment = Recruitment.objects.create(
-            study_group=self.study_group,  # StudyGroup 객체 필요
-            author=self.author,
+        cls.recruitment = Recruitment.objects.create(
+            study_group=cls.study_group,  # StudyGroup 객체 필요
+            author=cls.author,
             title="테스트 모집글",
             content="테스트 내용",
             estimated_fee=10000,
             expected_headcount=5,
         )
 
-        self.application = Application.objects.create(
-            recruitment=self.recruitment,
-            user=self.applicant,
+        cls.application = Application.objects.create(
+            recruitment=cls.recruitment,
+            user=cls.applicant,
             objective="목표",
             motivation="동기",
             self_introduction="자기소개",
@@ -78,7 +89,7 @@ class ApplicationDetailAPITest(APITestCase):
             status=Application.ApplicationStatus.PENDING,
         )
         # 사용자님의 좋은 방식
-        self.url = reverse("application-detail", kwargs={"application_id": self.application.id})
+        cls.url = reverse("application-detail", kwargs={"application_id": cls.application.id})
 
     def test_success_applicant_can_view_own_application(self) -> None:
         """[성공] 지원자 본인은 자신의 지원서를 조회할 수 있습니다."""
