@@ -1,7 +1,9 @@
+from pydoc import describe
 from typing import Any, Type, Union
 
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser
@@ -17,6 +19,18 @@ from apps.users.serializers.admin_withdrawal_serializers import (
 from apps.users.views.admin_views import UserAdminPagination
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=["회원 관리 페이지 API - 회원 탈퇴 관리"],
+        summary="회원 탈퇴 내역 목록 조회",
+        description="회원 탈퇴를 신청한 유저 내역을 조회합니다.",
+    ),
+    retrieve=extend_schema(
+        tags=["회원 관리 페이지 API - 회원 탈퇴 관리"],
+        summary="회원 탈퇴 내역 상세 조회",
+        description="특정 회원의 탈퇴 내역 상세 정보를 조회합니다.",
+    ),
+)
 class WithdrawalAdminViewSet(viewsets.ReadOnlyModelViewSet[Withdrawals]):
     """
     관리자 페이지 회원 탈퇴 내역 LIST 조회 API
@@ -36,6 +50,14 @@ class WithdrawalAdminViewSet(viewsets.ReadOnlyModelViewSet[Withdrawals]):
         if self.action == "retrieve":
             return AdminWithdrawalDetailSerializer
         return AdminWithdrawalListSerializer
+
+    @extend_schema(
+        tags=["회원 관리 페이지 API - 회원 탈퇴 관리"],
+        summary="탈퇴 회원 복구",
+        description="탈퇴 신청한 회원의 계정의 상태를 다시 활성화(is_active) 상태로 복구합니다.",
+        request=None,
+        responses={200: {"description": "성공 메시지", "example": {"message": "유저 복구가 완료 되었습니다."}}},
+    )
 
     # restore 요청에 복구 로직을 구현
     @action(detail=True, methods=["post"])
