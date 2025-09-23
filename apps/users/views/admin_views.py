@@ -3,6 +3,7 @@ from uuid import UUID
 
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission, IsAdminUser
@@ -22,11 +23,20 @@ from apps.users.serializers.admin_serializers import (
 )
 
 
+@extend_schema(
+    tags=["회원 관리 페이지 API - 회원 권한"],
+    summary="회원 권한 수정",
+    description="관리자 권한 유저(Superuser)가 특정 회원의 권한을 수정합니다.",
+)
 # 클래스 이름을 Update 기능에 집중하도록 변경 (선택사항이지만 권장)
 class UserPermissionUpdateAPIView(APIView):
     # 이 API는 관리자(is_staff=True)만 접근 가능합니다.
     permission_classes = [IsSuperUser]
 
+    @extend_schema(
+        request=UserPermissionUpdateSerializer,
+        responses={200: UserPermissionResponseSerializer},
+    )
     def patch(self, request: Request, user_uuid: UUID) -> Response:
         # 1. 권한 변경 대상 유저 찾기
         target_user = get_object_or_404(User, uuid=user_uuid)
@@ -53,6 +63,28 @@ class UserAdminPagination(PageNumberPagination):
     max_page_size = 50
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=["관리자 페이지 API -회원 관리"],
+        summary="회원 목록 조회",
+        description="페이지네이션, 필터링, 검색, 정렬 기능이 포함된 회원 목록을 조회합니다.",
+    ),
+    retrieve=extend_schema(
+        tags=["관리자 페이지 API -회원 관리"],
+        summary="회원 상세 정보 조회",
+        description="특정 회원의 상세 정보를 조회합니다.",
+    ),
+    partial_update=extend_schema(
+        tags=["관리자 페이지 API -회원 관리"],
+        summary="회원 정보 수정",
+        description="특정 회원의 정보를 수정합니다. (부분 수정)",
+    ),
+    destroy=extend_schema(
+        tags=["관리자 페이지 API -회원 관리"],
+        summary="회원 정보 수정",
+        description="관리자 권한(Superuser)가 특정 회원의 정보를 삭제합니다.",
+    ),
+)
 class UserAdminViewSet(viewsets.ModelViewSet[User]):
     """
     관리자용 회원 CRUD API
