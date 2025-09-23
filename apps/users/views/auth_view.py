@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework.permissions import AllowAny
@@ -50,11 +50,24 @@ class EmailLoginAPIView(APIView):
         tags=["auth"],
         summary="이메일 로그인",
         description="이메일과 비밀번호로 로그인하여 액세스 토큰 발급",
-        request=EmailLoginSerializer,
+        request={
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "example": "test@example.com"},
+                "password": {"type": "string", "example": "password123"},
+            },
+            "required": ["email", "password"],
+        },
         responses={
-            200: AccessTokenSerializer,
-            400: {"type": "object", "properties": {"error": {"type": "string"}}},
-            401: {"type": "object", "properties": {"error": {"type": "string"}}},
+            200: OpenApiResponse(
+                description="로그인 성공",
+                response={
+                    "type": "object",
+                    "properties": {"access": {"type": "string", "example": "jwt.access.token.value"}},
+                },
+            ),
+            401: OpenApiResponse(description="인증 실패"),
+            400: OpenApiResponse(description="잘못된 요청"),
         },
     )
     def post(self, request: Request) -> Response:
@@ -119,12 +132,18 @@ class CookieTokenRefreshAPIView(APIView):
 
     @extend_schema(
         tags=["auth"],
-        summary="토큰 재발급",
-        description="리프레시 토큰을 사용하여 액세스토큰 재발급",
+        summary="액세스토큰 재발급",
+        description="쿠키에 있는 리프레시 토큰으로 액세스토큰 재발급",
         responses={
-            200: AccessTokenSerializer,
-            400: {"type": "object", "properties": {"error": {"type": "string"}}},
-            401: {"type": "object", "properties": {"error": {"type": "string"}}},
+            200: OpenApiResponse(
+                description="토큰 재발급 성공",
+                response={
+                    "type": "object",
+                    "properties": {"access": {"type": "string", "example": "jwt.new.access.token"}},
+                },
+            ),
+            401: OpenApiResponse(description="인증 실패"),
+            400: OpenApiResponse(description="잘못된 요청"),
         },
     )
     def post(self, request: Request) -> Response:
