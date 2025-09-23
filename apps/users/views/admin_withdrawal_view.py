@@ -37,7 +37,7 @@ class WithdrawalAdminViewSet(viewsets.ReadOnlyModelViewSet[Withdrawals]):
             return AdminWithdrawalDetailSerializer
         return AdminWithdrawalListSerializer
 
-    # 'restore 요청에 복구 로직을 구현
+    # restore 요청에 복구 로직을 구현
     @action(detail=True, methods=["post"])
     def restore(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         """
