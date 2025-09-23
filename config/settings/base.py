@@ -244,4 +244,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.lectures.tasks.run_crawler_v2",
         "schedule": crontab(hour=0, minute=0),  # 매일 자정 실행
     },
+    "send_study_review_requests_daily": {
+        "task": "apps.notifications.tasks.study_review_requests_for_groups",
+        "schedule": crontab(hour=0, minute=10),
+    },
 }

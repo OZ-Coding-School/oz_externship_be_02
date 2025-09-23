@@ -34,3 +34,9 @@ class Notification(BaseModel):
     class Meta:
         db_table = "notifications"
         ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(
+                name="index_noti_list_view",
+                fields=["user", "-created_at"],
+            ),
+        ]

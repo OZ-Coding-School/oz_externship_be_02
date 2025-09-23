@@ -82,7 +82,7 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
         assert n is not None  # mypy
         self.assertIn(self.recruitment.title, n.content)
 
-        self.assertTrue(n.back_url_link.endswith(f"/recruitments/{self.recruitment.uuid}/applications"))
+        self.assertTrue(n.back_url_link.endswith(f"/my-page/applications"))
 
     def test_notification_created_after_accept_status_change(self) -> None:
         """
@@ -232,4 +232,4 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
         self.assertIn(self.recruitment.study_group.name, n_old.content)
         self.assertIn(self.applicant.nickname, n_old.content)
         group_id = self.recruitment.study_group_id
-        self.assertEqual(n_old.back_url_link, f"/study-groups/{group_id}/chat")
+        self.assertEqual(n_old.back_url_link, f"/study-group/{group_id}/chat")
