@@ -5,7 +5,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.serializers.auth_serializers import EmailLoginSerializer, AccessTokenSerializer
+from apps.users.serializers.auth_serializers import (
+    AccessTokenSerializer,
+    EmailLoginSerializer,
+)
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.auth_service import AuthService, JWTService
 
