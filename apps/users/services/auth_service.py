@@ -22,15 +22,6 @@ class AuthService:
 
         return {"access": access_token, "refresh": refresh_token}
 
-    @staticmethod
-    def revoke_refresh_tokens(refresh_token: Optional[str]) -> None:
-        refresh_token_str = cast(Token, refresh_token)
-        try:
-            token = RefreshToken(refresh_token_str)
-            token.blacklist()
-        except TokenError:
-            raise AuthenticationFailed("리프레시 토큰이 유효하지 않습니다")
-
 
 class JWTService:
     @staticmethod
@@ -49,3 +40,12 @@ class JWTService:
             if "expired" in msg:
                 raise AuthenticationFailed("리프레시 토큰이 만료되었습니다")
             raise AuthenticationFailed("유효하지 않은 토큰입니다")
+
+    @staticmethod
+    def revoke_refresh_tokens(refresh_token: Optional[str]) -> None:
+        refresh_token_str = cast(Token, refresh_token)
+        try:
+            token = RefreshToken(refresh_token_str)
+            token.blacklist()
+        except TokenError:
+            raise AuthenticationFailed("리프레시 토큰이 유효하지 않습니다")

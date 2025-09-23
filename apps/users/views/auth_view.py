@@ -1,22 +1,13 @@
-from typing import Any, cast
-
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import Token
 
 from apps.users.serializers.auth_serializers import EmailLoginSerializer
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.auth_service import AuthService, JWTService
-from apps.users.services.exceptions import (
-    EmailVerificationCodeFailedError,
-    PhoneVerificationCodeFailedError,
-)
-
-login_service = AuthService()
 
 
 class UserSignupAPIView(APIView):
@@ -33,7 +24,6 @@ class UserSignupAPIView(APIView):
         )
 
 
-from apps.users.services.auth_service import JWTService
 
 
 class EmailLoginAPIView(APIView):
@@ -75,7 +65,7 @@ class LogoutAPIView(APIView):
         if not refresh:
             return Response({"error": "refresh 토큰이 필요합니다"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            login_service.revoke_refresh_tokens(refresh)
+            JWTService.revoke_refresh_tokens(refresh)
         except AuthenticationFailed as e:
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
 
