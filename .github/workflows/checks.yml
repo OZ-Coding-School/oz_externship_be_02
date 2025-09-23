@@ -210,6 +210,7 @@ jobs:
         with:
           name: coverage-data-${{ matrix.app }}
           path: .coverage.*
+          include-hidden-files: true # 숨김 파일도 볼 수 있도록 설정 변경
           if-no-files-found: ignore # 테스트가 없는 앱의 경우 무시
           retention-days: 3
 
