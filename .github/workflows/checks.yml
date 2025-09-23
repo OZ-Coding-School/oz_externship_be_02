@@ -82,7 +82,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      max_parallel: ${{ steps.set-matrix.outputs.max_parallel }}  # New: 동적 max_parallel 출력
+      max_parallel: ${{ steps.set-matrix.outputs.max_parallel }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -109,23 +109,23 @@ jobs:
           
           if [ ${#app_names[@]} -eq 0 ]; then
             echo "⚠️ No apps with tests found. Skipping tests."
-            echo "matrix={}" >> $GITHUB_OUTPUT
+            echo "matrix=" >> $GITHUB_OUTPUT  # 🔧 수정: 빈 문자열로 설정
             echo "max_parallel=0" >> $GITHUB_OUTPUT
           else
             matrix_json=$(jq -nc --argjson apps "$(printf '%s\n' "${app_names[@]}" | jq -R . | jq -s .)" '{app: $apps}')
             echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
-            max_parallel=$((${#app_names[@]} > 4 ? 4 : ${#app_names[@]}))  # 앱 수에 따라 동적 계산 (최대 4)
+            max_parallel=$((${#app_names[@]} > 4 ? 4 : ${#app_names[@]}))
             echo "max_parallel=$max_parallel" >> $GITHUB_OUTPUT
             echo "✅ Discovered ${#app_names[@]} apps: ${app_names[*]}, max_parallel set to $max_parallel"
           fi
   test:
     runs-on: ubuntu-latest
     needs: discover-apps
-    if: needs.discover-apps.outputs.matrix != ''  # 수정: 빈 문자열 체크로 test 실행 보장
+    if: needs.discover-apps.outputs.matrix != ''
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      max-parallel: ${{ needs.discover-apps.outputs.max_parallel }}  # 동적 max-parallel 적용
+      max-parallel: ${{ needs.discover-apps.outputs.max_parallel }}
       matrix: ${{ fromJson(needs.discover-apps.outputs.matrix) }}
     services:
       db:
@@ -180,13 +180,13 @@ jobs:
           uv venv .venv
           source .venv/bin/activate
           uv pip install -r requirements.txt
-          uv pip install coverage  # For coverage run
+          uv pip install coverage
       - name: Setup environment variables file
         run: |
           mkdir -p envs
           echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
           export PYTHONPATH="${{ github.workspace }}:$PYTHONPATH"
-          export DJANGO_SETTINGS_MODULE="config.settings.local"  # Settings location
+          export DJANGO_SETTINGS_MODULE="config.settings.local"
       - name: Wait for services
         run: |
           timeout 60 bash -c 'until nc -z localhost 5432; do sleep 1; done'
@@ -211,7 +211,7 @@ jobs:
           source .venv/bin/activate
           cd ${{ github.workspace }}
           echo "🚀 Running tests for ${{ matrix.app }}..."
-          poetry run coverage run --append manage.py test "apps.${{ matrix.app }}" --parallel=auto --verbosity=2 || echo "::error::Tests failed for ${{ matrix.app }}"
+          poetry run coverage run --append manage.py test "apps.${{ matrix.app }}" --parallel=auto --verbosity=2
           echo "📊 Generating coverage report for ${{ matrix.app }}..."
           poetry run coverage report -m --include="apps/${{ matrix.app }}/*"
           poetry run coverage xml -o coverage-${{ matrix.app }}.xml --include="apps/${{ matrix.app }}/*"
@@ -236,7 +236,7 @@ jobs:
   coverage-merge:
     runs-on: ubuntu-latest
     needs: test
-    if: always() && needs.test.result == 'success' && needs.discover-apps.outputs.matrix != ''
+    if: always() && needs.test.result == 'success'
     timeout-minutes: 10
     steps:
       - name: Checkout code
