@@ -24,8 +24,6 @@ class UserSignupAPIView(APIView):
         )
 
 
-
-
 class EmailLoginAPIView(APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
