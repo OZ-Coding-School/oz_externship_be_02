@@ -7,7 +7,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.users.serializers.auth_serializers import (
-    AccessTokenSerializer,
     EmailLoginSerializer,
 )
 from apps.users.serializers.signup_serializers import UserSignupSerializer
@@ -50,14 +49,7 @@ class EmailLoginAPIView(APIView):
         tags=["auth"],
         summary="이메일 로그인",
         description="이메일과 비밀번호로 로그인하여 액세스 토큰 발급",
-        request={
-            "type": "object",
-            "properties": {
-                "email": {"type": "string", "example": "test@example.com"},
-                "password": {"type": "string", "example": "password123"},
-            },
-            "required": ["email", "password"],
-        },
+        request=EmailLoginSerializer,
         responses={
             200: OpenApiResponse(
                 description="로그인 성공",
