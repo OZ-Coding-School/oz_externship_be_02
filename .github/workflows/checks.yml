@@ -248,8 +248,9 @@ jobs:
           ls -laR coverage-reports/ || echo "No coverage-reports directory found."
 
           # coverage combine 명령어에 데이터 파일이 있는 디렉터리를 직접 지정
-          echo "📊 Combining coverage data from 'coverage-reports' directory..."
-          coverage combine coverage-reports --keep
+            echo "📊 Combining coverage data from 'coverage-reports' directory..."
+            coverage combine --keep coverage-reports
+
 
           if [ -f ".coverage" ]; then
             echo "✅ Coverage data combined successfully."
