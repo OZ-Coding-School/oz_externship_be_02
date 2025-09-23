@@ -24,7 +24,7 @@ class UserSignupAPIView(APIView):
         description="이메일/휴대폰 인증 후 회원가입을 진행합니다",
         request=UserSignupSerializer,
         responses={
-            201: {"type": "object", "properties": {"detail": {"type": "string"}}},
+            201: UserSignupSerializer,
             400: {"type": "object", "properties": {"error": {"type": "string"}}},
         },
     )
