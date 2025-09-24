@@ -35,8 +35,8 @@ class LectureSerializer(serializers.ModelSerializer[Lecture]):
             "url_link",
             "instructor",
             "thumbnail_img_url",
-            "original_price", #원래 가격
-            "discount_price", #할인된 가격
+            "original_price",  # 원래 가격
+            "discount_price",  # 할인된 가격
         ]
 
 

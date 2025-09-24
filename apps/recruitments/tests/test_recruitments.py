@@ -73,8 +73,8 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
             platform="inflearn",
             url_link="https://example.com/lecture",
             thumbnail_img_url="https://example.com/thumbnail.jpg",
-            original_price=50000, # 원래 가격
-            discount_price=39000, # 할인된 가격
+            original_price=50000,  # 원래 가격
+            discount_price=39000,  # 할인된 가격
         )
         # 생성한 강의를 스터디 그룹에 연결
         study_group.lectures.add(lecture)
