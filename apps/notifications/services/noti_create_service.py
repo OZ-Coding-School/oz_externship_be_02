@@ -280,3 +280,57 @@ class ScheduleTodayNotificationService:
             stats["notifications_created"] += created
 
         return stats
+
+
+class ScheduleUpComingNotificationService:
+    @classmethod
+    def get_tomorrow_schedules(cls, d: date) -> QuerySet[GroupSchedule]:
+        target = d + timedelta(days=1)
+        return (
+            GroupSchedule.objects.filter(session_date=target)
+            .select_related("study_group")
+            .only("id", "title", "session_date", "study_group_id", "study_group__name")
+            .prefetch_related(Prefetch("participants", queryset=GroupMember.objects.only("id", "user_id")))
+        )
+
+    @staticmethod
+    def build_notification_content(gs: GroupSchedule) -> str:
+        group_name = gs.study_group.name
+        title = gs.title
+        return f"내일은 {group_name}에서 {title}이(가) 예정되어 있습니다! 잊지말고 참여해주세요!"
+
+    @classmethod
+    def notify_upcoming_schedules(cls, gs: GroupSchedule) -> int:
+        member_ids = gs.participants.values_list("user_id", flat=True).distinct()
+        if not member_ids:
+            return 0
+
+        msg = cls.build_notification_content(gs)
+        notis = [
+            Notification(
+                user_id=uid,
+                content=msg,
+                notification_type=Notification.NotificationType.UPCOMING_SCHEDULE,
+                back_url_link=get_notification_back_url(
+                    Notification.NotificationType.UPCOMING_SCHEDULE, group_id=gs.study_group_id
+                ),
+            )
+            for uid in member_ids
+        ]
+        Notification.objects.bulk_create(notis, batch_size=1000)
+        return len(notis)
+
+    @classmethod
+    def notify_all_upcoming_schedules(cls, today: date | None = None, chunk_size: int = 200) -> Dict[str, int]:
+        if today is None:
+            today = timezone.localdate()
+
+        qs = cls.get_tomorrow_schedules(today)
+
+        stats = {"schedules_processed": 0, "notifications_created": 0}
+        for gs in qs.iterator(chunk_size=chunk_size):
+            created = cls.notify_upcoming_schedules(gs)
+            stats["schedules_processed"] += 1
+            stats["notifications_created"] += created
+
+        return stats
