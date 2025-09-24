@@ -1,5 +1,3 @@
-from typing import cast
-
 from django.core.exceptions import PermissionDenied
 from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound
@@ -8,22 +6,21 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.applications.applications_permissions import IsApplicantOrRecruiter
+from apps.applications.models import Application
 from apps.applications.serializers.application_detail_serializers import (
     ApplicationDetailSerializer,
 )
-from apps.applications.services.application_detail_services import (
-    ApplicationDetailService,
-)
-from apps.users.models import User
 
 
 class ApplicationDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsApplicantOrRecruiter]
+    permission_classes = [IsApplicantOrRecruiter]
 
     def get(self, request: Request, application_id: int) -> Response:
         try:
-            user = cast(User, request.user)
-            application = ApplicationDetailService.get_application_detail(application_id=application_id, user=user)
+            try:
+                application = Application.objects.select_related("user", "recruitment__author").get(id=application_id)
+            except Application.DoesNotExist:
+                raise NotFound("해당 지원 내역을 찾을 수 없습니다.")
 
             self.check_object_permissions(request, application)
 
