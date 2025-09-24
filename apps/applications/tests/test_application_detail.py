@@ -125,3 +125,56 @@ class ApplicationDetailAPITest(APITestCase):
         non_existent_url = reverse("application-detail", kwargs={"application_id": 9999})
         response = self.client.get(non_existent_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # 승인
+
+    def test_success_author_can_approve_pending_application(self) -> None:
+        url = reverse("application-approve", kwargs={"application_id": self.application.id})
+        self.client.force_authenticate(user=self.author)
+        response = self.client.patch(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.status, Application.ApplicationStatus.ACCEPTED)
+        self.assertIn(self.application.user, self.study_group.members.all())
+
+    def test_fail_author_can_approve_already_appproved(self) -> None:
+        self.application.status = Application.ApplicationStatus.ACCEPTED
+        self.application.save()
+
+        url = reverse("application-approve", kwargs={"application_id": self.application.id})
+        self.client.force_authenticate(user=self.author)
+        response = self.client.patch(url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_fail_other_user_cannot_approve(self) -> None:
+        url = reverse("application-approve", kwargs={"application_id": self.application.id})
+        self.client.force_authenticate(user=self.other)
+        response = self.client.patch(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 거절
+
+    def test_success_author_can_reject_pending_application(self) -> None:
+        url = reverse("application-reject", kwargs={"application_id": self.application.id})
+        self.client.force_authenticate(user=self.author)
+        response = self.client.patch(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.status, Application.ApplicationStatus.REJECTED)
+
+    def test_fail_author_cannot_reject_already_rejected(self) -> None:
+        self.application.status = Application.ApplicationStatus.REJECTED
+        self.application.save()
+
+        url = reverse("application-reject", kwargs={"application_id": self.application.id})
+        self.client.force_authenticate(user=self.author)
+        response = self.client.patch(url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_fail_other_user_cannot_reject(self) -> None:
+        url = reverse("application-reject", kwargs={"application_id": self.application.id})
+        self.client.force_authenticate(user=self.other)
+        response = self.client.patch(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
