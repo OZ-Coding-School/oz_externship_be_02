@@ -6,12 +6,10 @@ from apps.lectures.models.crawled_lectures import Lecture
 
 
 class AdminLectureListSerializer(serializers.ModelSerializer[Lecture]):
-    lecture_uuid = serializers.UUIDField(source="uuid", read_only=True)
-
     class Meta:
         model = Lecture
         fields = (
-            "lecture_uuid",
+            "id",
             "title",
             "instructor",
             "thumbnail_img_url",
