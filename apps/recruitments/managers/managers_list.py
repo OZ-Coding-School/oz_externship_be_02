@@ -16,7 +16,7 @@ class RecruitmentListQuerySet(models.QuerySet["Recruitment"]):
     def filter_is_closed(self) -> Self:
         return self.filter(is_closed=False)
 
-    def order_last(self) -> Self:
+    def sort_by_latest(self) -> Self:
         return self.order_by("-created_at")
 
     def recm_list_queryset(self) -> Self:

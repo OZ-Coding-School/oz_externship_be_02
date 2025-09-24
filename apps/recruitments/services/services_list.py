@@ -6,7 +6,7 @@ from apps.users.models.user import User
 def get_recm_list() -> RecruitmentListQuerySet:
     # 마감된 공고는 필터하고 최신순을 기본 정렬로 함
     # 시리얼라이저 정보 최적화하여 채워넣기
-    queryset = Recruitment.object_list.filter_is_closed().order_last().recm_list_queryset()
+    queryset = Recruitment.object_list.filter_is_closed().sort_by_latest().recm_list_queryset()
     return queryset
 
 
@@ -16,7 +16,7 @@ def filter_tag(queryset: RecruitmentListQuerySet, tag: str) -> RecruitmentListQu
 
 
 def get_my_recm_list(user: User) -> RecruitmentListQuerySet:
-    queryset = Recruitment.object_list.order_last().recm_list_queryset().filter(author=user)
+    queryset = Recruitment.object_list.sort_by_latest().recm_list_queryset().filter(author=user)
     return queryset
 
 
