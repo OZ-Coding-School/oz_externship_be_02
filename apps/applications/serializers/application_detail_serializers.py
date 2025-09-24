@@ -21,6 +21,7 @@ class ApplicationDetailSerializer(serializers.ModelSerializer[Application]):
     class Meta:
         model = Application
         fields = [
+            "id",
             "applicant_info",
             "introduction",
             "motivation",
