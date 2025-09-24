@@ -252,4 +252,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.notify_today_schedules",
         "schedule": crontab(hour=0, minute=1),
     },
+    "notify_upcomig_schedules": {
+        "task": "apps.notifications.tasks.notify_upcoming_schedules",
+        "schedule": crontab(hour=0, minute=1),
+    },
 }
