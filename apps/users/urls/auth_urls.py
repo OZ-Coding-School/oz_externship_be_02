@@ -31,7 +31,7 @@ urlpatterns = [
         name="password_reset_verify",
     ),
     path(
-        "auth/recover-account/sned", AccountRecoveryEmailVerificationSendAPIView.as_view(), name="recover_account_send"
+        "auth/recover-account/send", AccountRecoveryEmailVerificationSendAPIView.as_view(), name="recover_account_send"
     ),
     path(
         "auth/recover-account/verify",
