@@ -35,7 +35,7 @@ class EmailVerificationService:
         }
 
         message_map = {
-            "signup": f"인증 코드를 입력하여 회원가읍을 진행해주세요 {verification_code}",
+            "signup": f"인증 코드를 입력하여 회원가입을 진행해주세요 {verification_code}",
             "reset_password": f"비밀번호 재설정을 위해 인증 코드를 입력해주세요 {verification_code}",
             "recover_account": f"탈퇴 계정 복구를 위해 인증 코드를 입력해주세요 {verification_code}",
         }
