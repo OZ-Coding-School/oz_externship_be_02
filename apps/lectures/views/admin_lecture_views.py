@@ -20,12 +20,8 @@ class AdminLectureLimitOffsetPagination(LimitOffsetPagination):
     default_limit = 20
     max_limit = 100
 
-    def get_paginated_response(self, data: list[dict[str, Any]]) -> Response:
-        return Response({"count": self.count, "results": data})
-
 
 class AdminLectureListView(ListAPIView[Lecture]):
-
     permission_classes = [permissions.IsAuthenticated, AdminOnly]
     serializer_class = AdminLectureListSerializer
     pagination_class = AdminLectureLimitOffsetPagination
