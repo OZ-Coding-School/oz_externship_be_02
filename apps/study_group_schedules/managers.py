@@ -75,10 +75,10 @@ class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
         """상세조회용 스케줄 쿼리셋"""
         return (
             self.filter(id=schedule_id)
-            .filter_by_user_access(user_id)  # 기존 메서드 재사용
-            .select_related("study_group")  # 스터디 그룹 정보 미리 로드
+            .filter_by_user_access(user_id)
+            .select_related("study_group")
             .prefetch_related("participants", "participants__user")
-            .annotate(participant_count=Count("participants", distinct=True))
+            .with_participant_count()
         )
 
     def get_with_detailed_info(self) -> "StudyGroupScheduleQuerySet":
@@ -86,7 +86,7 @@ class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
         return (
             self.select_related("study_group")
             .prefetch_related("participants", "participants__user")
-            .annotate(participant_count=Count("participants", distinct=True))
+            .with_participant_count()
         )
 
     def filter_accessible_by_user_and_group(
