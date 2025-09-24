@@ -109,10 +109,10 @@ class StudyNoteView(APIView):
         serializer.is_valid(raise_exception=True)
 
         service = self.get_service() or self.service_class()
-        assert isinstance(request.user, User)
+        user = cast(User, request.user)
 
         study_note = service.create_study_note(
-            author=request.user,
+            author=user,
             study_group=group,
             title=serializer.validated_data["title"],
             content=serializer.validated_data["content"],
