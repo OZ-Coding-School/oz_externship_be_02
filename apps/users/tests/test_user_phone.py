@@ -62,7 +62,7 @@ class PhoneVerificationTests(APITestCase, VerificationMixin):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("detail", response.data)
 
-    @patch("apps.users.views.phone_verification_view.twilio_service.check_verification_code")
+    @patch("apps.users.views.phone_verification_view.twilio_verified.is_verified")
     def test_check_verification_code_fail(self, mock_check: MagicMock) -> None:
         mock_check.side_effect = PhoneVerificationCodeFailedError("휴대폰 인증번호가 일치하지 않습니다")
 

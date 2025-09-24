@@ -72,7 +72,7 @@ class UserAdminAPITest(APITestCase):
     # 권한 수정 API 테스트
     def test_permission_update_success_as_superuser(self) -> None:
         self.client.force_authenticate(user=self.superuser)
-        data = {"permission": Permission.STAFF.value[0]}
+        data = {"permission": Permission.STAFF.name}
         url = reverse("admin_user:user_permissions", kwargs={"user_uuid": self.active_user.uuid})
         response = self.client.patch(url, data=data, format="json")
 
@@ -82,7 +82,7 @@ class UserAdminAPITest(APITestCase):
 
     def test_permission_update_fail_as_staff(self) -> None:
         self.client.force_authenticate(user=self.staff_user)
-        data = {"permission": Permission.ADMIN.value[0]}
+        data = {"permission": Permission.ADMIN.value}
         url = reverse("admin_user:user_permissions", kwargs={"user_uuid": self.active_user.uuid})
         response = self.client.patch(url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -117,12 +117,12 @@ class UserAdminAPITest(APITestCase):
         self.client.force_authenticate(user=self.superuser)
 
         # 권한 필터링 테스트
-        permission_response = self.client.get(self.list_url, {"permission": Permission.STAFF.value[0]})
+        permission_response = self.client.get(self.list_url, query_params={"permission": Permission.STAFF.name})
         self.assertEqual(permission_response.data["count"], 1)
         self.assertEqual(permission_response.data["results"][0]["email"], self.staff_user.email)
 
         # 필터링 기능 테스트
-        response = self.client.get(self.list_url, {"status": UserStatus.WITHDRAWN.value[0]})
+        response = self.client.get(self.list_url, {"status": UserStatus.WITHDRAWN.name})
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["email"], self.withdrawn_user.email)
 

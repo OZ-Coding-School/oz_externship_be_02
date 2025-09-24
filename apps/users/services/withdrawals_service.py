@@ -1,8 +1,8 @@
 # apps/users/services/withdrawals_service.py
-
 from datetime import date, timedelta
 
 from django.db import transaction
+from moto.efs.exceptions import BadRequest
 
 from apps.users.models.user import User
 from apps.users.models.withdrawals import Withdrawals
@@ -34,6 +34,9 @@ def recover_account(email: str, verification_code: str) -> None:
     # 1-1) 탈퇴 요청이 없다면 Error 반환: 추후 오류 처리를 위한 DoesNotExist 예외 사용
     if not withdrawal:
         raise Withdrawals.DoesNotExist("해당 이메일로 탈퇴 요청이 존재하지 않습니다.")
+
+    if not withdrawal.user:
+        raise BadRequest("이미 삭제 완료 처리된 계정입니다.")
 
     # 2) 유저 계정 복구와 탈퇴 요청 삭제: 탈퇴 요청만 삭제하는 거고 user 모델의 상태는 변경하지 않으므로 user.is_active = True를 명시적으로 설정
     with transaction.atomic():

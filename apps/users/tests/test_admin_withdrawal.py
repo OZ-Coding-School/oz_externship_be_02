@@ -1,14 +1,11 @@
 from typing import ClassVar
 
-from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.users.models import User, Withdrawals
 from apps.users.utils.enums import Permission
-
-user_model = get_user_model()
 
 
 class WithdrawalAdminAPITest(APITestCase):
@@ -24,7 +21,7 @@ class WithdrawalAdminAPITest(APITestCase):
         """테스트에 필요한 모든 유저와 탈퇴 데이터를 직접 생성"""
         super().setUpTestData()
 
-        cls.superuser = user_model.objects.create_superuser(
+        cls.superuser = User.objects.create_superuser(
             email="superuser@test.com",
             password="pw",
             name="최고관리자",
@@ -33,7 +30,7 @@ class WithdrawalAdminAPITest(APITestCase):
             birthday="1990-01-01",
             is_active=True,
         )
-        cls.staff_user = user_model.objects.create_user(
+        cls.staff_user = User.objects.create_user(
             email="staff@test.com",
             password="pw",
             name="스태프",
@@ -43,7 +40,7 @@ class WithdrawalAdminAPITest(APITestCase):
             is_staff=True,
             is_active=True,
         )
-        cls.general_user = user_model.objects.create_user(
+        cls.general_user = User.objects.create_user(
             email="general@test.com",
             password="pw",
             name="일반유저",
@@ -52,7 +49,7 @@ class WithdrawalAdminAPITest(APITestCase):
             birthday="1992-01-01",
             is_active=True,
         )
-        cls.withdrawn_staff = user_model.objects.create_user(
+        cls.withdrawn_staff = User.objects.create_user(
             email="withdrawn_staff@test.com",
             password="pw",
             name="탈퇴스태프",
@@ -62,7 +59,7 @@ class WithdrawalAdminAPITest(APITestCase):
             is_staff=True,
             is_active=True,
         )
-        cls.withdrawn_general = user_model.objects.create_user(
+        cls.withdrawn_general = User.objects.create_user(
             email="withdrawn_general@test.com",
             password="pw",
             name="탈퇴일반",
@@ -114,7 +111,7 @@ class WithdrawalAdminAPITest(APITestCase):
         self.client.force_authenticate(user=self.superuser)
 
         # 권한(staff)으로 필터링
-        response = self.client.get(self.list_url, {"permission": Permission.STAFF.value[0]})
+        response = self.client.get(self.list_url, {"permission": Permission.STAFF.name})
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["email"], self.withdrawn_staff.email)
 

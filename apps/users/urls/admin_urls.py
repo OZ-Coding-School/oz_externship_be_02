@@ -12,6 +12,6 @@ router.register("users", UserAdminViewSet, basename="users")
 router.register("withdrawals", WithdrawalAdminViewSet, basename="admin-withdrawal")
 
 urlpatterns: list[URLPattern | URLResolver] = [
-    path("users/<uuid:user_uuid>/permission/", UserPermissionUpdateAPIView.as_view(), name="user_permissions"),
+    path("users/<uuid:user_uuid>/permission", UserPermissionUpdateAPIView.as_view(), name="user_permissions"),
     path("", include(router.urls)),
 ]

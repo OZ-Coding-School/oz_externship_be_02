@@ -1,13 +1,13 @@
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 from rest_framework import serializers
 
-from apps.users.models import User, Withdrawals
+from apps.users.models import User
 from apps.users.utils.enums import Permission
 
 
 class UserPermissionUpdateSerializer(serializers.ModelSerializer[User]):
-    PERMISSION_CHOICES = [(p.value[0], p.value[1]) for p in Permission]
+    PERMISSION_CHOICES = [(p.name, p.value) for p in Permission]
 
     permission = serializers.ChoiceField(
         choices=PERMISSION_CHOICES,
@@ -20,35 +20,25 @@ class UserPermissionUpdateSerializer(serializers.ModelSerializer[User]):
         model = User
         fields = ["permission"]
 
-    def to_internal_value(self, data: Dict[str, Any]) -> Any:
-        """
-        입력 데이터를 내부 값으로 변환하기 전에 처리
-        """
-        # 'permission' 필드가 있으면 소문자로 변환
-        if "permission" in data and isinstance(data["permission"], str):
-            data["permission"] = data["permission"].lower()
-
-        return super().to_internal_value(data)
-
     def update(self, instance: User, validated_data: Dict[str, Any]) -> User:
         permission = validated_data.get("permission")
         request = self.context.get("request")
         # admin이 자기 자신의 권한을 더 낮은 권한으로 변경할 수 없도록 방지
-        if request and request.user == instance and instance.is_superuser and permission != Permission.ADMIN.value[0]:
+        if request and request.user == instance and instance.is_superuser and permission != Permission.ADMIN.name:
             raise serializers.ValidationError({"error": "자신의 최고 관리자 권한은 해제할 수 없습니다."})
 
         # admin은 최소 1명 이상 존재해야하므로 0명이 되지 않도록 방지
         if (
             instance.is_superuser
-            and permission != Permission.ADMIN.value[0]
+            and permission != Permission.ADMIN.name
             and User.objects.filter(is_superuser=True).count() <= 1
         ):
             raise serializers.ValidationError({"error": "최소 한 명의 최고 관리자 시스템에 존재해야 합니다."})
 
-        if permission == Permission.ADMIN.value[0]:
+        if permission == Permission.ADMIN.name:
             instance.is_staff = True
             instance.is_superuser = True
-        elif permission == Permission.STAFF.value[0]:
+        elif permission == Permission.STAFF.name:
             instance.is_staff = True
             instance.is_superuser = False
         else:
@@ -81,16 +71,17 @@ class UserPermissionResponseSerializer(serializers.ModelSerializer[User]):
         ]
         read_only_fields = fields
 
-    def get_permission(self, obj: User) -> str:
-        return Permission.from_user(obj).value[0]
+    def get_permission(self, obj: User) -> Union[str, None]:
+        return getattr(Permission.from_user(obj), "name", None)
 
-    def get_permission_display(self, obj: User) -> str:
-        return Permission.from_user(obj).value[1]
+    def get_permission_display(self, obj: User) -> Union[str, None]:
+        return getattr(Permission.from_user(obj), "value", None)
 
 
 # 회원 목록 조회 시리얼라이저
 class UserAdminListSerializer(serializers.ModelSerializer[User]):
     permission = serializers.SerializerMethodField()
+    permission_display = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     withdrawals_request_date = serializers.SerializerMethodField()
 
@@ -103,13 +94,17 @@ class UserAdminListSerializer(serializers.ModelSerializer[User]):
             "name",
             "birthday",
             "permission",
+            "permission_display",
             "status",
             "created_at",
             "withdrawals_request_date",
         ]
 
-    def get_permission(self, obj: User) -> str:
-        return Permission.from_user(obj).value[0]
+    def get_permission(self, obj: User) -> Union[str, None]:
+        return getattr(Permission.from_user(obj), "name", None)
+
+    def get_permission_display(self, obj: User) -> Union[str, None]:
+        return getattr(Permission.from_user(obj), "value", None)
 
     def get_status(self, obj: User) -> str:
         if hasattr(obj, "withdrawals") and obj.withdrawals:
@@ -145,8 +140,8 @@ class UserAdminDetailSerializer(serializers.ModelSerializer[User]):
             "profile_img_url",
         ]
 
-    def get_permission(self, obj: User) -> str:
-        return Permission.from_user(obj).value[0]
+    def get_permission(self, obj: User) -> Union[str, None]:
+        return getattr(Permission.from_user(obj), "name", None)
 
     def get_status(self, obj: User) -> str:
         if hasattr(obj, "withdrawals") and obj.withdrawals:
