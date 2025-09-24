@@ -3,6 +3,7 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from apps.applications.models import Application
+from apps.users.models import User
 
 
 class IsApplicantOrRecruiter(BasePermission):
@@ -20,4 +21,12 @@ class IsApplicantOrRecruiter(BasePermission):
             return False
         is_applicant = obj.user == request.user
         is_recruiter = obj.recruitment is not None and obj.recruitment.author == request.user
+        return is_applicant or is_recruiter
+
+    @staticmethod
+    def has_permission_for_user(user: User, obj: Application) -> bool:
+        if not user.is_authenticated:
+            return False
+        is_applicant = obj.user == user
+        is_recruiter = obj.recruitment is not None and obj.recruitment.author == user
         return is_applicant or is_recruiter

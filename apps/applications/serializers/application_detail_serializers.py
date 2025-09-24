@@ -1,24 +1,31 @@
 from rest_framework import serializers
-
+from apps.users.models import User
 from apps.applications.models import Application
+
+class _ApplicantInfoSerializer(serializers.ModelSerializer[User]):
+    class Meta:
+        model = User
+        fields = ["nickname", "gender", "profile_img_url"]
 
 
 class ApplicationDetailSerializer(serializers.ModelSerializer[Application]):
-    uuid = serializers.IntegerField(source="id", read_only=True)
-    title = serializers.CharField(source="recruitment.title", read_only=True)
-    applied_at = serializers.DateTimeField(source="created_at", read_only=True)
+    applicant_info = _ApplicantInfoSerializer(source="user", read_only=True)
+    introduction = serializers.CharField(source="self_introduction", read_only=True)
+    study_goal = serializers.CharField(source="objective", read_only=True)
+    available_times = serializers.CharField(source="available_time", read_only=True)
+    specific_experience = serializers.CharField(source="study_experience", read_only=True)
+    applied_at = serializers.DateTimeField(source="created_at", read_only=True, format="%Y-%m-%d %H:%M")
 
     class Meta:
         model = Application
         fields = [
-            "uuid",
-            "title",
+            "applicant_info",
+            "introduction",
+            "motivation",
+            "study_goal",
+            "available_times",
+            "has_study_experience",
+            "specific_experience",
             "status",
             "applied_at",
-            "self_introduction",
-            "motivation",
-            "objective",
-            "available_time",
-            "has_study_experience",
-            "study_experience",
         ]
