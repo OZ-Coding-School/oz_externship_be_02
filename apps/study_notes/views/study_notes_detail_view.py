@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -10,9 +11,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.studies.models import StudyGroup
-from apps.study_notes.models.study_notes import StudyNote
-from apps.study_notes.serializers.study_notes_serializers import StudyNoteSerializer
-from apps.users.models import User
+from apps.study_notes.models.study_notes import (
+    StudyNote
+)
+from apps.study_notes.serializers.study_notes_serializers import (
+    StudyNoteSerializer,
+    StudyNoteUpdateSerializer,
+)
+from apps.study_notes.services.study_notes_services import StudyNoteService
+
 
 
 class StudyNoteDetailView(APIView):
@@ -21,6 +28,10 @@ class StudyNoteDetailView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    service_class = StudyNoteService
+
+    def get_service(self) -> Optional[StudyNoteService]:
+        return self.service_class(s3_uploader=getattr(self, "s3_uploader", None))
 
     @extend_schema(
         tags=["스터디 기록 (StudyNotes)"],
@@ -60,3 +71,66 @@ class StudyNoteDetailView(APIView):
         )
         serializer = StudyNoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        tags=["스터디 기록 (StudyNotes)"],
+        summary="스터디 노트 수정",
+        description="스터디 기록 작성자만 제목, 내용, 이미지, 첨부파일을 수정할 수 있습니다.",
+        request=StudyNoteUpdateSerializer,
+        responses={
+            200:StudyNoteSerializer ,
+            403: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                description="권한 없음",
+                examples=[OpenApiExample("권한 없음 예시", value={"detail": "작성자만 수정할 수 있습니다."})],
+            ),
+            404: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                description="노트 없음",
+                examples=[OpenApiExample("노트 없음 예시", value={"detail": "해당 노트를 찾을 수 없습니다."})],
+            ),
+        },
+    )
+    def patch(self, request: Request, group_uuid: str, note_id: int) -> Response:
+        user = request.user
+        note = get_object_or_404(
+            StudyNote.objects.prefetch_related("images", "attachments"),
+            id=note_id,
+            study_group__uuid=group_uuid,
+        )
+
+        if note.author_id != user.id:
+            return Response({"detail": "작성자만 수정할 수 있습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = StudyNoteUpdateSerializer(note, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        service = self.get_service()
+        assert service is not None
+
+        # PATCH 데이터
+        title = serializer.validated_data.get("title")
+        content = serializer.validated_data.get("content")
+        new_image_urls = serializer.validated_data.get("image_urls", [])
+        raw_attachments = serializer.validated_data.get("attachment_urls", [])
+        delete_image_ids = serializer.validated_data.get("delete_image_ids", [])
+        delete_attachment_ids = serializer.validated_data.get("delete_attachment_ids", [])
+
+        # attachment_urls 키를 'file_url'로 맞춤
+        new_attachments = [
+            {"file_name": att["file_name"], "file_url": att.get("url") or att.get("file_url")}
+            for att in raw_attachments
+        ]
+
+        # 서비스 호출
+        updated_note = service.update_study_note(
+            note=note,
+            title=title,
+            content=content,
+            images=new_image_urls,
+            attachments=new_attachments,
+            delete_image_ids=delete_image_ids,
+            delete_attachment_ids=delete_attachment_ids,
+        )
+
+        return Response(StudyNoteSerializer(updated_note).data, status=status.HTTP_200_OK)

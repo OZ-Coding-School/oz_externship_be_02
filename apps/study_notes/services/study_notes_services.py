@@ -98,3 +98,93 @@ class StudyNoteService:
             except Exception as del_err:
                 logger.warning(f"S3 객체 삭제 실패: {uploaded_keys}, error: {del_err}")
             raise RuntimeError(f"StudyNote DB 생성 실패, 롤백 완료. Error: {e}")
+
+    def update_study_note(
+            self,
+            note: StudyNote,
+            title: Optional[str] = None,
+            content: Optional[str] = None,
+            images: Optional[list[str]] = None,  # 업로드 URL 리스트
+            attachments: Optional[list[Dict[str, str]]] = None,  # {"file_name", "file_url"}
+            delete_image_ids: Optional[list[int]] = None,
+            delete_attachment_ids: Optional[list[int]] = None,
+    ) -> StudyNote:
+        """스터디 노트 수정"""
+
+        # S3 삭제 대상 모음
+        delete_s3_keys: List[str] = []
+
+        # 삭제할 이미지 URL 수집
+        if delete_image_ids:
+            delete_s3_keys.extend(
+                list(
+                    StudyNoteImage.objects.filter(study_note=note, id__in=delete_image_ids)
+                    .values_list("img_url", flat=True)
+                )
+            )
+
+        # 삭제할 첨부파일 URL 수집
+        if delete_attachment_ids:
+            delete_s3_keys.extend(
+                list(
+                    StudyNoteAttachment.objects.filter(study_note=note, id__in=delete_attachment_ids)
+                    .values_list("file_url", flat=True)
+                )
+            )
+
+        # 새로 업로드된 파일의 S3 key 모음 (트랜잭션 실패 시 삭제용)
+        uploaded_keys: List[str] = []
+        if images:
+            uploaded_keys.extend(url.split("/")[-1] for url in images)
+        if attachments:
+            uploaded_keys.extend(att["file_url"].split("/")[-1] for att in attachments)
+
+        try:
+            with transaction.atomic():
+                if title is not None:
+                    note.title = title
+                if content is not None:
+                    note.content = content
+                    note.ai_summary = generate_study_summary(
+                        content=content,
+                        author_name=note.author.name,
+                        date_str=note.created_at.strftime("%Y년 %-m월 %-d일 %A"),
+                    )
+                note.save()
+
+                # 이미지 추가 (bulk)
+                if images:
+                    StudyNoteImage.objects.bulk_create([StudyNoteImage(study_note=note, img_url=url) for url in images])
+
+                # 첨부파일 추가 (bulk)
+                if attachments:
+                    StudyNoteAttachment.objects.bulk_create([
+                        StudyNoteAttachment(study_note=note, file_url=att["file_url"], file_name=att["file_name"])
+                        for att in attachments
+                    ])
+
+                # 이미지 삭제 (bulk)
+                if delete_image_ids:
+                    StudyNoteImage.objects.filter(study_note=note, id__in=delete_image_ids).delete()
+
+                # 첨부파일 삭제 (bulk)
+                if delete_attachment_ids:
+                    StudyNoteAttachment.objects.filter(study_note=note, id__in=delete_attachment_ids).delete()
+
+            # 트랜잭션 성공 후, 삭제 대상 S3 파일 제거 (실패해도 DB 롤백과 별개)
+            if delete_s3_keys:
+                try:
+                    self.s3.delete_files(delete_s3_keys)
+                except Exception as e:
+                    logger.warning(f"S3 삭제 실패: {delete_s3_keys}, error: {e}")
+
+            return note
+
+        except Exception as e:
+            # 트랜잭션 실패 시, 새로 업로드된 파일 S3 삭제
+            if uploaded_keys:
+                try:
+                    self.s3.delete_files(uploaded_keys)
+                except Exception as del_err:
+                    logger.warning(f"트랜잭션 실패로 S3 rollback 실패: {uploaded_keys}, error: {del_err}")
+            raise RuntimeError(f"스터디 노트 수정 실패, 롤백 완료. Error: {e}")
