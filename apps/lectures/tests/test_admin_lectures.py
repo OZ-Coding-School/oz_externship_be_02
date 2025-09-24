@@ -59,18 +59,18 @@ class TestAdminLectureList(APITestCase):
         )
 
     def test_auth_required(self) -> None:
-        url = reverse("lectures-admin:admin-lecture-list")
+        url = reverse("admin-lecture-list")
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_admin_only(self) -> None:
-        url = reverse("lectures-admin:admin-lecture-list")
+        url = reverse("admin-lecture-list")
         self.client.force_authenticate(user=type(self).user)
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_list_ok(self) -> None:
-        url = reverse("lectures-admin:admin-lecture-list")
+        url = reverse("admin-lecture-list")
         self.client.force_authenticate(user=type(self).admin)
         res = self.client.get(url, data={"limit": 1, "offset": 0})
         self.assertEqual(res.status_code, status.HTTP_200_OK)
