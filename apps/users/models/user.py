@@ -10,12 +10,15 @@ class User(UUIDBaseModel, AbstractBaseUser):
         help_text="email address",
         max_length=255,
         unique=True,
+        null=True,
+        blank=True,
+
     )
-    name = models.CharField(max_length=30, null=False, blank=False, help_text="이름")
-    nickname = models.CharField(max_length=10, unique=True, null=False, blank=False, help_text="닉네임")
-    phone_number = models.CharField(max_length=20, unique=True, null=False, blank=False, help_text="휴대폰 번호")
-    gender = models.CharField(max_length=6, null=False, blank=False, help_text="성별")
-    birthday = models.DateField(null=False, blank=False, help_text="생일")
+    name = models.CharField(max_length=30, null=True, blank=True ,help_text="이름")
+    nickname = models.CharField(max_length=10, unique=True, null=True,blank=True ,help_text="닉네임")
+    phone_number = models.CharField(max_length=20, unique=True , null=True,blank =True, help_text="휴대폰 번호")
+    gender = models.CharField(max_length=6, null=True, blank=True, help_text="성별")
+    birthday = models.DateField(null=True, blank=True, help_text="생일")
     profile_img_url = models.URLField(max_length=255, null=True, blank=True, help_text="프로필 이미지")
 
     is_active = models.BooleanField(default=False, help_text="계정활성화 여부")
