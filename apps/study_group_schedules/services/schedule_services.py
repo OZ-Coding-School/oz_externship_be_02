@@ -122,5 +122,5 @@ def get_schedule_by_id_for_user(
 
         return queryset.first()
 
-    except (ValueError, GroupSchedule.DoesNotExist):
+    except ValueError:
         return None
