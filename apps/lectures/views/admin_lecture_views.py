@@ -7,23 +7,13 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import permissions
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from apps.lectures.models.crawled_lectures import Lecture
+from apps.lectures.permissions import AdminOnly
 from apps.lectures.serializers.admin_lecture_serializers import (
     AdminLectureListSerializer,
 )
-
-
-class AdminOnly(permissions.BasePermission):
-
-    def has_permission(self, request: Request, view: APIView) -> bool:
-        user = request.user
-        if not getattr(user, "is_authenticated", False):
-            return False
-        return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
 
 
 class AdminLectureLimitOffsetPagination(LimitOffsetPagination):
@@ -51,9 +41,6 @@ class AdminLectureListView(ListAPIView[Lecture]):
         ],
         responses={200: AdminLectureListSerializer(many=True)},  # pagination wrapper: {"count", "results"}
     )
-    def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        return super().get(request, *args, **kwargs)
-
     def get_queryset(self) -> QuerySet[Lecture]:
         qs: QuerySet[Lecture] = Lecture.objects.all().order_by("-created_at", "-pk")
         keyword = self.request.query_params.get("search")
