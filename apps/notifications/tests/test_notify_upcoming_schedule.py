@@ -102,7 +102,7 @@ class ScheduleUpComigNotificationTests(TestCase):
             start_time=time(11, 0),
             end_time=time(12, 0),
         )
-        c =GroupSchedule.objects.create(
+        c = GroupSchedule.objects.create(
             study_group=self.group,
             title="C",
             objective="o",
