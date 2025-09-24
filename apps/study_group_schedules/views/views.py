@@ -1,4 +1,5 @@
 from typing import Any, cast
+from uuid import UUID
 
 from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
@@ -128,19 +129,21 @@ class StudyGroupScheduleDetailView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request: Request, study_group_id: str, schedule_id: int) -> Response:
+    def get(self, request: Request, study_group_uuid: UUID, schedule_id: int) -> Response:
         """개별 스케줄 상세 정보 조회"""
         user = cast(User, request.user)
 
         try:
-            schedule_exists = GroupSchedule.schedules.filter(id=schedule_id, study_group__uuid=study_group_id).exists()
+            schedule_exists = GroupSchedule.schedules.filter(
+                id=schedule_id, study_group__uuid=study_group_uuid
+            ).exists()
 
             if not schedule_exists:
                 return Response({"detail": "해당 스케줄을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
             schedule = (
                 GroupSchedule.schedules.filter_accessible_by_user_and_group(
-                    user_id=user.id, study_group_uuid=study_group_id
+                    user_id=user.id, study_group_uuid=study_group_uuid
                 )
                 .filter(id=schedule_id)
                 .get_with_detailed_info()
