@@ -6,6 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.users.models import User
 from apps.users.serializers.email_verification_serializers import (
     EmailVerificationRequestSerializer,
     EmailVerifyCodeSerializer,
@@ -104,11 +105,14 @@ class PasswordResetEmailVerificationSendAPIView(APIView):
 
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RESET_PASSWORD
+
+        if not User.objects.filtet(email=email).exists():
+            return Response({"error" : "해당 이메일로 가입된 계정이 없습니다"},status=status.HTTP_400_BAD_REQUEST )
         try:
             email_service.send_verification_email(email, purpose)
         except EmailSendingFailedError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"detail": "인증에 완료되었습니다"}, status=status.HTTP_200_OK)
+        return Response({"detail": "인증번호를 전송했습니다"}, status=status.HTTP_200_OK)
 
 
 class PassowrdResetEmailVerificationVerifyAPIView(APIView):
@@ -138,7 +142,7 @@ class PassowrdResetEmailVerificationVerifyAPIView(APIView):
             email_service.verify_code(purpose=purpose, **serializer.validated_data)
         except EmailVerificationCodeFailedError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"detail": "이메일 전송에 성공했습니다"}, status=status.HTTP_200_OK)
+        return Response({"detail": "인증에 성공했습니다"}, status=status.HTTP_200_OK)
 
 
 class AccountRecoveryEmailVerificationSendAPIView(APIView):
@@ -165,6 +169,11 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
 
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RECOVER_ACCOUNT
+
+        if not User.objects.filter(email=email).exists():
+            return Response({"error": "해당 이메일로 가입된 계정이 없습니다."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         try:
             email_service.send_verification_email(email, purpose)
         except EmailSendingFailedError as e:
