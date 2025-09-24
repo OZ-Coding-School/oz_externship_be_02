@@ -36,3 +36,4 @@ class Withdrawals(BaseModel):
         if self.user and self.user.email:
             return f"{self.user.email} - {self.reason}"
         return f"사용자 없음 - {self.reason}"
+
