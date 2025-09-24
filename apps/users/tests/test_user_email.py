@@ -195,10 +195,10 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         복구 이메일 인증 요청
         """
         withdrawal = Withdrawals.objects.create(
-            user = self.user,
+            user=self.user,
             reason=WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             reason_detail="테스트용 탈퇴",
-            due_date=date.today() + timedelta(days=14)
+            due_date=date.today() + timedelta(days=14),
         )
 
         response = self.client.post(self.send_url, {"email": (email := self.test_email)})
@@ -219,10 +219,10 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         계정 복구 이메인 인증 성공 케이스
         """
         withdrawal = Withdrawals.objects.create(
-            user = self.user,
+            user=self.user,
             reason=WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             reason_detail="테스트용 탈퇴",
-            due_date=date.today() + timedelta(days=14)
+            due_date=date.today() + timedelta(days=14),
         )
         data = {"email": (email := self.test_email)}
         self.client.post(self.send_url, data)

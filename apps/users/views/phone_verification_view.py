@@ -17,7 +17,10 @@ from apps.users.services.exceptions import (
     PhoneSendingFailedError,
     PhoneVerificationCodeFailedError,
 )
-from apps.users.services.phone_service import TwilioAuthService, PhoneVerificationService
+from apps.users.services.phone_service import (
+    PhoneVerificationService,
+    TwilioAuthService,
+)
 
 twilio_service = TwilioAuthService()
 twilio_verified = PhoneVerificationService
