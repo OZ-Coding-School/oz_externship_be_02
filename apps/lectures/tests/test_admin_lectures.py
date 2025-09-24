@@ -1,3 +1,6 @@
+from typing import ClassVar
+
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -6,9 +9,12 @@ from apps.users.models.user import User
 
 
 class TestAdminLectureList(APITestCase):
-    def setUp(self) -> None:
-        # 일반 유저
-        self.user = User.objects.create_user(
+    user: ClassVar[User]
+    admin: ClassVar[User]
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.user = User.objects.create_user(
             email="user@test.com",
             password="pass1234",
             name="유저",
@@ -17,8 +23,7 @@ class TestAdminLectureList(APITestCase):
             gender="M",
             birthday="2000-01-01",
         )
-        # 관리자 유저
-        self.admin = User.objects.create_user(
+        cls.admin = User.objects.create_user(
             email="admin@test.com",
             password="pass1234",
             name="관리자",
@@ -28,19 +33,6 @@ class TestAdminLectureList(APITestCase):
             birthday="1999-12-31",
             is_staff=True,
         )
-        self.url = "/api/v1/lectures/admin/lectures"
-
-    def test_auth_required(self) -> None:
-        res = self.client.get(self.url)
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_admin_only(self) -> None:
-        self.client.force_authenticate(user=self.user)
-        res = self.client.get(self.url)
-        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_list_ok(self) -> None:
-        # 데이터
         Lecture.objects.create(
             title="Github Mastery",
             instructor="효종 조교",
@@ -66,15 +58,27 @@ class TestAdminLectureList(APITestCase):
             thumbnail_img_url="drf.png",
         )
 
-        self.client.force_authenticate(user=self.admin)
-        res = self.client.get(self.url, data={"limit": 1, "offset": 0})
+    def test_auth_required(self) -> None:
+        url = reverse("lectures-admin:admin-lecture-list")
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_admin_only(self) -> None:
+        url = reverse("lectures-admin:admin-lecture-list")
+        self.client.force_authenticate(user=type(self).user)
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_ok(self) -> None:
+        url = reverse("lectures-admin:admin-lecture-list")
+        self.client.force_authenticate(user=type(self).admin)
+        res = self.client.get(url, data={"limit": 1, "offset": 0})
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertIn("count", res.data)
         self.assertIn("results", res.data)
         self.assertEqual(len(res.data["results"]), 1)
 
-        # 검색
-        res_search = self.client.get(self.url, data={"search": "django"})
+        res_search = self.client.get(url, data={"search": "django"})
         self.assertEqual(res_search.status_code, status.HTTP_200_OK)
         titles = [item["title"] for item in res_search.data["results"]]
         self.assertTrue(any("Django" in t for t in titles))
