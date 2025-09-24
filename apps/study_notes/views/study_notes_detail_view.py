@@ -23,7 +23,6 @@ class StudyNoteDetailView(APIView):
     """
     스터디 노트 상세 조회
     """
-
     permission_classes = [IsAuthenticated]
     service_class = StudyNoteService
 
@@ -113,7 +112,6 @@ class StudyNoteDetailView(APIView):
         delete_image_ids = serializer.validated_data.get("delete_image_ids", [])
         delete_attachment_ids = serializer.validated_data.get("delete_attachment_ids", [])
 
-        # attachment_urls 키를 'file_url'로 맞춤
         new_attachments = [
             {"file_name": att["file_name"], "file_url": att.get("url") or att.get("file_url")}
             for att in raw_attachments
