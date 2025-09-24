@@ -6,6 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.users.models import user
 from apps.users.serializers.auth_serializers import (
     EmailLoginSerializer,
 )
@@ -72,13 +73,24 @@ class EmailLoginAPIView(APIView):
         except ValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
+        # 로그인 분기 처리
+        if user.is_active:
 
-        response.set_cookie(
-            "refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
-        )
+            response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
+            response.set_cookie(
+                "refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
+            )
+            return response
 
-        return response
+        else:
+            withdrawal = getattr(user, "withdrawal",None)
+            return Response(
+                {
+                    "detail": "탈퇴 계정입니다. 복구 가능 기간 확인 바랍니다.",
+                    "due_date": withdrawal.due_date if withdrawal else None,
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
 
 class LogoutAPIView(APIView):

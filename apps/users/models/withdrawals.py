@@ -19,7 +19,7 @@ class WithdrawalsReasonChoices(models.TextChoices):
 
 
 class Withdrawals(BaseModel):
-    user = models.OneToOneField("users.User", on_delete=models.CASCADE, unique=True, help_text="유저")  # 중복 요청 방지
+    user = models.OneToOneField("users.User", on_delete=models.SET_NULL, unique=True, null=True, help_text="유저")  # 중복 요청 방지
     reason = models.CharField(
         max_length=30, choices=WithdrawalsReasonChoices.choices, null=False, blank=False, help_text="탈퇴 사유"
     )
