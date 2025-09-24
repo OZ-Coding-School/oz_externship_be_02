@@ -1,6 +1,7 @@
 # apps/users/views/user_info_view.py
 
-from django.contrib.auth.models import AnonymousUser
+from typing import cast
+
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -9,49 +10,39 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.users.models.user import User
-from apps.users.serializers.user_info_serializer import UserInfoSerializer
-from apps.users.services.user_info_service import UserInfoEditService
+from apps.users.services.user_info_service import (
+    UserInfoEditService,
+    UserInfoService,
+)
 
-
-class UserInfoView(APIView):
+# 로그인한 사용자만 접근할 수 있는 APIView 기본 클래스: permission_classes를 IsAuthenticated로 고정
+class AuthenticatedAPIview(APIView):
     permission_classes = [IsAuthenticated]
 
+class UserInfoView(AuthenticatedAPIview):
     def get(self, request: Request) -> Response:
         """
-        현재 로그인한 사용자의 정보를 반환(정보 조회).
+        자신(로그인한 사용자)의 정보 조회.
         """
-        assert not isinstance(request.user, AnonymousUser)
-        user: User = request.user # mypy
+        service = UserInfoService(cast(User, request.user))
+        data = service.get_user_info()
 
-        serializer = UserInfoSerializer(request.user)
-        return Response(serializer.data)
+        return Response(data, status=status.HTTP_200_OK)
 
+
+class UserInfoEditView(AuthenticatedAPIview):
     def patch(self, request: Request) -> Response:
         """
-        사용자 정보를 수정.
-        변경 사항에 휴대폰 번호가 포함되어 있다면, service에서 인증 여부를 확인하고 캐시를 삭제.
-        """
-        # 오류: 비로그인 유저(401)
-        if isinstance(request.user, AnonymousUser):
-            return Response({"detail": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
-    
-        try:
-            assert not isinstance(request.user, AnonymousUser)
-            user: User = request.user # mypy
+        현재 로그인한 사용자의 정보를 수정하는 API 뷰.
+        로그인 필수. 휴대폰 번호 변경 시 인증 코드 검증 포함.
+        """ 
+        # 로그인한 사용자를 기반으로 서비스 인스턴스 생성
+        service = UserInfoEditService(cast(User, request.user))
 
-            # 사용자 정보 수정 서비스 호출
-            updated_user = UserInfoEditService(request.user).update_user_info(request.data)
+        try: # 사용자 정보 업데이트
+            service.update_user_info(request.data)
+        except ValidationError as e: # ValidationError의 종류가 달라도 안전하게 Response를 반환
+            detail = getattr(e, "detail", str(e))
+            return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
 
-            # 수정된 사용자 정보를 다시 직렬화하여 응답
-            serializer = UserInfoSerializer(updated_user)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        except ValidationError as e:
-            # 오류: 인증/유효성 검사 실패(400)
-            print(f"인증에 실패하였습니다. {str(e)}.")
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        except Exception as e:
-            # 오류: 알 수 없는 오류(500)
-            print(f"Unexpected error during user info update: {str(e)}")
-            return Response({"detail": "알 수 없는 오류가 발생했습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"detail": "회원 정보가 성공적으로 수정되었습니다."}, status=status.HTTP_200_OK)
