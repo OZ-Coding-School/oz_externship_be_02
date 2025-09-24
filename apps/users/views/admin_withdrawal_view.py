@@ -71,7 +71,7 @@ class WithdrawalAdminViewSet(viewsets.ReadOnlyModelViewSet[Withdrawals]):
             user = withdrawal.user
 
             withdrawal.delete()
-
+            assert user is not None, "User should not be None"
             user.is_active = True
             user.save(update_fields=["is_active", "updated_at"])
 
