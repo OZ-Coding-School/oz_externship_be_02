@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from apps.users.models import User
+
 from apps.applications.models import Application
+from apps.users.models import User
+
 
 class _ApplicantInfoSerializer(serializers.ModelSerializer[User]):
     class Meta:

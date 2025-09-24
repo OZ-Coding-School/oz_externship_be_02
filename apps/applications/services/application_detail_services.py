@@ -2,6 +2,7 @@ from typing import Union
 
 from django.contrib.auth.models import AnonymousUser
 from rest_framework.exceptions import NotFound, PermissionDenied
+
 from apps.applications.applications_permissions import IsApplicantOrRecruiter
 from apps.applications.models import Application
 from apps.users.models import User
