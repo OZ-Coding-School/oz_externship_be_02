@@ -3,7 +3,7 @@ from typing import Any
 
 from rest_framework import serializers
 
-from apps.studies.models import GroupMember
+from apps.studies.models import GroupMember, StudyGroup
 from apps.study_group_schedules.enums import ScheduleOrdering
 from apps.study_group_schedules.models import GroupSchedule
 
@@ -97,7 +97,6 @@ class ScheduleParticipantSerializer(serializers.ModelSerializer[GroupMember]):
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     user_nickname = serializers.CharField(source="user.nickname", read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
-    is_leader = serializers.BooleanField(source="is_leader", read_only=True)
 
     class Meta:
         model = GroupMember
@@ -107,6 +106,18 @@ class ScheduleParticipantSerializer(serializers.ModelSerializer[GroupMember]):
             "user_email",
             "is_leader",
         ]
+        extra_kwargs = {
+            "is_leader": {"read_only": True},
+        }
+
+
+class StudyGroupDetailSerializer(serializers.Serializer[StudyGroup]):
+    """스터디 그룹 상세 정보 시리얼라이저"""
+
+    study_group_uuid = serializers.UUIDField(source="uuid", read_only=True)
+    study_group_name = serializers.CharField(source="name", read_only=True)
+    description = serializers.CharField(read_only=True)
+    leader_nickname = serializers.CharField(source="leader.nickname", read_only=True)
 
 
 class StudyGroupScheduleDetailSerializer(serializers.ModelSerializer[GroupSchedule]):
@@ -116,19 +127,12 @@ class StudyGroupScheduleDetailSerializer(serializers.ModelSerializer[GroupSchedu
     - 상세조회에서만 사용하는 추가 정보들을 포함
     """
 
-    # 스터디 그룹 기본 정보
-    study_group_uuid = serializers.UUIDField(source="study_group.uuid", read_only=True)
-    study_group_name = serializers.CharField(source="study_group.name", read_only=True)
-    study_group_description = serializers.CharField(source="study_group.description", read_only=True)
-    study_group_leader_nickname = serializers.CharField(source="study_group.leader.nickname", read_only=True)
+    # 스터디 그룹 정보
+    study_group = StudyGroupDetailSerializer(read_only=True)
 
     # 참여자 관련 정보
     participant_count = serializers.IntegerField(read_only=True)
     participants = ScheduleParticipantSerializer(many=True, read_only=True)
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self._today = date.today()  # 인스턴스 생성 시 한 번만 계산
 
     class Meta:
         model = GroupSchedule
@@ -141,10 +145,7 @@ class StudyGroupScheduleDetailSerializer(serializers.ModelSerializer[GroupSchedu
             "start_time",
             "end_time",
             # 스터디 그룹 정보
-            "study_group_uuid",
-            "study_group_name",
-            "study_group_description",
-            "study_group_leader_nickname",
+            "study_group",
             # 참여자 정보
             "participant_count",
             "participants",
