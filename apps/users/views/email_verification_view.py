@@ -171,19 +171,19 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
         purpose = VerificationPurpose.RECOVER_ACCOUNT
 
         try:
-            withdrawal = Withdrawals.objects.select_related('user').get(user__email=email)
+            withdrawal = Withdrawals.objects.select_related("user").get(user__email=email)
         except Withdrawals.DoesNotExist:
-            return Response({"error": "탈퇴 계정이 아니거나 존재하지않는 이메일입니다"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "탈퇴 계정이 아니거나 존재하지않는 이메일입니다"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             email_service.send_verification_email(email, purpose)
         except EmailSendingFailedError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"detail": "인증 번호를 전송했습니다",
-                         "due_date" : withdrawal.due_date
-                         },
-                        status=status.HTTP_200_OK
-                        )
+        return Response(
+            {"detail": "인증 번호를 전송했습니다", "due_date": withdrawal.due_date}, status=status.HTTP_200_OK
+        )
 
 
 class AccountRecoveryEmailVerificationVerifyAPIView(APIView):

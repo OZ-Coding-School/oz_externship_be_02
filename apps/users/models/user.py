@@ -10,10 +10,9 @@ class User(UUIDBaseModel, AbstractBaseUser):
         help_text="email address",
         max_length=255,
         unique=True,
-
     )
     name = models.CharField(max_length=30, null=True, blank=True, help_text="이름")
-    nickname = models.CharField(max_length=10,  help_text="닉네임")
+    nickname = models.CharField(max_length=10, help_text="닉네임")
     phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="휴대폰 번호")
     gender = models.CharField(max_length=6, null=True, blank=True, help_text="성별")
     birthday = models.DateField(null=True, blank=True, help_text="생일")
