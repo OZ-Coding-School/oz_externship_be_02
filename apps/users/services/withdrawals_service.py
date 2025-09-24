@@ -2,6 +2,7 @@
 from datetime import date, timedelta
 
 from django.db import transaction
+from moto.efs.exceptions import BadRequest
 
 from apps.users.models.user import User
 from apps.users.models.withdrawals import Withdrawals
@@ -34,10 +35,12 @@ def recover_account(email: str, verification_code: str) -> None:
     if not withdrawal:
         raise Withdrawals.DoesNotExist("해당 이메일로 탈퇴 요청이 존재하지 않습니다.")
 
+    if not withdrawal.user:
+        raise BadRequest("이미 삭제 완료 처리된 계정입니다.")
+
     # 2) 유저 계정 복구와 탈퇴 요청 삭제: 탈퇴 요청만 삭제하는 거고 user 모델의 상태는 변경하지 않으므로 user.is_active = True를 명시적으로 설정
     with transaction.atomic():
         user = withdrawal.user
-        assert user is not None
         user.is_active = True
         user.save()
         withdrawal.delete()

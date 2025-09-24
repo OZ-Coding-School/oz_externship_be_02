@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import Optional, Union, cast
 
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
@@ -15,11 +15,10 @@ class AuthService:
 
     @staticmethod
     def email_login(email: str, password: str) -> tuple[User, dict[str, str]]:
-        user = authenticate(email=email, password=password)
+        user: Union[User, None] = authenticate(email=email, password=password)
+
         if user is None:
             raise AuthenticationFailed("이메일 또는 비밀번호가 틀립니다")
-        if not isinstance(user, User):
-            raise AuthenticationFailed("invalid user type")
 
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)

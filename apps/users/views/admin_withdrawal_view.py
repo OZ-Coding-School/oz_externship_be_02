@@ -1,10 +1,9 @@
-from pydoc import describe
 from typing import Any, Type, Union
 
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import filters, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser
 from rest_framework.request import Request
@@ -66,12 +65,13 @@ class WithdrawalAdminViewSet(viewsets.ReadOnlyModelViewSet[Withdrawals]):
         URL: POST /api/v1/admin/withdrawals/{id}/restore
         선택한 탈퇴 유저를 복구
         """
-        with transaction.atomic():
-            withdrawal = self.get_object()
-            user = withdrawal.user
+        withdrawal = self.get_object()
+        user = withdrawal.user
+        if user is None:
+            return Response({"error": "이미 탈퇴 후 삭제가 완료된 계정입니다."}, status=status.HTTP_400_BAD_REQUEST)
 
+        with transaction.atomic():
             withdrawal.delete()
-            assert user is not None, "User should not be None"
             user.is_active = True
             user.save(update_fields=["is_active", "updated_at"])
 

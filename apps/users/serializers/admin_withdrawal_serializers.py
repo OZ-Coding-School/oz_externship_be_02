@@ -1,3 +1,5 @@
+from typing import Union
+
 from rest_framework import serializers
 
 from apps.users.models import Withdrawals, user
@@ -23,9 +25,8 @@ class AdminWithdrawalListSerializer(serializers.ModelSerializer[Withdrawals]):
             "created_at",
         ]
 
-    def get_permission(self, obj: Withdrawals) -> str:
-        assert obj.user is not None, "Withdrawals.user가 None입니다"
-        return Permission.from_user(obj.user).value[0]
+    def get_permission(self, obj: Withdrawals) -> Union[str, None]:
+        return getattr(Permission.from_user(obj.user), "name", None)
 
 
 class AdminWithdrawalDetailSerializer(serializers.ModelSerializer[Withdrawals]):
@@ -56,9 +57,8 @@ class AdminWithdrawalDetailSerializer(serializers.ModelSerializer[Withdrawals]):
             "due_date",
         ]
 
-    def get_permission(self, obj: Withdrawals) -> str:
-        assert obj.user is not None, "Withdrawals.object must have a user"
-        return Permission.from_user(obj.user).value[0]
+    def get_permission(self, obj: Withdrawals) -> Union[str, None]:
+        return getattr(Permission.from_user(obj.user), "name", None)
 
     def get_status(self, obj: Withdrawals) -> str:
-        return UserStatus.WITHDRAWN.value[1]
+        return UserStatus.WITHDRAWN.name

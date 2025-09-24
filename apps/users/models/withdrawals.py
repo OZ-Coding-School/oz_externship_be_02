@@ -1,11 +1,8 @@
-from ctypes import cast
-
 from django.db import models
 
-from apps.core.models.base import BaseModel, UUIDBaseModel
+from apps.core.models.base import BaseModel
 
 from ..managers.withdrawals_user_manager import WithdrawalUserManager
-from .user import User
 
 
 class WithdrawalsReasonChoices(models.TextChoices):
