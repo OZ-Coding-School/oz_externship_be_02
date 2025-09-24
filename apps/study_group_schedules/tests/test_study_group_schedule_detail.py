@@ -119,7 +119,7 @@ class StudyGroupScheduleDetailTestCase(APITestCase):
         """스케줄 상세조회 성공 테스트"""
         url = reverse(
             "schedule_detail",
-            kwargs={"study_group_id": self.test_study_group.uuid, "schedule_id": self.schedules[0].id},
+            kwargs={"study_group_uuid": self.test_study_group.uuid, "schedule_id": self.schedules[0].id},
         )
         response = self.client.get(url)
 
@@ -130,14 +130,14 @@ class StudyGroupScheduleDetailTestCase(APITestCase):
         self.assertEqual(data["id"], self.schedules[0].id)
         self.assertEqual(data["title"], self.schedules[0].title)
         self.assertEqual(data["objective"], self.schedules[0].objective)
-        self.assertEqual(data["study_group_uuid"], str(self.test_study_group.uuid))
-        self.assertEqual(data["study_group_name"], self.test_study_group.name)
+        self.assertEqual(data["study_group"]["study_group_uuid"], str(self.test_study_group.uuid))
+        self.assertEqual(data["study_group"]["study_group_name"], self.test_study_group.name)
 
     def test_get_schedule_detail_not_found(self) -> None:
         """존재하지 않는 스케줄 조회 테스트"""
         url = reverse(
             "schedule_detail",
-            kwargs={"study_group_id": self.test_study_group.uuid, "schedule_id": 99999},
+            kwargs={"study_group_uuid": self.test_study_group.uuid, "schedule_id": 99999},
         )
         response = self.client.get(url)
 
@@ -148,7 +148,7 @@ class StudyGroupScheduleDetailTestCase(APITestCase):
         """접근 권한 없는 스케줄 조회 테스트"""
         url = reverse(
             "schedule_detail",
-            kwargs={"study_group_id": self.test_other_study_group.uuid, "schedule_id": self.other_schedule.id},
+            kwargs={"study_group_uuid": self.test_other_study_group.uuid, "schedule_id": self.other_schedule.id},
         )
         response = self.client.get(url)
 
@@ -160,7 +160,7 @@ class StudyGroupScheduleDetailTestCase(APITestCase):
         wrong_uuid = uuid4()
         url = reverse(
             "schedule_detail",
-            kwargs={"study_group_id": wrong_uuid, "schedule_id": self.schedules[0].id},
+            kwargs={"study_group_uuid": wrong_uuid, "schedule_id": self.schedules[0].id},
         )
         response = self.client.get(url)
 
@@ -172,7 +172,7 @@ class StudyGroupScheduleDetailTestCase(APITestCase):
         self.client.logout()
         url = reverse(
             "schedule_detail",
-            kwargs={"study_group_id": self.test_study_group.uuid, "schedule_id": self.schedules[0].id},
+            kwargs={"study_group_uuid": self.test_study_group.uuid, "schedule_id": self.schedules[0].id},
         )
         response = self.client.get(url)
 
