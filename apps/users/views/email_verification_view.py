@@ -6,7 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.models import User
+from apps.users.models import User, Withdrawals
 from apps.users.serializers.email_verification_serializers import (
     EmailVerificationRequestSerializer,
     EmailVerifyCodeSerializer,
@@ -170,14 +170,20 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RECOVER_ACCOUNT
 
-        if not User.objects.filter(email=email).exists():
-            return Response({"error": "해당 이메일로 가입된 계정이 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            withdrawal = Withdrawals.objects.select_related('user').get(user__email=email)
+        except Withdrawals.DoesNotExist:
+            return Response({"error": "탈퇴 계정이 아니거나 존재하지않는 이메일입니다"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             email_service.send_verification_email(email, purpose)
         except EmailSendingFailedError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"detail": "인증 번호를 전송했습니다"}, status=status.HTTP_200_OK)
+        return Response({"detail": "인증 번호를 전송했습니다",
+                         "due_date" : withdrawal.due_date
+                         },
+                        status=status.HTTP_200_OK
+                        )
 
 
 class AccountRecoveryEmailVerificationVerifyAPIView(APIView):

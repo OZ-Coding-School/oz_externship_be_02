@@ -1,4 +1,5 @@
 import email
+from datetime import date, timedelta
 from typing import ClassVar, Type
 
 from django.core import mail
@@ -14,7 +15,7 @@ from apps.core.tests.mixins.test_user_mixins import (
     VerificationMixin,
 )
 from apps.core.utils.test_clients import RedisTestClient
-from apps.users.models import User
+from apps.users.models import User, Withdrawals, WithdrawalsReasonChoices
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.utils.enums import VerificationPurpose
 
@@ -193,6 +194,13 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         """
         복구 이메일 인증 요청
         """
+        withdrawal = Withdrawals.objects.create(
+            user = self.user,
+            reason=WithdrawalsReasonChoices.PRIVACY_CONCERNS,
+            reason_detail="테스트용 탈퇴",
+            due_date=date.today() + timedelta(days=14)
+        )
+
         response = self.client.post(self.send_url, {"email": (email := self.test_email)})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(mail.outbox[0].subject, "탈퇴 계정 복구 이메일 인증")
@@ -210,6 +218,12 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         """
         계정 복구 이메인 인증 성공 케이스
         """
+        withdrawal = Withdrawals.objects.create(
+            user = self.user,
+            reason=WithdrawalsReasonChoices.PRIVACY_CONCERNS,
+            reason_detail="테스트용 탈퇴",
+            due_date=date.today() + timedelta(days=14)
+        )
         data = {"email": (email := self.test_email)}
         self.client.post(self.send_url, data)
         cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{email}"
@@ -226,6 +240,7 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         self.assertTrue(cache.get(verified_key))
 
     def test_email_verify_code_failed(self) -> None:
+
         data = {"email": (email := self.test_email)}
         self.client.post(self.send_url, data)
         response = self.client.post(self.verify_url, {"email": email, "verification_code": "wrong"})
