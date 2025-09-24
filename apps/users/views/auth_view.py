@@ -70,8 +70,6 @@ class EmailLoginAPIView(APIView):
             user, tokens = AuthService.email_login(**serializer.validated_data)
         except AuthenticationFailed as e:
             return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # 로그인 분기 처리
 
