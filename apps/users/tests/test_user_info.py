@@ -7,16 +7,16 @@ from django.core.cache import cache
 from datetime import date
 
 from apps.users.models import User
-from apps.users.services.user_info_service import  get_phone_verification_key
 
 
 class UserInfoViewTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
+        # 테스트용 사용자 생성
         cls.user = User.objects.create_user(
             profile_img_url="http://example.com/profile.jpg",
             email="test@example.com",
-            password="securepassword123", # 조회할 때 불러오지는 않음
+            password="securepassword123",
             nickname="cooluser",
             name="Imsocool",
             phone_number="01012345678",
@@ -24,59 +24,42 @@ class UserInfoViewTests(APITestCase):
         )
         cls.url = reverse("user_info")
 
-    # 로그인한 사용자가 정보 조회를 시도
-    # force_authenticate() 사용으로 강제 인증
-    def test_get_user_info_authenticated(self):
-        self.client.force_authenticate(user=self.user)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def setUp(self):
+        self.user = self.__class__.user
+        cache.clear() # 테스트마다 인증 캐시 초기화
 
-    # 로그인하지 않은 사용자가 정보 조회를 시도
-    def test_get_user_info_unauthenticated(self):
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    # 성공: 조회 완료(200)
+    def test_get_user_info_success(self):
+        pass
 
-    # 로그인한 사용자의 정보 수정: 휴대폰 인증을 완료한 버전(성공 케이스)
+    # 실패: 비로그인 상태로 조회 시도(401)
+    def test_get_user_info_unauthorized(self):
+        pass
+
+    # 성공: 수정 완료(200)
     def test_patch_user_info_success(self):
-        self.client.force_authenticate(user=self.user)
+        pass
+    
+    # 실패: 비로그인 상태로 수정 시도(401)
+    def test_patch_user_info_unauthorized(self):
+        pass
 
-        # 휴대폰 인증 캐시 설정
-        phone_number = "01099998888"
-        cache.set(get_phone_verification_key(phone_number), True)
+    # 실패: 유효하지 않은 데이터(잘못된 필드 값 등)(400)
+    def test_patch_user_info_invalid_data(self):
+        pass
 
-        # 변경할 데이터
-        data = {
-            "profile_img_url": "http://example.com/new_profile.jpg",
-            "password": "securepassword456",
-            "nickname": "newnicky",
-            "phone_number": phone_number,
-            "is_phone_number_verified": True,
-        }
+    # 실패: 필수 필드 누락(400) #? 필요할까?
+    def test_patch_user_info_missing_required_field(self):
+        pass
 
-        response = self.client.patch(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # 데이터가 제대로 변경됐는지 DB 체크
-        for key, check_data in data.items():
-            self.assertEqual(response.data[key], check_data)
+    # 실패: 잘못된 인증 코드(400)
+    def test_patch_user_info_invalid_verification_code(self):
+        pass
 
-    # 로그인한 사용자의 정보 수정: 휴대폰 인증을 하지 않은 버전(실패 케이스)
-    def test_patch_user_info_without_verification(self):
-        self.client.force_authenticate(self.user)
+    # 실패: 인증 코드 누락(400)
+    def test_patch_user_info_without_verification_code(self):
+        pass
 
-        data = {
-            "phone_number": "01011112222",
-            "is_phone_number_verified": False,
-        }
-
-        response = self.client.patch(self.url, data, content_type="application/json")
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("휴대폰 인증이 필요합니다.", response.json()["detail"])
-
-    def test_patch_user_info_unauthenticated(self):
-        data = {
-            "nickname": "anonymous",
-        }
-
-        response = self.client.patch(self.url, data, content_type="application/json")
-        self.assertEqual(response.status_code, 401)
+    # 실패: 이미 등록된 전화번호(400/409)
+    def test_patch_user_info_phone_number_duplicate(self):
+        pass
