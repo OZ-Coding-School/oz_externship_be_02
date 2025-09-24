@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Any, Sequence
 
 from django.core.files.uploadedfile import UploadedFile
 from rest_framework import serializers
@@ -126,10 +126,7 @@ class StudyNoteUpdateSerializer(serializers.ModelSerializer[StudyNote]):
             "delete_attachment_ids",
         ]
 
-class StudyNoteUploadSerializer(serializers.Serializer):
-    image_files = serializers.ListField(
-        child=serializers.ImageField(), write_only=True, required=False
-    )
-    attachment_files = serializers.ListField(
-        child=serializers.FileField(), write_only=True, required=False
-    )
+
+class StudyNoteUploadSerializer(serializers.Serializer[dict[str, Any]]):
+    image_files = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False)
+    attachment_files = serializers.ListField(child=serializers.FileField(), write_only=True, required=False)

@@ -100,14 +100,14 @@ class StudyNoteService:
             raise RuntimeError(f"StudyNote DB 생성 실패, 롤백 완료. Error: {e}")
 
     def update_study_note(
-            self,
-            note: StudyNote,
-            title: Optional[str] = None,
-            content: Optional[str] = None,
-            images: Optional[list[str]] = None,  # 업로드 URL 리스트
-            attachments: Optional[list[Dict[str, str]]] = None,  # {"file_name", "file_url"}
-            delete_image_ids: Optional[list[int]] = None,
-            delete_attachment_ids: Optional[list[int]] = None,
+        self,
+        note: StudyNote,
+        title: Optional[str] = None,
+        content: Optional[str] = None,
+        images: Optional[list[str]] = None,  # 업로드 URL 리스트
+        attachments: Optional[list[Dict[str, str]]] = None,  # {"file_name", "file_url"}
+        delete_image_ids: Optional[list[int]] = None,
+        delete_attachment_ids: Optional[list[int]] = None,
     ) -> StudyNote:
         """스터디 노트 수정"""
 
@@ -118,8 +118,9 @@ class StudyNoteService:
         if delete_image_ids:
             delete_s3_keys.extend(
                 list(
-                    StudyNoteImage.objects.filter(study_note=note, id__in=delete_image_ids)
-                    .values_list("img_url", flat=True)
+                    StudyNoteImage.objects.filter(study_note=note, id__in=delete_image_ids).values_list(
+                        "img_url", flat=True
+                    )
                 )
             )
 
@@ -127,8 +128,9 @@ class StudyNoteService:
         if delete_attachment_ids:
             delete_s3_keys.extend(
                 list(
-                    StudyNoteAttachment.objects.filter(study_note=note, id__in=delete_attachment_ids)
-                    .values_list("file_url", flat=True)
+                    StudyNoteAttachment.objects.filter(study_note=note, id__in=delete_attachment_ids).values_list(
+                        "file_url", flat=True
+                    )
                 )
             )
 
@@ -158,10 +160,12 @@ class StudyNoteService:
 
                 # 첨부파일 추가 (bulk)
                 if attachments:
-                    StudyNoteAttachment.objects.bulk_create([
-                        StudyNoteAttachment(study_note=note, file_url=att["file_url"], file_name=att["file_name"])
-                        for att in attachments
-                    ])
+                    StudyNoteAttachment.objects.bulk_create(
+                        [
+                            StudyNoteAttachment(study_note=note, file_url=att["file_url"], file_name=att["file_name"])
+                            for att in attachments
+                        ]
+                    )
 
                 # 이미지 삭제 (bulk)
                 if delete_image_ids:

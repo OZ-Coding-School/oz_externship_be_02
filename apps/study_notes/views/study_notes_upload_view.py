@@ -8,7 +8,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.study_notes.serializers.study_notes_serializers import StudyNoteUploadSerializer
+from apps.study_notes.serializers.study_notes_serializers import (
+    StudyNoteUploadSerializer,
+)
 from apps.study_notes.services.study_notes_services import StudyNoteService
 
 

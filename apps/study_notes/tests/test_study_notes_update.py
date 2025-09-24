@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 from django.test import TestCase
 from django.urls import reverse
@@ -8,7 +8,11 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.studies.models import StudyGroup
-from apps.study_notes.models.study_notes import StudyNote, StudyNoteImage, StudyNoteAttachment
+from apps.study_notes.models.study_notes import (
+    StudyNote,
+    StudyNoteAttachment,
+    StudyNoteImage,
+)
 from apps.users.models.user import User
 
 
@@ -113,7 +117,9 @@ class StudyNoteUpdateFullTestCase(TestCase):
         self.assertEqual(self.note.images.count(), 0)
         self.assertEqual(self.note.attachments.count(), 0)
         # S3 삭제 함수가 올바른 URL과 함께 호출되었는지 확인
-        mock_s3.delete_files.assert_called_once_with(["https://fake-s3.com/image1.png", "https://fake-s3.com/file1.pdf"])
+        mock_s3.delete_files.assert_called_once_with(
+            ["https://fake-s3.com/image1.png", "https://fake-s3.com/file1.pdf"]
+        )
 
     # 권한 없는 유저
     def test_update_unauthorized_user(self) -> None:

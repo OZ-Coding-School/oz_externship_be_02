@@ -11,15 +11,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.studies.models import StudyGroup
-from apps.study_notes.models.study_notes import (
-    StudyNote
-)
+from apps.study_notes.models.study_notes import StudyNote
 from apps.study_notes.serializers.study_notes_serializers import (
     StudyNoteSerializer,
     StudyNoteUpdateSerializer,
 )
 from apps.study_notes.services.study_notes_services import StudyNoteService
-
 
 
 class StudyNoteDetailView(APIView):
@@ -78,7 +75,7 @@ class StudyNoteDetailView(APIView):
         description="스터디 기록 작성자만 제목, 내용, 이미지, 첨부파일을 수정할 수 있습니다.",
         request=StudyNoteUpdateSerializer,
         responses={
-            200:StudyNoteSerializer ,
+            200: StudyNoteSerializer,
             403: OpenApiResponse(
                 response=OpenApiTypes.OBJECT,
                 description="권한 없음",
