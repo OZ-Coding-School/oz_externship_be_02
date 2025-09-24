@@ -9,6 +9,7 @@ from apps.study_notes.models.study_notes import (
     StudyNoteAttachment,
     StudyNoteImage,
 )
+from apps.users.models import User
 
 
 class StudyNoteImageSerializer(serializers.ModelSerializer[StudyNoteImage]):
@@ -23,7 +24,14 @@ class StudyNoteAttachmentSerializer(serializers.ModelSerializer[StudyNoteAttachm
         fields = ["id", "file_name", "file_url"]
 
 
+class UserInfoSerializer(serializers.ModelSerializer[User]):
+    class Meta:
+        model = User
+        fields = ["id", "nickname", "profile_img_url"]
+
+
 class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
+    author = UserInfoSerializer(read_only=True)
     images = StudyNoteImageSerializer(many=True, read_only=True)
     attachments = StudyNoteAttachmentSerializer(many=True, read_only=True)
     image_files: serializers.ListField = serializers.ListField(
@@ -32,6 +40,8 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
     attachment_files: serializers.ListField = serializers.ListField(
         child=serializers.FileField(), write_only=True, required=False
     )
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
 
     class Meta:
         model = StudyNote
@@ -49,7 +59,7 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "study_group", "author", "ai_summary", "created_at", "updated_at"]
+        read_only_fields = ["id", "study_group", "ai_summary"]
 
     # 이미지 유효성 검사
     def validate_image_files(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
@@ -72,3 +82,13 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
             if f.content_type not in ALLOWED_ATTACHMENT_FILE_TYPES:
                 raise serializers.ValidationError(f"{f.name}: 지원하지 않는 파일 형식입니다.")
         return files
+
+
+# 스터디 노트 기록 전체 목록 조회
+class StudyNoteListSerializer(serializers.ModelSerializer[StudyNote]):
+    author = UserInfoSerializer(read_only=True)
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+
+    class Meta:
+        model = StudyNote
+        fields = ["id", "title", "author", "created_at"]

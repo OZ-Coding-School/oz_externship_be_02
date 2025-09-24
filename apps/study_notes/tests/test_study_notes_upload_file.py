@@ -43,7 +43,7 @@ class StudyNoteUploadViewTest(TestCase):
 
         image_file = create_temp_image()
         attachment_file = SimpleUploadedFile("test.txt", b"hello world", content_type="text/plain")
-        data = {"images_file": [image_file], "attachments_file": [attachment_file]}  # 키 이름 수정
+        data = {"images_file": [image_file], "attachments_file": [attachment_file]}
 
         response = cast(Response, self.client.post(url, data, format="multipart"))
         self.assertEqual(response.status_code, 200)
@@ -56,7 +56,7 @@ class StudyNoteUploadViewTest(TestCase):
         """노트 생성 API 정상 동작 테스트"""
         from django.urls import reverse
 
-        url = reverse("create-study-note", kwargs={"group_uuid": str(self.study_group.uuid)})
+        url = reverse("study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
 
         image_file = create_temp_image()
         attachment_file = SimpleUploadedFile("test.txt", b"hello world", content_type="text/plain")
