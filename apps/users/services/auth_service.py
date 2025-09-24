@@ -5,6 +5,8 @@ from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken, Token
 
+from apps.users.models import User
+
 
 class AuthService:
     """
@@ -12,15 +14,19 @@ class AuthService:
     """
 
     @staticmethod
-    def email_login(email: str, password: str) -> dict[str, str]:
+    def email_login(email: str, password: str) -> tuple[User, dict[str, str]]:
         user = authenticate(email=email, password=password)
         if user is None:
             raise AuthenticationFailed("이메일 또는 비밀번호가 틀립니다")
+        if not isinstance(user, User):
+            raise AuthenticationFailed("invalid user type")
+
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
+        tokens = {"access_token": access_token, "refresh_token": refresh_token}
 
-        return {"access": access_token, "refresh": refresh_token}
+        return user, tokens
 
 
 class JWTService:

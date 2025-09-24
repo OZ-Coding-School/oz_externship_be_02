@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.users.models import Withdrawals
+from apps.users.models import Withdrawals, user
 from apps.users.utils.enums import Permission, UserStatus
 
 
@@ -24,6 +24,7 @@ class AdminWithdrawalListSerializer(serializers.ModelSerializer[Withdrawals]):
         ]
 
     def get_permission(self, obj: Withdrawals) -> str:
+        assert obj.user is not None, "Withdrawals.user가 None입니다"
         return Permission.from_user(obj.user).value[0]
 
 
@@ -56,6 +57,7 @@ class AdminWithdrawalDetailSerializer(serializers.ModelSerializer[Withdrawals]):
         ]
 
     def get_permission(self, obj: Withdrawals) -> str:
+        assert obj.user is not None, "Withdrawals.object must have a user"
         return Permission.from_user(obj.user).value[0]
 
     def get_status(self, obj: Withdrawals) -> str:

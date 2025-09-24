@@ -1,5 +1,4 @@
 # apps/users/services/withdrawals_service.py
-
 from datetime import date, timedelta
 
 from django.db import transaction
@@ -38,6 +37,7 @@ def recover_account(email: str, verification_code: str) -> None:
     # 2) 유저 계정 복구와 탈퇴 요청 삭제: 탈퇴 요청만 삭제하는 거고 user 모델의 상태는 변경하지 않으므로 user.is_active = True를 명시적으로 설정
     with transaction.atomic():
         user = withdrawal.user
+        assert user is not None
         user.is_active = True
         user.save()
         withdrawal.delete()

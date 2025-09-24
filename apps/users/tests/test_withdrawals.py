@@ -93,7 +93,8 @@ class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
         )
 
         # 2) EmailVerificationMixin을 통해 인증 코드 세팅
-        self._set_verification_code(self.user.email, "123456", VerificationPurpose.RECOVER_ACCOUNT)
+        if self.user.email is not None:
+            self._set_verification_code(self.user.email, "123456", VerificationPurpose.RECOVER_ACCOUNT)
 
         # 3) 탈퇴 신청을 번복(계정 복구 요청)
         data = {

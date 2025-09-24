@@ -106,8 +106,8 @@ class PasswordResetEmailVerificationSendAPIView(APIView):
         email = serializer.validated_data["email"]
         purpose = VerificationPurpose.RESET_PASSWORD
 
-        if not User.objects.filtet(email=email).exists():
-            return Response({"error" : "해당 이메일로 가입된 계정이 없습니다"},status=status.HTTP_400_BAD_REQUEST )
+        if not User.objects.filter(email=email).exists():
+            return Response({"error": "해당 이메일로 가입된 계정이 없습니다"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             email_service.send_verification_email(email, purpose)
         except EmailSendingFailedError as e:
@@ -171,8 +171,7 @@ class AccountRecoveryEmailVerificationSendAPIView(APIView):
         purpose = VerificationPurpose.RECOVER_ACCOUNT
 
         if not User.objects.filter(email=email).exists():
-            return Response({"error": "해당 이메일로 가입된 계정이 없습니다."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "해당 이메일로 가입된 계정이 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             email_service.send_verification_email(email, purpose)

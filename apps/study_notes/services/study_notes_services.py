@@ -83,7 +83,9 @@ class StudyNoteService:
 
                 # AI 요약본
                 note.ai_summary = generate_study_summary(
-                    content=content, author_name=author.name, date_str=note.created_at.strftime("%Y년 %-m월 %-d일 %A")
+                    content=content,
+                    author_name=author.name or "작성자 미상",
+                    date_str=note.created_at.strftime("%Y년 %-m월 %-d일 %A"),
                 )
                 note.save(update_fields=["ai_summary"])
 
