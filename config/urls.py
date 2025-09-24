@@ -16,6 +16,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("api/v1/study-groups", include("apps.studies.urls")),
     path("api/v1/lectures", include("apps.lectures.urls")),
     path("api/v1/study-notes", include("apps.study_notes.urls.study_note_urls")),
+    path("api/v1/applications", include("apps.applications.urls")),
 ]
 
 if settings.DEBUG:
