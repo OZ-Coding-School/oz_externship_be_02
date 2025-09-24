@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Self, cast
 
 from django.apps import apps
 from django.db import models
@@ -13,13 +13,13 @@ if TYPE_CHECKING:
 
 
 class RecruitmentListQuerySet(models.QuerySet["Recruitment"]):
-    def filter_is_closed(self) -> RecruitmentListQuerySet:
+    def filter_is_closed(self) -> Self:
         return self.filter(is_closed=False)
 
-    def order_last(self) -> RecruitmentListQuerySet:
+    def sort_by_latest(self) -> Self:
         return self.order_by("-created_at")
 
-    def recm_list_queryset(self) -> RecruitmentListQuerySet:
+    def recm_list_queryset(self) -> Self:
         # 순환참조를 피하기 위해서 'images'라는 역방향 관계 필드를 이용해 모델 class 이용
         reverse_relation = self.model._meta.get_field("images")
         RecruitmentImage = cast("RecruitmentImage", reverse_relation.related_model)
@@ -44,3 +44,19 @@ if TYPE_CHECKING:
 
 else:
     RecruitmentListManager = _RecruitmentListManager
+
+
+class AdminRecruitmentQuerySet(models.QuerySet["Recruitment"]):
+    def with_counts(self) -> Self:
+        return self.annotate(bookmark_count=Count("bookmark_users", distinct=True))
+
+    def prefetch_tags(self) -> Self:
+        return self.prefetch_related("tags")
+
+
+class AdminRecruitmentManager(models.Manager["Recruitment"]):
+    def get_queryset(self) -> AdminRecruitmentQuerySet:
+        return AdminRecruitmentQuerySet(self.model, using=self._db)
+
+    def get_admin_listings(self) -> AdminRecruitmentQuerySet:
+        return self.get_queryset().with_counts().prefetch_tags()

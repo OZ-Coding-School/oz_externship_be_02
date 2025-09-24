@@ -6,7 +6,10 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.models.base import UUIDBaseModel
-from apps.recruitments.managers.managers_list import RecruitmentListManager
+from apps.recruitments.managers import (
+    AdminRecruitmentManager,
+    RecruitmentListManager,
+)
 from apps.recruitments.models.tags import Tag
 from apps.studies.models import StudyGroup
 from apps.users.models.user import User
@@ -63,6 +66,9 @@ class Recruitment(UUIDBaseModel):
 
     # 공고 리스트에서 사용 manager
     object_list = RecruitmentListManager()
+
+    # 관리자 페이지용 manager
+    admin_objects = AdminRecruitmentManager()
 
     def __str__(self) -> str:
         return self.title

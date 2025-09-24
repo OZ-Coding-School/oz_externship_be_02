@@ -40,6 +40,30 @@ class LectureSerializer(serializers.ModelSerializer[Lecture]):
         ]
 
 
+class AdminRecruitmentListSerializer(serializers.ModelSerializer[Recruitment]):
+    tags = TagSerializer(many=True, read_only=True)
+    status = serializers.SerializerMethodField()
+    bookmark_count = serializers.IntegerField()
+
+    class Meta:
+        model = Recruitment
+        fields = [
+            "id",
+            "uuid",
+            "title",
+            "tags",
+            "close_at",
+            "status",
+            "views_count",
+            "bookmark_count",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_status(self, obj: Recruitment) -> str:
+        return "closed" if obj.is_closed else "recruiting"
+
+
 class RecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
     author = UserSerializer(read_only=True)
     attachments = RecruitmentAttachmentSerializer(many=True, read_only=True)
