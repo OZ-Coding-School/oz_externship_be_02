@@ -23,6 +23,7 @@ class StudyNoteDetailView(APIView):
     """
     스터디 노트 상세 조회
     """
+
     permission_classes = [IsAuthenticated]
     service_class = StudyNoteService
 
