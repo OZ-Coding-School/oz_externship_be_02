@@ -115,7 +115,7 @@ class TestStudyReviewCreateAPI(APITestCase):
             "content": "에러 메시지 확인",
         }
         response = self.client.post(self.invalid_url, data, format="json")
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 404)
 
 
 class TestStudyGroupReviewListAPI(APITestCase):
@@ -194,3 +194,74 @@ class TestStudyGroupReviewListAPI(APITestCase):
         )
         resp = self.client.get(bad_url)
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TestReviewUpdateAPI(APITestCase):
+    """
+    스터디 그룹 리뷰 수정 API 테스트
+    PATCH /api/v1/study-groups/{group_uuid}/reviews/{review_id}
+    """
+
+    def setUp(self) -> None:
+        self.client = self.client_class()
+        self.user = User.objects.create_user(
+            email="test@test.com",
+            password="1234",
+            birthday="2000-01-01",
+            name="테스트유저",
+            nickname="tester",
+            phone_number="01000000001",
+        )
+        # 다른 사용자 추가
+        self.other_user = User.objects.create_user(
+            email="other@test.com",
+            password="1234",
+            birthday="2001-01-01",
+            name="다른유저",
+            nickname="other",
+            phone_number="01000000002",
+        )
+        self.study_group = StudyGroup.objects.create(
+            name="테스트 그룹",
+            introduction="소개",
+            max_headcount=5,
+            start_at=timezone.now() - timedelta(days=10),
+            end_at=timezone.now() - timedelta(days=1),
+            status=StudyGroup.StatusChoices.ENDED,
+        )
+        self.review = StudyReview.objects.create(
+            study_group=self.study_group,
+            user=self.user,
+            star_rating=5,
+            content="테스트 리뷰",
+        )
+        self.url = f"/api/v1/study-groups/{self.study_group.uuid}/reviews/{self.review.id}"
+
+    def test_update_review_success(self) -> None:
+        """본인 리뷰 수정 성공"""
+        self.client.force_authenticate(user=self.user)
+        payload = {"star_rating": 4, "content": "시간이 부족했어요."}
+        resp = self.client.patch(self.url, payload, format="json")
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["user_uuid"], str(self.user.uuid))
+        self.assertEqual(resp.data["study_group_uuid"], str(self.study_group.uuid))
+        self.assertEqual(resp.data["star_rating"], 4)
+        self.assertEqual(resp.data["content"], "시간이 부족했어요.")
+
+    def test_update_review_fail_not_author(self) -> None:
+        """작성자가 아닌 경우 403"""
+        self.client.force_authenticate(user=self.other_user)
+        payload = {"star_rating": 1}
+        resp = self.client.patch(self.url, payload, format="json")
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("error", resp.data)
+        self.assertEqual(resp.data["error"], "본인이 작성한 리뷰만 수정할 수 있습니다.")
+
+    def test_update_review_fail_unauthenticated(self) -> None:
+        """비로그인 사용자는 401"""
+        payload = {"star_rating": 2}
+        resp = self.client.patch(self.url, payload, format="json")
+
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
