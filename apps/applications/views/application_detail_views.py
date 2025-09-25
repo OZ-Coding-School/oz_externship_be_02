@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.request import Request
@@ -16,11 +17,11 @@ from apps.applications.serializers.application_detail_serializers import (
 from apps.applications.services.application_status_services import (
     ApplicationStatusService,
 )
-from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 
 class ApplicationDetailView(APIView):
     permission_classes = [IsApplicantOrRecruiter]
+
     @extend_schema(
         responses={
             200: ApplicationDetailSerializer,
@@ -46,6 +47,7 @@ class ApplicationDetailView(APIView):
         serializer = ApplicationDetailSerializer(application)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 @extend_schema(
     summary="지원서 승인",
     responses={
@@ -56,7 +58,6 @@ class ApplicationDetailView(APIView):
         500: OpenApiResponse(description="서버 에러"),
     },
 )
-
 class ApplicationStatusBaseView(APIView):
     permission_classes = [IsRecruiterOnly]
     action: str = ""
@@ -88,6 +89,7 @@ class ApplicationStatusBaseView(APIView):
         serializer = ApplicationDetailSerializer(application)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
 @extend_schema(
     summary="지원서 승인",
     responses={
@@ -100,6 +102,7 @@ class ApplicationStatusBaseView(APIView):
 )
 class ApplicationApproveView(ApplicationStatusBaseView):
     action = "approve"
+
 
 @extend_schema(
     summary="지원서 거절",

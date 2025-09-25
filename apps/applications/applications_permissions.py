@@ -3,15 +3,11 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from apps.applications.models import Application
-from apps.recruitments.models import Recruitment
 from apps.users.models import User
 
 
 class IsApplicantOrRecruiter(BasePermission):
-    """
-    지원자 본인 또는 공고 작성자만 접근 가능
-    """
-
+    # 지원자 본인 또는 공고 작성자만 접근 가능
     def has_object_permission(
         self,
         request: Request,
