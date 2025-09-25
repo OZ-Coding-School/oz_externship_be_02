@@ -42,5 +42,7 @@ class RecruitmentListSerializer(serializers.ModelSerializer[Recruitment]):
             "close_at",
             "views_count",
             "bookmarks_count",
+            "created_at",
+            "updated_at",
         )
         read_only_fields = fields
