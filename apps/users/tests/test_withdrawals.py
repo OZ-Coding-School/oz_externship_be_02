@@ -77,10 +77,16 @@ class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
         self.recovery_url = reverse("account_recovery")  # mypy 에러 방지용
 
     # * 인증 코드 설정
-    def _set_verification_code(self, email: str, code: str, purpose: VerificationPurpose) -> None:
-        cache.clear()  # 인증 코드 설정하는 캐시 초기화
-        cache_key = f"{purpose}-{email}"
-        cache.set(cache_key, code, timeout=300)  # 5분 동안 유효
+    def _set_verification_code(
+        self,
+        email: str,
+        verification_code: str,
+        purpose: VerificationPurpose = VerificationPurpose.RECOVER_ACCOUNT,
+        timeout: int = 300,
+    ) -> str:
+        cache_key = f"{purpose.value}-{email}"
+        cache.set(cache_key, verification_code, timeout=timeout)  # 5분 동안 유효
+        return verification_code
 
     # * 탈퇴 복구
     def test_account_recovery_request(self) -> None:
@@ -92,14 +98,15 @@ class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
             due_date=date.today() + timedelta(days=14),
         )
 
-        # 2) EmailVerificationMixin을 통해 인증 코드 세팅
-        if self.user.email is not None:
-            self._set_verification_code(self.user.email, "123456", VerificationPurpose.RECOVER_ACCOUNT)
+        # 이메일 발송 api 호출
+        self.client.post(path=reverse("recover_account_send"), data={"email": self.user.email})
+        cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{self.user.email}"
+        verification_code = cache.get(cache_key)
 
-        # 3) 탈퇴 신청을 번복(계정 복구 요청)
+        # 3) 탈퇴 신청 번복 (계정 복구 요청)
         data = {
             "email": self.user.email,
-            "verification_code": "123456",
+            "verification_code": verification_code,
         }
 
         response = self.client.post(self.recovery_url, data)

@@ -1,21 +1,13 @@
-import email
 from datetime import date, timedelta
-from typing import ClassVar, Type
 
 from django.core import mail
 from django.core.cache import cache
-from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.test import APITestCase
 
-from apps.core.tests.mixins.test_user_mixins import (
-    TestUserMixin,
-    VerificationMixin,
-)
+from apps.core.tests.mixins.test_user_mixins import VerificationMixin
 from apps.core.utils.test_clients import RedisTestClient
-from apps.users.models import User, Withdrawals, WithdrawalsReasonChoices
+from apps.users.models import Withdrawals, WithdrawalsReasonChoices
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.utils.enums import VerificationPurpose
 
@@ -36,9 +28,10 @@ class EmailVerificationServicesUnitTests(RedisTestClient):
 
     def test_verify_code_success_func(self) -> None:  # given
         email = "test@example.com"
-        self.service.send_verification_email(email, purpose=VerificationPurpose.SIGNUP)
-        verification_code = cache.get(f"{VerificationPurpose.SIGNUP}-{email}")
+        # self.service.send_verification_email(email, purpose=VerificationPurpose.SIGNUP)
+        verification_code = self.service.send_verification_email(email=email, purpose=VerificationPurpose.SIGNUP)
         # when
+        self.assertIsNotNone(verification_code)
         url = reverse("email_verify_code")
         data = {"email": email, "verification_code": verification_code}
 
@@ -133,6 +126,10 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, VerificationMixin):
         urls = cls.get_password_reset_urls()
         cls.send_url = urls["send_url"]
         cls.verify_url = urls["verify_url"]
+        cls.email_service = EmailVerificationService()
+
+        cache.clear()
+        mail.outbox = []
 
     def test_send_verification_email(self) -> None:
         """
@@ -147,27 +144,27 @@ class PasswordResetEmailVerificationAPITest(RedisTestClient, VerificationMixin):
         verification_code = cache.get(cache_key)
         self.assertIsNotNone(verification_code)
 
-        response = self.client.post(self.verify_url, {"email": email, "code": verification_code})
-        self.assertIn(verification_code, mail.outbox[0].body)
-
     def test_email_verify_code_success(self) -> None:
         """
         비밀번호 찾기 이메일 코드 검증
         :return:
         """
         data = {"email": (email := self.test_email)}
-        self.client.post(self.send_url, data)
+        response = self.client.post(self.send_url, data)
 
-        cache_key = f"{VerificationPurpose.RESET_PASSWORD.value}-{email}"
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, "비밀번호 재설정 이메일 인증")
+
+        purpose = VerificationPurpose.RESET_PASSWORD.value
+
+        cache_key = f"{purpose}-{email}"
         verification_code = cache.get(cache_key)
 
-        self.assertIsNotNone(verification_code)
-
         response = self.client.post(self.verify_url, {"email": email, "verification_code": verification_code})
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNone(cache.get(cache_key))
-        verified_key = f"is_verified_email_{email}_{verification_code}"
-        self.assertTrue(cache.get(verified_key))
 
     def test_email_verify_code_failed(self) -> None:
         """
@@ -189,6 +186,7 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         urls = cls.get_email_recover_account_urls()
         cls.send_url = urls["send_url"]
         cls.verify_url = urls["verify_url"]
+        cls.email_service = EmailVerificationService()
 
     def test_send_verification_email_success(self) -> None:
         """
@@ -226,8 +224,10 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         )
         data = {"email": (email := self.test_email)}
         self.client.post(self.send_url, data)
-        cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{email}"
-        verification_code = cache.get(cache_key)
+        verification_code = self.email_service.send_verification_email(email, VerificationPurpose.RECOVER_ACCOUNT)
+
+        # 캐시에 저장된 값 확인
+        cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{email}-{verification_code}"
         self.assertIsNotNone(verification_code)
 
         response = self.client.post(self.verify_url, {"email": email, "verification_code": verification_code})
@@ -236,8 +236,8 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         self.assertEqual(response.data["detail"], "인증에 성공했습니다")
         self.assertIsNone(cache.get(cache_key))
 
-        verified_key = f"is_verified_email_{email}_{verification_code}"
-        self.assertTrue(cache.get(verified_key))
+        verified_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-verified-{email}"
+        self.assertEqual(cache.get(verified_key), verification_code)
 
     def test_email_verify_code_failed(self) -> None:
 

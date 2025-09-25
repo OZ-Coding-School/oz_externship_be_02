@@ -1,6 +1,7 @@
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -9,6 +10,7 @@ from apps.core.tests.mixins.test_user_mixins import VerificationMixin
 from apps.users.models import User
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.exceptions import PhoneVerificationCodeFailedError
+from apps.users.utils.enums import VerificationPurpose
 
 
 class UserSignupTestCase(APITestCase, VerificationMixin):
@@ -76,18 +78,37 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
         cls.url = reverse("signup")
         cls.signup_data = cls._create_signup_data()
 
-    @patch("apps.users.serializers.signup_serializers.email_service.is_verified")
-    def test_email_not_verified(self, mock_is_verified: MagicMock) -> None:
+    @patch("apps.users.views.phone_verification_view.twilio_service.verify_service")
+    def test_email_not_verified(self, mock_twilio_service: MagicMock) -> None:
         """
         이메일 인증번호 불일치 케이스
         """
-        data = self._create_signup_data()
-        mock_is_verified.return_value = False
+        mock_twilio_service.verifications.create.return_value.status = "pending"
+        mock_twilio_service.verification_checks.create.return_value.status = "approved"
 
-        response = self.client.post(self.url, self.signup_data)
+        data = self._create_signup_data()
+        email = data["email"]
+        email_cache_key = f"{VerificationPurpose.SIGNUP.value}-{email}"
+        # 이메일 인증
+        self.client.post(reverse("email_send_code"), data={"email": email})
+        email_verification_code = cache.get(email_cache_key)
+        self.client.post(
+            reverse("email_verify_code"), data={"email": email, "verification_code": str(email_verification_code)}
+        )
+
+        # 휴대폰 인증
+        phone_number = data["phone_number"]
+        self.client.post(reverse("phone_send_code"), data={"phone_number": phone_number})
+        self.client.post(
+            reverse("phone_verify_code"),
+            data={"phone_number": phone_number, "verification_code": data["phone_verification_code"]},
+        )
+
+        response = self.client.post(self.url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
+        self.assertIn("이메일 인증 코드가 올바르지 않거나 만료되었습니다.", response.data["error"])
 
     @patch("apps.users.serializers.signup_serializers.phone_service.is_verified")
     def test_phone_verification_code(self, mock_is_verified: MagicMock) -> None:
