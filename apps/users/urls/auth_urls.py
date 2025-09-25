@@ -18,7 +18,7 @@ from apps.users.views.phone_verification_view import (
     SendVerificationCodeAPIView,
     VerifyCodeAPIView,
 )
-from apps.users.views.social_user import KakaoLoginCallbackView
+from apps.users.views.social_login_views import KakaoLoginCallbackView
 from apps.users.views.withdrawals_view import AccountRecoveryAPIView, WithdrawalAPIView
 
 urlpatterns = [
