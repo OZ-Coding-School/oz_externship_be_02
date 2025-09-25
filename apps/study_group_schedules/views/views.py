@@ -20,6 +20,7 @@ from apps.study_group_schedules.serializers.schedule_serializers import (
     StudyGroupScheduleResponseSerializer,
 )
 from apps.study_group_schedules.services.schedule_services import (
+    get_schedule_by_id_for_user,
     get_user_accessible_schedules,
 )
 from apps.users.models import User
@@ -141,13 +142,11 @@ class StudyGroupScheduleDetailView(APIView):
             if not schedule_exists:
                 return Response({"detail": "해당 스케줄을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
-            schedule = (
-                GroupSchedule.schedules.filter_accessible_by_user_and_group(
-                    user_id=user.id, study_group_uuid=study_group_uuid
-                )
-                .filter(id=schedule_id)
-                .get_with_detailed_info()
-                .first()
+            schedule = get_schedule_by_id_for_user(
+                schedule_id=schedule_id,
+                user_id=user.id,
+                study_group_uuid=study_group_uuid,
+                include_detailed_info=True,
             )
 
             if not schedule:

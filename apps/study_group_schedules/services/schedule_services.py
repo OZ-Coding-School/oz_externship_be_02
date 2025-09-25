@@ -81,13 +81,13 @@ def get_today_schedules_for_user(user_id: int) -> QuerySet["GroupSchedule"]:
     )
 
 
-def get_study_group_upcoming_schedules(study_group_id: int, days_ahead: int = 3) -> QuerySet["GroupSchedule"]:
+def get_study_group_upcoming_schedules(study_group_uuid: UUID, days_ahead: int = 3) -> QuerySet["GroupSchedule"]:
     """특정 스터디 그룹의 다가오는 스케줄 목록 조회 (기본 3일 이내)"""
     today = date.today()
     end_date = today + timedelta(days=days_ahead)
 
     return (
-        GroupSchedule.schedules.filter_by_study_group(study_group_id)
+        GroupSchedule.schedules.filter_by_study_group(study_group_uuid)
         .filter_by_date_range(start_date=today, end_date=end_date)
         .with_study_group_info()
         .order_by_date_asc()
@@ -98,6 +98,7 @@ def get_schedule_by_id_for_user(
     schedule_id: int,
     user_id: int,
     study_group_uuid: str | UUID | None = None,
+    include_detailed_info: bool = False,
 ) -> GroupSchedule | None:
     """
     사용자가 접근 가능한 특정 스케줄을 조회하는 서비스 함수
@@ -105,7 +106,8 @@ def get_schedule_by_id_for_user(
     Args:
         schedule_id: 스케줄 ID
         user_id: 사용자 ID
-        study_group_uuid: 스터디 그룹 UUID (선택, 추가 검증용)
+        study_group_uuid: 스터디 그룹 UUID
+        include_detailed_info: 상세 정보 포함 여부
 
     Returns:
         GroupSchedule 객체 또는 None (접근 권한이 없거나 존재하지 않는 경우)
@@ -119,6 +121,12 @@ def get_schedule_by_id_for_user(
             if isinstance(study_group_uuid, str):
                 study_group_uuid = UUID(study_group_uuid)
             queryset = queryset.filter(study_group__uuid=study_group_uuid)
+
+        # 상세 정보 포함 여부에 따른 쿼리 최적화
+        if include_detailed_info:
+            queryset = queryset.get_with_detailed_info()
+        else:
+            queryset = queryset.with_study_group_info()
 
         return queryset.first()
 
