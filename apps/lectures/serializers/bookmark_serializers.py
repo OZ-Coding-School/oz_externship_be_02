@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from rest_framework import serializers
 
@@ -32,17 +32,15 @@ def _minutes_to_hhmm(minutes: int) -> str:
     return f"{hours:02d}:{mins:02d}"
 
 
-# Lecture 목록
-class LectureSerializer(serializers.ModelSerializer[Lecture]):
+class BookmarkLectureSerializer(serializers.ModelSerializer[Lecture]):
+    lecture_uuid = serializers.UUIDField(source="uuid", read_only=True)
     duration_hhmm = serializers.SerializerMethodField()
     difficulty = serializers.SerializerMethodField()
-
-    lecture_id = serializers.IntegerField(source="id", read_only=True)
 
     class Meta:
         model = Lecture
         fields = (
-            "lecture_id",
+            "lecture_uuid",
             "title",
             "instructor",
             "thumbnail_img_url",
@@ -62,15 +60,14 @@ class LectureSerializer(serializers.ModelSerializer[Lecture]):
         return "MIDDLE" if raw == "NORMAL" else raw
 
 
-# 북마크 목록
 class LectureBookmarkListSerializer(serializers.ModelSerializer[LectureBookmark]):
-    lecture = LectureSerializer(read_only=True)
+    lecture = BookmarkLectureSerializer()
 
     class Meta:
         model = LectureBookmark
         fields = ("lecture",)
 
     def to_representation(self, instance: LectureBookmark) -> dict[str, Any]:
-        rep = super().to_representation(instance)
-        lecture_rep = rep.get("lecture", {})
-        return dict(lecture_rep)
+        base: dict[str, Any] = super().to_representation(instance)
+        lecture_data = base.get("lecture")
+        return lecture_data if isinstance(lecture_data, dict) else {}
