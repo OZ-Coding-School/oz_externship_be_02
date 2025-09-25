@@ -1,10 +1,11 @@
 # tests/users/test_user_info_view.py
 
-from rest_framework.test import APITestCase
+from datetime import date
+
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
-from django.core.cache import cache
-from datetime import date
+from rest_framework.test import APITestCase
 
 from apps.users.models import User
 
@@ -61,5 +62,9 @@ class UserInfoViewTests(APITestCase):
         pass
 
     # 실패: 이미 등록된 전화번호(400/409)
-    def test_patch_user_info_phone_number_duplicate(self):
+    def test_patch_user_info_already_registered_phone_number(self):
+        pass
+
+    # 실패: 중복 닉네임(400/409)
+    def test_patch_user_info_already_exists_nickname(self):
         pass
