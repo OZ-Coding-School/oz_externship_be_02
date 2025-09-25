@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from django.db import IntegrityError
+from django.db import IntegrityError, models
 
 from apps.applications.models import Application
 from apps.recruitments.models import Recruitment
@@ -23,3 +23,7 @@ class ApplicationService:
 
         application = Application.objects.create_application(user=user, recruitment=recruitment, **validated_data)
         return application
+
+    def get_my_applications(self, user: User) -> models.QuerySet[Application]:
+        """사용자의 지원 내역을 조회하는 비즈니스 로직을 수행한다."""
+        return Application.objects.get_my_applications(user=user)

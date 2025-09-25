@@ -50,3 +50,12 @@ class ApplicationManager(models.Manager["Application"]):
         # 생성 로직만 남긴다.
         application = self.create(user=user, recruitment=recruitment, **validated_data)
         return application
+
+    def get_my_applications(self, user: User) -> models.QuerySet["Application"]:
+        """현재 사용자가 지원한 내역을 최적화하여 조회합니다."""
+        return (
+            self.filter(user=user)
+            .select_related("recruitment__study_group")
+            .prefetch_related("recruitment__tags", "recruitment__images", "recruitment__study_group__lectures")
+            .order_by("-created_at")
+        )
