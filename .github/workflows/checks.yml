@@ -234,7 +234,7 @@ jobs:
           [run]
           branch = False
           parallel = True
-          concurrency = multiprocessing
+          concurrency = multiprocessing, thread
           source = apps
           omit = 
             */migrations/*
