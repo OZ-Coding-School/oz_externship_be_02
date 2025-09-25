@@ -111,13 +111,22 @@ class ScheduleParticipantSerializer(serializers.ModelSerializer[GroupMember]):
         }
 
 
-class StudyGroupDetailSerializer(serializers.Serializer[StudyGroup]):
+class StudyGroupDetailSerializer(serializers.ModelSerializer[StudyGroup]):
     """스터디 그룹 상세 정보 시리얼라이저"""
 
     study_group_uuid = serializers.UUIDField(source="uuid", read_only=True)
     study_group_name = serializers.CharField(source="name", read_only=True)
     description = serializers.CharField(read_only=True)
     leader_nickname = serializers.CharField(source="leader.nickname", read_only=True)
+
+    class Meta:
+        model = StudyGroup
+        fields = [
+            "study_group_uuid",
+            "study_group_name",
+            "description",
+            "leader_nickname",
+        ]
 
 
 class StudyGroupScheduleDetailSerializer(serializers.ModelSerializer[GroupSchedule]):
