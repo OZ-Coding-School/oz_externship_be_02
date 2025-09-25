@@ -72,10 +72,9 @@ class SignUpEmailVerifiCationVerifyAPIView(APIView):
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         purpose = VerificationPurpose.SIGNUP
         try:
-            email_service.verify_code(purpose, **serializer.validated_data)
+            email_service.is_verified(purpose, **serializer.validated_data)
         except EmailVerificationCodeFailedError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"detail": "인증이 완료되었습니다"}, status=status.HTTP_200_OK)

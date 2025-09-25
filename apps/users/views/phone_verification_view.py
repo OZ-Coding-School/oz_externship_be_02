@@ -21,6 +21,7 @@ from apps.users.services.phone_service import (
     PhoneVerificationService,
     TwilioAuthService,
 )
+from apps.users.utils.enums import VerificationPurpose
 
 twilio_service = TwilioAuthService()
 twilio_verified = PhoneVerificationService
@@ -44,9 +45,9 @@ class SendVerificationCodeAPIView(APIView):
     def post(self, request: Request) -> Response:
         serializer = PhoneVerificationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
+        purpose = VerificationPurpose.SIGNUP
         try:
-            twilio_service.send_verification_code(phone_number=serializer.data["phone_number"])
+            twilio_service.send_verification_code (serializer.data["phone_number"], purpose)
         except PhoneSendingFailedError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"detail": "휴대폰 인증번호가 전송되었습니다"}, status=status.HTTP_200_OK)
@@ -70,9 +71,9 @@ class VerifyCodeAPIView(APIView):
     def post(self, request: Request) -> Response:
         serializer = VerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
+        purpose = VerificationPurpose.SIGNUP
         try:
-            twilio_verified.is_verified(**serializer.validated_data)
+            twilio_verified.is_verified(purpose, **serializer.validated_data)
         except PhoneVerificationCodeFailedError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"detail": "휴대폰 인증되었습니다"}, status=status.HTTP_200_OK)

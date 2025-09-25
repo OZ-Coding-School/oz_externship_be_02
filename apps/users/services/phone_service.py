@@ -9,6 +9,7 @@ from apps.users.services.exceptions import (
     PhoneSendingFailedError,
     PhoneVerificationCodeFailedError,
 )
+from apps.users.utils.enums import VerificationPurpose
 
 
 class TwilioAuthService:
@@ -17,7 +18,7 @@ class TwilioAuthService:
         self.service_sid = settings.TWILIO_VERIFY_SERVICE_SID
 
     # 인증번호 전송
-    def send_verification_code(self, phone_number: str) -> None:
+    def send_verification_code(self, phone_number: str, purpose: VerificationPurpose) -> None:
         try:
             self.client.verify.v2.services(self.service_sid).verifications.create(to=phone_number, channel="sms")
         except TwilioRestException as e:
@@ -25,25 +26,25 @@ class TwilioAuthService:
 
     # 인증번호 검증
 
-    def check_verification_code(self, phone_number: str, code: str) -> None:
+    def check_verification_code(self, phone_number: str, verification_code: str, purpose: VerificationPurpose) -> None:
         try:
             verification_check = self.client.verify.v2.services(self.service_sid).verification_checks.create(
-                to=phone_number, code=code
+                to=phone_number, code=verification_code
             )
         except TwilioRestException as e:
             raise PhoneVerificationCodeFailedError(f"휴대폰 인증에 실패했습니다 {e}")
         if verification_check.status != "approved":
             raise PhoneVerificationCodeFailedError("휴대폰 인증번호가 일치하지 않습니다")
 
-        verified_key = f"is_verified_phone_{phone_number}_{code}"
+        verified_key = f"{purpose.value}-verified-{phone_number}-{verification_code}"
         cache.set(verified_key, True, timeout=600)
 
 
 class PhoneVerificationService:
     @staticmethod
-    def is_verified(phone_number: str, verification_code: str) -> bool:
+    def is_verified(phone_number: str, verification_code: str, purpose: VerificationPurpose) -> bool:
         """
         번호 + 코드 검증 완료 상태 확인
         """
-        verified_key = f"is_verified_phone_{phone_number}_{verification_code}"
+        verified_key = f"{purpose.value}-verified-{phone_number}-{verification_code}"
         return cache.get(verified_key) is True

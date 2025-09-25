@@ -8,6 +8,7 @@ from apps.users.services.phone_service import (
     PhoneVerificationService,
     TwilioAuthService,
 )
+from apps.users.utils.enums import VerificationPurpose
 
 twilio_service = TwilioAuthService()
 email_service = EmailVerificationService()
@@ -41,7 +42,7 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         if not email:
             raise serializers.ValidationError("이메일 주소가 필요합니다.")
 
-        if not email_service.is_verified(email, value):
+        if not email_service.is_verified(email=email, verification_code=value, purpose=VerificationPurpose.SIGNUP):
             raise serializers.ValidationError("이메일 인증 코드가 올바르지 않거나 만료되었습니다.")
 
         return value
@@ -54,7 +55,7 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         if not phone_number:
             raise serializers.ValidationError("휴대폰 번호가 필요합니다.")
 
-        if not phone_service.is_verified(phone_number=phone_number, verification_code=value):
+        if not phone_service.is_verified(phone_number=phone_number, verification_code=value, purpose=VerificationPurpose.SIGNUP):
             raise serializers.ValidationError("휴대폰 인증 코드가 올바르지 않거나 만료되었습니다.")
 
         return value
