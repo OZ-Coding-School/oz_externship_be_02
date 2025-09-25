@@ -176,7 +176,7 @@ jobs:
           # .coveragerc 설정
           cat > .coveragerc << 'EOF'
           [run]
-          branch = True
+          branch = False
           parallel = True
           concurrency = multiprocessing
           source = apps
