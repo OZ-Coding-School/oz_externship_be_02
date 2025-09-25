@@ -24,6 +24,11 @@ class StudyNoteAttachmentSerializer(serializers.ModelSerializer[StudyNoteAttachm
         fields = ["id", "file_name", "file_url"]
 
 
+class AttachmentInputSerializer(serializers.Serializer[dict[str, Any]]):
+    file_name = serializers.CharField(max_length=255)
+    file_url = serializers.URLField()
+
+
 class UserInfoSerializer(serializers.ModelSerializer[User]):
     class Meta:
         model = User
@@ -95,25 +100,10 @@ class StudyNoteListSerializer(serializers.ModelSerializer[StudyNote]):
 
 
 class StudyNoteUpdateSerializer(serializers.ModelSerializer[StudyNote]):
-    """
-    PATCH용 스터디 노트 수정 시리얼라이저
-    - title, content 수정 가능
-    - 이미지/첨부 파일 추가: image_urls, attachment_urls
-    - 기존 이미지/첨부 삭제: delete_image_ids, delete_attachment_ids
-    """
-
     title = serializers.CharField(required=False, max_length=50)
     content = serializers.CharField(required=False)
     image_urls = serializers.ListField(child=serializers.URLField(), required=False, write_only=True)
-    attachment_urls = serializers.ListField(
-        child=serializers.DictField(
-            child=serializers.CharField(),
-        ),
-        required=False,
-        write_only=True,
-    )
-    delete_image_ids = serializers.ListField(child=serializers.IntegerField(), required=False, write_only=True)
-    delete_attachment_ids = serializers.ListField(child=serializers.IntegerField(), required=False, write_only=True)
+    attachment_urls = AttachmentInputSerializer(many=True, required=False, write_only=True)
 
     class Meta:
         model = StudyNote
@@ -122,8 +112,6 @@ class StudyNoteUpdateSerializer(serializers.ModelSerializer[StudyNote]):
             "content",
             "image_urls",
             "attachment_urls",
-            "delete_image_ids",
-            "delete_attachment_ids",
         ]
 
 
