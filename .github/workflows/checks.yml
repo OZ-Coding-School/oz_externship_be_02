@@ -1,169 +1,519 @@
 name: Code Quality Checks
-
-# develop, main 브랜치를 상대로 풀 리퀘스트가 생성될 때 CI가 실행됩니다.
 on:
   pull_request:
     branches:
-      - "main"
-      - "develop"
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+env:
+  PYTHON_VERSION: "3.12"
+  COVERAGE_FAIL_UNDER: 80
 
 jobs:
-  ci:
-    # 가장 최신 버전의 Ubuntu를 OS 환경으로 설정합니다.
+  # 변경 파일 감지 + 매트릭스 생성
+  changes:
     runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      dependencies: ${{ steps.filter.outputs.dependencies }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/**'
+              - '**/*.py'
+              - 'manage.py'
+              - 'config/**'
+            dependencies:
+              - 'pyproject.toml'
+              - 'poetry.lock'
+
+      - name: Build app matrix (5 apps per batch)
+        id: set-matrix
+        run: |
+          # apps 디렉토리에서 모든 앱 목록 수집
+          APPS=$(find apps -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | paste -sd ' ')
+          echo "Found apps: $APPS"
+          
+          # Python으로 5개씩 그룹화
+          MATRIX=$(python3 -c "
+          import json
+          apps = '$APPS'.strip().split() if '$APPS'.strip() else []
+          batch_size = 5
+          matrix = {'include': []}
+          
+          if not apps:
+              matrix['include'] = [{'batch': 'no-apps'}]
+          else:
+              for i in range(0, len(apps), batch_size):
+                  batch = apps[i:i + batch_size]
+                  matrix['include'].append({'batch': ' '.join(batch)})
+          
+          print(json.dumps(matrix))
+          ")
+          
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix: $MATRIX"
+
+  code-quality:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 6
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Cache Poetry
-        id: cache-poetry
-        uses: actions/cache@v3
+      # 🎯 캐시 체크 (ID 추가)
+      - name: Multi-layer dependency cache
+        uses: actions/cache@v4
+        id: cache-deps
         with:
-          key: poetry-2.0.0
-          path: ~/.local/ # poetry 의 실제 설치 경로를 통째로 캐시함.
+          path: |
+            ~/.local/
+            ~/.cache/uv/
+            .venv/
+          key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            deps-${{ runner.os }}-
 
-      - name: Install Poetry
-        if: steps.cache-poetry.outputs.cache-hit != 'true'
-        run: | # 개행을 하여 여러줄로 명령어를 사용하고 싶을때 파이프라인 기호 | 를 사용한다.
+      # 🚀 캐시 miss일 때만 도구 설치
+      - name: Install tools and dependencies (cache miss only)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          # Poetry 설치
           curl -sSL https://install.python-poetry.org | python3 -
+          ~/.local/bin/poetry self add poetry-plugin-export
+          
+          # uv 설치 
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          
+          # PATH 설정
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          
+          # 의존성 설치
+          poetry export --format=requirements.txt --output=requirements.txt --with=dev --without-hashes
+          uv venv
+          uv pip sync requirements.txt
 
-      # 포에트리 환경변수를 깃허브 패스(.zshrc 같은 쉘 설정파일)에 기입하여 포에트리 명령어를 사용할 수 있게 합니다.
-      - name: Register Poetry bin
-        run: echo "${HOME}/.poetry/bin" >> $GITHUB_PATH
-
-      - name: Cache dependencies
-        id: cache-venv
-        uses: actions/cache@v3
-        with:
-          # hashFiles를 사용하여 파일의 해시값을 비교하여 파이썬 버전이 바뀌었을 때, lock 파일이나 toml 파일이 바뀌었을때 종속성을 재설치합니다.
-          # 바뀐 것이 없는 경우에는 캐싱된 종속성을 사용합니다.
-          key: python-${{ steps.setup-python.outputs.python-version }}-poetry-lock-${{ hashFiles('poetry.lock') }}-toml-${{ hashFiles('pyproject.toml') }}-poetry-2.0.0
-          path: /home/runner/.cache/pypoetry/virtualenvs/
-
-      - name: Install dependencies
-        if: steps.cache-venv.outputs.cache-hit != 'true'
-        run: poetry install --no-root
-
-      - name: Run isort (Import sorting)
+      # 🎯 PATH 설정 (항상 실행)
+      - name: Setup PATH
         run: |
-          poetry run isort . --check --diff
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Run black (Code formatting)
+      - name: Setup environment
         run: |
-          poetry run black . --check
+          mkdir -p envs
+          echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
+          echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
 
-      - name: Set multiline environment variable
+      - name: Run code quality checks (parallel & fail-fast)
+        shell: bash
         run: |
-          mkdir envs
-          echo "${{ secrets.DJANGO_ENVS }}" >> envs/.local.env
-
-      - name: Run Mypy
-        run: poetry run mypy .
+          set -euo pipefail
+          source .venv/bin/activate
+          pids=()
+          isort . --check --diff & pids+=($!)
+          black . --check & pids+=($!)
+          mypy . & pids+=($!)
+          status=0
+          for pid in "${pids[@]}"; do
+            if ! wait "$pid"; then
+              status=1
+            fi
+          done
+          exit $status
 
   test:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.changes.outputs.matrix) }}
     services:
-      # postgresql db service
       db:
         image: postgres:14
-        ports:
-          - 5432:5432
+        ports: ['5432:5432']
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: pw1234
           POSTGRES_DB: ozcoding_externship
           TZ: Asia/Seoul
-        # health check
+          # 테스트 성능 최적화 설정
+          POSTGRES_INITDB_ARGS: "--auth-host=trust --auth-local=trust"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      # redis service
+          --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,size=1024m
+          --shm-size=256m
+
       redis:
         image: redis:latest
-        ports:
-          - 6379:6379
+        ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Cache Poetry
-        id: cache-poetry
-        uses: actions/cache@v3
+      # 🎯 캐시 체크 (ID 추가)
+      - name: Multi-layer dependency cache
+        uses: actions/cache@v4
+        id: cache-deps
         with:
-          key: poetry-2.0.0
-          path: ~/.local/
+          path: |
+            ~/.local/
+            ~/.cache/uv/
+            .venv/
+          key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            deps-${{ runner.os }}-
 
-      - name: Install Poetry
-        if: steps.cache-poetry.outputs.cache-hit != 'true'
+      # 🚀 캐시 miss일 때만 도구 설치
+      - name: Install tools and dependencies (cache miss only)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          # Poetry 설치
           curl -sSL https://install.python-poetry.org | python3 -
+          ~/.local/bin/poetry self add poetry-plugin-export
+          
+          # uv 설치
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          
+          # PATH 설정
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          
+          # 의존성 설치
+          poetry export --format=requirements.txt --output=requirements.txt --with=dev --without-hashes
+          echo "tblib" >> requirements.txt
+          uv venv
+          uv pip sync requirements.txt
 
-      # 포에트리 환경변수를 깃허브 패스(.zshrc 같은 쉘 설정파일)에 기입하여 포에트리 명령어를 사용할 수 있게 합니다.
-      - name: Register Poetry bin
-        run: echo "${HOME}/.poetry/bin" >> $GITHUB_PATH
+      # 🎯 PATH 설정 (항상 실행)
+      - name: Setup PATH
+        run: |
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Cache dependencies
-        id: cache-venv
-        uses: actions/cache@v3
+      - name: Setup optimized environment
+        run: |
+          mkdir -p envs
+          echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
+          # Django 테스트 최적화 환경변수
+          echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
+          echo "DEBUG=False" >> $GITHUB_ENV
+          echo "LOGGING_DISABLE_EXISTING_LOGGERS=True" >> $GITHUB_ENV
+          echo "USE_TZ=False" >> $GITHUB_ENV
+          echo "PASSWORD_HASHERS=[\"django.contrib.auth.hashers.MD5PasswordHasher\"]" >> $GITHUB_ENV
+
+      - name: Wait for services (faster timeout)
+        run: |
+          timeout 20 bash -c 'until nc -z localhost 5432; do sleep 1; done'
+          timeout 20 bash -c 'until nc -z localhost 6379; do sleep 1; done'
+
+      # 테스트 DB 캐싱
+      - name: Cache test database
+        uses: actions/cache@v4
         with:
-          key: python-${{ steps.setup-python.outputs.python-version }}-poetry-lock-${{ hashFiles('poetry.lock') }}-toml-${{ hashFiles('pyproject.toml') }}-poetry-2.0.0
-          path: /home/runner/.cache/pypoetry/virtualenvs/
+          path: /tmp/test_db_migrated
+          key: test-db-${{ runner.os }}-${{ hashFiles('apps/**/migrations/*.py') }}
 
-      - name: Install dependencies
-        if: steps.cache-venv.outputs.cache-hit != 'true'
-        run: poetry install --no-root
-
-      - name: Set multiline environment variable
+      - name: Run migrations (with keepdb optimization)
         run: |
-          mkdir envs
-          echo "${{ secrets.DJANGO_ENVS }}" >> envs/.local.env
+          source .venv/bin/activate
+          # 첫 실행시만 마이그레이션, 이후는 스킵
+          if [ ! -f "/tmp/test_db_migrated" ]; then
+            python manage.py migrate
+            touch /tmp/test_db_migrated
+          fi
 
-      # run migration
-      - name: Run Django Migration
+      - name: Setup coverage for parallel tests
         run: |
-          poetry run python manage.py migrate
+          source .venv/bin/activate
+          # sitecustomize.py 생성
+          cat > sitecustomize.py << 'EOF'
+          import coverage
+          coverage.process_startup()
+          EOF
+          
+          # .coveragerc 설정
+          cat > .coveragerc << 'EOF'
+          [run]
+          branch = False
+          parallel = True
+          concurrency = multiprocessing, thread
+          source = apps
+          omit = 
+            */migrations/*
+            */venv/*
+            */env/*
+            */node_modules/*
+            manage.py
+            */settings/*
+            */test_*.py
+            */tests.py
+            */conftest.py
+          
+          [report]
+          precision = 2
+          show_missing = True
+          exclude_lines =
+            pragma: no cover
+            def __repr__
+            raise AssertionError
+            raise NotImplementedError
+          EOF
 
-      - name: Check each app has test & Run coverage
+      # 🔧 핵심 수정: parallel 파일들만 생성하고 combine하지 않음
+      - name: Run tests and generate coverage data
+        shell: bash
         run: |
-          ran_tests=false
-          apps=$(find apps -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
-      
-          for app_name in $apps; do
-            app_path="apps/$app_name"
-            test_files=$(find "$app_path" -type f \( -name "tests.py" -o -name "test_*.py" \))
-            if [ -n "$test_files" ] && grep -q "def test_" $test_files 2>/dev/null; then
-              echo "✅ Running tests for $app_name"
-              poetry run coverage run --source="$app_path" --append manage.py test "apps.$app_name"
-              ran_tests=true
-              echo "📊 Coverage for $app_name:"
-              poetry run coverage report -m --include="$app_path/*"
-              echo ""
+          set -eo pipefail
+          source .venv/bin/activate
+          echo "🚀 Django 최적화된 parallel 테스트 실행 중..."
+          
+          # Coverage 환경변수 설정
+          export COVERAGE_PROCESS_START=./.coveragerc
+          
+          # 배치 앱 목록
+          BATCH="${{ matrix.batch }}"
+          echo "Testing batch: $BATCH"
+          
+          if [ "$BATCH" = "no-apps" ]; then
+            echo "⚠️ No apps found, skipping tests"
+            # 빈 coverage 파일 생성하여 merge 오류 방지
+            touch .coverage.empty
+            exit 0
+          fi
+          
+          # apps. prefix 추가해서 Django test runner에 전달
+          TEST_APPS=""
+          for app in $BATCH; do
+            if [ -z "$TEST_APPS" ]; then
+              TEST_APPS="apps.$app"
             else
-              echo "⚠️  No test functions found in $app_name"
+              TEST_APPS="$TEST_APPS apps.$app"
             fi
           done
-      
-          if [ "$ran_tests" = true ]; then
-            echo "======================="
-            echo "📊 Total Coverage Report:"
-            poetry run coverage report -m
+          
+          echo "Running tests for: $TEST_APPS"
+          
+          # 🎯 parallel mode로 실행 (combine하지 않음!)
+          coverage run --parallel-mode --concurrency=multiprocessing \
+            manage.py test $TEST_APPS --parallel 4 --keepdb --verbosity=1 \
+            --debug-mode --buffer --no-input
+          
+          echo "📁 생성된 coverage 파일들:"
+          ls -la .coverage* || echo "No coverage files found"
+
+      # 🔧 개별 앱 리포트는 임시로 combine해서 생성 (업로드용 파일은 보존)
+      - name: Generate individual app coverage reports
+        shell: bash
+        run: |
+          set -eo pipefail
+          source .venv/bin/activate
+          
+          # 배치의 앱 목록
+          BATCH="${{ matrix.batch }}"
+          
+          if [ "$BATCH" = "no-apps" ]; then
+            echo "⚠️ No apps to report coverage for"
+            exit 0
+          fi
+          
+          # parallel 파일들이 있는지 확인
+          if ls .coverage.* >/dev/null 2>&1; then
+            echo "📊 임시로 combine해서 리포트 생성..."
+            # 백업을 위해 parallel 파일들 복사
+            cp .coverage.* /tmp/ 2>/dev/null || true
+            
+            # 임시로 combine (리포트 생성용)
+            coverage combine
+            
+            overall_status=0
+            
+            for app in $BATCH; do
+              app_path="apps/$app"
+              echo "📊 Coverage report for $app:"
+              
+              # 해당 앱에 테스트가 있는지 확인
+              test_files=$(find "$app_path" -type f -name "test*.py" 2>/dev/null || echo "")
+              if [ -n "$test_files" ] && grep -q -r "def test_" "$app_path" 2>/dev/null; then
+                # 해당 앱의 coverage 리포트 생성
+                coverage report -m --include="$app_path/*"
+
+                # 해당 앱의 coverage 퍼센트 확인                
+                coverage_pct=$(coverage report --include="$app_path/*" | tail -n 1 | awk '{print $4}' | tr -d '%' 2>/dev/null || echo "0")
+                
+                echo "📈 $app Coverage: ${coverage_pct}%"
+                
+                if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
+                  echo "✅ $app: ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족"
+                else
+                  echo "❌ $app: ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달"
+                  overall_status=1
+                fi
+              else
+                echo "⚠️ $app: No test functions found. Skipping coverage check."
+              fi
+              echo "---"
+            done
+            
+            # 백업된 parallel 파일들 복원
+            cp /tmp/.coverage.* . 2>/dev/null || true
+            # combine된 파일은 삭제 (parallel 파일들만 업로드하기 위해)
+            rm -f .coverage
+            
+            if [ $overall_status -ne 0 ]; then
+              echo "❌ 일부 앱이 coverage 기준을 충족하지 못했습니다."
+              exit 1
+            fi
           else
-            echo "🚫 No tests were run. Skipping coverage report."
+            echo "⚠️ No coverage files to process"
+          fi
+
+      # 🎯 핵심: parallel 파일들(.coverage.*)을 업로드
+      - name: Upload coverage data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-${{ strategy.job-index }}
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 3
+
+  coverage-merge:
+    runs-on: ubuntu-latest
+    needs: test
+    if: needs.test.result != 'skipped'
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install coverage
+        run: pip install coverage
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-data-*
+          path: coverage-reports
+          merge-multiple: true
+
+      - name: Generate and check combined coverage report
+        run: |
+          set -euo pipefail
+          
+          if [ ! -d "coverage-reports" ] || [ -z "$(ls -A coverage-reports)" ]; then
+            echo "⚠️ No coverage artifacts were downloaded. Skipping combine step."
+            exit 0
+          fi
+          
+          echo "📥 Downloaded artifacts contents:"
+          ls -laR coverage-reports/
+          
+          echo "📊 Combining coverage data from coverage-reports directory..."
+          coverage combine --keep coverage-reports
+          
+          if [ -f ".coverage" ]; then
+            echo "✅ Coverage data combined successfully."
+            
+            echo "📊 Generating and Checking Combined Coverage Report:"
+            coverage report -m
+            
+            coverage_pct=$(coverage report | tail -n 1 | awk '{print $4}' | tr -d '%')
+            echo "📈 전체 Coverage: ${coverage_pct}%"
+            
+            if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
+              echo "✅ ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족"
+            else
+              echo "❌ ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달"
+              coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }}
+            fi
+            
+            coverage xml -o coverage.xml
+            coverage html -d htmlcov
+            echo "✅ Combined coverage report generated"
+          else
+            echo "⚠️ Failed to combine coverage data. No '.coverage' file was created."
+            exit 1
+          fi
+
+      - name: Upload combined coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-coverage-report
+          path: |
+            coverage.xml
+            htmlcov/
+            .coverage
+          retention-days: 30
+
+  ci-summary:
+    runs-on: ubuntu-latest
+    needs: [changes, code-quality, test, coverage-merge]
+    if: always()
+    timeout-minutes: 2
+    steps:
+      - name: Check overall CI status
+        run: |
+          # 변경사항이 없으면 성공으로 처리
+          if [[ "${{ needs.changes.outputs.backend }}" == "false" ]]; then
+            echo "✅ 백엔드 변경사항이 없어 테스트를 건너뛰었습니다."
+            exit 0
+          fi
+          
+          if [[ "${{ needs.code-quality.result }}" == "success" && 
+                "${{ needs.test.result }}" == "success" && 
+                ("${{ needs.coverage-merge.result }}" == "success" || "${{ needs.coverage-merge.result }}" == "skipped") ]]; then
+            echo "✅ 모든 CI 체크가 통과했습니다!"
+          else
+            echo "❌ CI 실패 - Code Quality: ${{ needs.code-quality.result }}, Tests: ${{ needs.test.result }}, Coverage: ${{ needs.coverage-merge.result }}"
+            exit 1
           fi
