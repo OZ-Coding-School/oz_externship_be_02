@@ -68,7 +68,7 @@ class EmailVerificationService:
         cache.set(verified_key, True, timeout=600)
 
     @staticmethod
-    def is_verified(email: str, verification_code: str, purpose:VerificationPurpose ) -> bool:
+    def is_verified(email: str, verification_code: str, purpose: VerificationPurpose) -> bool:
         """
         이메일 검증된 상태인지 확인
         """

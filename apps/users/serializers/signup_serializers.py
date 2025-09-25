@@ -55,7 +55,9 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         if not phone_number:
             raise serializers.ValidationError("휴대폰 번호가 필요합니다.")
 
-        if not phone_service.is_verified(phone_number=phone_number, verification_code=value, purpose=VerificationPurpose.SIGNUP):
+        if not phone_service.is_verified(
+            phone_number=phone_number, verification_code=value, purpose=VerificationPurpose.SIGNUP
+        ):
             raise serializers.ValidationError("휴대폰 인증 코드가 올바르지 않거나 만료되었습니다.")
 
         return value
