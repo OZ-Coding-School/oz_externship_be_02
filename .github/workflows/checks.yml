@@ -1,5 +1,4 @@
 name: Code Quality Checks
-
 on:
   pull_request:
     branches:
@@ -23,43 +22,59 @@ env:
 jobs:
   code-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
       - name: Cache Poetry
         uses: actions/cache@v4
         with:
           key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: ~/.local/
-      - name: Install Poetry
-        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install Poetry and export plugin
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          ~/.local/bin/poetry self add poetry-plugin-export
+
       - name: Add Poetry to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
-          path: /home/runner/.cache/pypoetry/virtualenvs/
-      - name: Install dependencies
-        run: poetry install --no-root
+
+      - name: Export dependencies to requirements.txt
+        run: |
+          poetry export --format=requirements.txt --output=requirements.txt --with=dev
+
+      - name: Install dependencies with uv
+        run: |
+          uv venv
+          uv pip sync requirements.txt
+
       - name: Setup environment
         run: |
           mkdir -p envs
           echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
           echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
+
       - name: Run code quality checks (parallel & fail-fast)
         shell: bash
         run: |
           set -euo pipefail
+          source .venv/bin/activate
           pids=()
-          poetry run isort . --check --diff & pids+=($!)
-          poetry run black . --check & pids+=($!)
-          poetry run mypy . & pids+=($!)
+          isort . --check --diff & pids+=($!)
+          black . --check & pids+=($!)
+          mypy . & pids+=($!)
           status=0
           for pid in "${pids[@]}"; do
             if ! wait "$pid"; then
@@ -68,47 +83,9 @@ jobs:
           done
           exit $status
 
-  discover-apps:
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    outputs:
-      matrix: ${{ steps.find-apps.outputs.matrix }}
-      count: ${{ steps.find-apps.outputs.count }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-      - name: Find apps with tests
-        id: find-apps
-        shell: bash
-        run: |
-          set -euo pipefail
-          apps=$(find apps -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null || echo "")
-          if [ -z "$apps" ]; then
-            echo "No apps found"
-            echo "matrix={\"app\":[]}" >> $GITHUB_OUTPUT
-            echo "count=0" >> $GITHUB_OUTPUT
-          else
-            echo "Found apps: $apps"
-            app_list=$(echo "$apps" | jq -R . | jq -s . | jq -c .)
-            matrix_json="{\"app\":$app_list}"
-            echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
-            echo "count=$(echo "$apps" | wc -w)" >> $GITHUB_OUTPUT
-            echo "Generated matrix: $matrix_json"
-          fi
-
   test:
     runs-on: ubuntu-latest
-    needs: discover-apps
-    if: needs.discover-apps.outputs.count != '0'
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      max-parallel: 10
-      matrix: ${{ fromJson(needs.discover-apps.outputs.matrix) }}
+    timeout-minutes: 15
     services:
       db:
         image: postgres:14
@@ -123,6 +100,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
       redis:
         image: redis:latest
         ports: ['6379:6379']
@@ -131,156 +109,153 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
       - name: Cache Poetry
         uses: actions/cache@v4
         with:
           key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
           path: ~/.local/
-      - name: Install Poetry
-        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install Poetry and export plugin
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          ~/.local/bin/poetry self add poetry-plugin-export
+
       - name: Add Poetry to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
-          path: /home/runner/.cache/pypoetry/virtualenvs/
-      - name: Install dependencies
-        run: poetry install --no-root
+
+      - name: Export dependencies to requirements.txt
+        run: |
+          poetry export --format=requirements.txt --output=requirements.txt --with=dev
+          echo "tblib" >> requirements.txt  # Django parallel 테스트용
+
+      - name: Install dependencies with uv
+        run: |
+          uv venv
+          uv pip sync requirements.txt
+
       - name: Setup environment
         run: |
           mkdir -p envs
           echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
           echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
+
       - name: Wait for services
         run: |
           timeout 30 bash -c 'until nc -z localhost 5432; do sleep 1; done'
           timeout 30 bash -c 'until nc -z localhost 6379; do sleep 1; done'
+
       - name: Run migrations
-        run: poetry run python manage.py migrate
-      - name: Run tests and check coverage for ${{ matrix.app }}
+        run: |
+          source .venv/bin/activate
+          python manage.py migrate
+
+      - name: Setup coverage for parallel tests
+        run: |
+          source .venv/bin/activate
+          # sitecustomize.py 생성
+          cat > sitecustomize.py << 'EOF'
+          import coverage
+          coverage.process_startup()
+          EOF
+          
+          # .coveragerc 설정
+          cat > .coveragerc << 'EOF'
+          [run]
+          branch = True
+          parallel = True
+          concurrency = multiprocessing
+          source = apps
+          omit = 
+            */migrations/*
+            */venv/*
+            */env/*
+            */node_modules/*
+            manage.py
+            */settings/*
+            */test_*.py
+            */tests.py
+            */conftest.py
+          
+          [report]
+          precision = 2
+          show_missing = True
+          exclude_lines =
+            pragma: no cover
+            def __repr__
+            raise AssertionError
+            raise NotImplementedError
+          EOF
+
+      - name: Run parallel tests with coverage
         shell: bash
         run: |
           set -eo pipefail
-          app_name="${{ matrix.app }}"
-          app_path="apps/$app_name"
-          echo "🚀 Testing $app_name..."
-
-          test_files=$(find "$app_path" -type f -name "test*.py")
-          if [ -n "$test_files" ] && grep -q -r "def test_" $app_path; then
-            echo "✅ Running tests for $app_name"
-            poetry run coverage run --parallel-mode --source="$app_path" manage.py test "apps.$app_name" --verbosity=1
-            
-            echo "🔄 Combining coverage data for this job..."
-            poetry run coverage combine --keep
-            
-            echo "📊 Coverage report for $app_name:"
-            poetry run coverage report -m --include="$app_path/*" || true
-
-            echo "🔎 Validating coverage for $app_name..."
-            coverage_pct=$(poetry run coverage report --include="$app_path/*" | tail -n 1 | awk '{print $4}' | tr -d '%')
-            echo "Parsed coverage = ${coverage_pct}%"
-            if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
-              echo "✅ ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족, CI 통과"
-            else
-              echo "❌ ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달, CI 실패"
-              poetry run coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }} --include="$app_path/*"
-            fi
+          source .venv/bin/activate
+          echo "🚀 Django parallel 테스트 실행 중..."
+          
+          # Coverage 환경변수 설정
+          export COVERAGE_PROCESS_START=./.coveragerc
+          
+          # Parallel 테스트 실행
+          coverage run --parallel-mode --concurrency=multiprocessing manage.py test --parallel --keepdb --verbosity=1
+          
+          echo "📊 Coverage 데이터 결합 중..."
+          coverage combine
+          
+          echo "📋 Coverage 리포트 생성 중..."
+          coverage report -m
+          
+          # Coverage 검증
+          coverage_pct=$(coverage report | tail -n 1 | awk '{print $4}' | tr -d '%')
+          echo "전체 Coverage: ${coverage_pct}%"
+          
+          if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
+            echo "✅ ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족"
           else
-            echo "⚠️ No test functions found in $app_name. Skipping coverage generation."
+            echo "❌ ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달"
+            coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }}
           fi
-      - name: Upload coverage data for ${{ matrix.app }}
+          
+          # XML 리포트 생성
+          coverage xml
+
+      - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-data-${{ matrix.app }}
-          path: .coverage.*
-          include-hidden-files: true
-          if-no-files-found: ignore
-          retention-days: 3
+          name: coverage-report
+          path: |
+            coverage.xml
+            .coverage
+          retention-days: 30
 
   finalize:
     runs-on: ubuntu-latest
     needs: [code-quality, test]
     if: always()
-    timeout-minutes: 5
+    timeout-minutes: 2
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install coverage
-        run: pip install coverage
-      - name: Download all coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-data-*
-          path: coverage-reports
-          merge-multiple: true
-      - name: Generate and check combined coverage report
-        id: combined-coverage
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ ! -d "coverage-reports" ] || [ -z "$(ls -A coverage-reports)" ]; then
-            echo "⚠️ No coverage artifacts were downloaded. Skipping combine step."
-            echo "combined=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
-          echo "📥 Downloaded artifacts contents into 'coverage-reports':"
-          ls -laR coverage-reports/
-
-          echo "📊 Combining coverage data from 'coverage-reports' directory..."
-          coverage combine --keep coverage-reports
-
-          if [ -f ".coverage" ]; then
-            echo "✅ Coverage data combined successfully."
-            
-            echo "📊 Generating and Checking Combined Coverage Report:"
-            coverage report -m
-            
-            coverage_pct=$(coverage report | tail -n 1 | awk '{print $4}' | tr -d '%')
-            echo "Parsed coverage = ${coverage_pct}%"
-            if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
-              echo "✅ ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족, CI 통과"
-            else
-              echo "❌ ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달, CI 실패"
-              coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }}
-            fi
-            
-            coverage xml -o coverage.xml
-            echo "✅ Combined coverage report generated: coverage.xml"
-            echo "combined=true" >> $GITHUB_OUTPUT
-          else
-            echo "⚠️ Failed to combine coverage data. No '.coverage' file was created."
-            exit 1
-          fi
-      - name: Upload combined coverage artifact
-        if: steps.combined-coverage.outputs.combined == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: combined-coverage-report
-          path: |
-            coverage.xml
-            .coverage
-          include-hidden-files: true
-          retention-days: 30
       - name: Check overall CI status
         run: |
           if [[ "${{ needs.code-quality.result }}" == "success" && 
-                ("${{ needs.test.result }}" == "success" || "${{ needs.test.result }}" == "skipped") ]]; then
-            echo "✅ All CI checks passed!"
+                "${{ needs.test.result }}" == "success" ]]; then
+            echo "✅ 모든 CI 체크가 통과했습니다!"
           else
-            echo "❌ CI failed - Code Quality: ${{ needs.code-quality.result }}, Tests: ${{ needs.test.result }}"
+            echo "❌ CI 실패 - Code Quality: ${{ needs.code-quality.result }}, Tests: ${{ needs.test.result }}"
             exit 1
           fi
