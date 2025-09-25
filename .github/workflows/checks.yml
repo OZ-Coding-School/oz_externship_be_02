@@ -201,38 +201,87 @@ jobs:
             raise NotImplementedError
           EOF
 
-      - name: Run parallel tests with coverage
+      - name: Run parallel tests with coverage (ALL apps at once)
         shell: bash
         run: |
           set -eo pipefail
           source .venv/bin/activate
-          echo "🚀 Django parallel 테스트 실행 중..."
+          echo "🚀 Django parallel 테스트 실행 중 (모든 앱)..."
           
           # Coverage 환경변수 설정
           export COVERAGE_PROCESS_START=./.coveragerc
           
-          # Parallel 테스트 실행
+          # 모든 테스트를 parallel로 한번에 실행
           coverage run --parallel-mode --concurrency=multiprocessing manage.py test --parallel --keepdb --verbosity=1
           
           echo "📊 Coverage 데이터 결합 중..."
           coverage combine
+
+      - name: Generate individual app coverage reports
+        shell: bash
+        run: |
+          set -eo pipefail
+          source .venv/bin/activate
           
-          echo "📋 Coverage 리포트 생성 중..."
+          echo "📋 각 앱별 개별 Coverage 리포트 생성 중..."
+          
+          # apps 디렉토리에서 앱 목록 찾기
+          apps=$(find apps -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null || echo "")
+          
+          overall_status=0
+          
+          if [ -n "$apps" ]; then
+            for app in $apps; do
+              app_path="apps/$app"
+              echo "📊 Coverage report for $app:"
+              
+              # 해당 앱에 테스트가 있는지 확인
+              test_files=$(find "$app_path" -type f -name "test*.py" 2>/dev/null || echo "")
+              if [ -n "$test_files" ] && grep -q -r "def test_" "$app_path" 2>/dev/null; then
+                # 해당 앱의 coverage 리포트 생성
+                coverage report -m --include="$app_path/*"
+                
+                # 해당 앱의 coverage 퍼센트 확인
+                coverage_pct=$(coverage report --include="$app_path/*" | tail -n 1 | awk '{print $4}' | tr -d '%' 2>/dev/null || echo "0")
+                
+                echo "📈 $app Coverage: ${coverage_pct}%"
+                
+                if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
+                  echo "✅ $app: ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족"
+                else
+                  echo "❌ $app: ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달"
+                  overall_status=1
+                fi
+              else
+                echo "⚠️ $app: No test functions found. Skipping coverage check."
+              fi
+              echo "---"
+            done
+          else
+            echo "⚠️ No apps found in apps/ directory"
+          fi
+          
+          # 전체 coverage 리포트
+          echo "📊 전체 Coverage 리포트:"
           coverage report -m
           
-          # Coverage 검증
-          coverage_pct=$(coverage report | tail -n 1 | awk '{print $4}' | tr -d '%')
-          echo "전체 Coverage: ${coverage_pct}%"
+          total_coverage_pct=$(coverage report | tail -n 1 | awk '{print $4}' | tr -d '%')
+          echo "📈 전체 Coverage: ${total_coverage_pct}%"
           
-          if (( ${coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
-            echo "✅ ${coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족"
+          if (( ${total_coverage_pct%.*} >= ${{ env.COVERAGE_FAIL_UNDER }} )); then
+            echo "✅ 전체: ${total_coverage_pct}% ≥ ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 충족"
           else
-            echo "❌ ${coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달"
-            coverage report --fail-under=${{ env.COVERAGE_FAIL_UNDER }}
+            echo "❌ 전체: ${total_coverage_pct}% < ${{ env.COVERAGE_FAIL_UNDER }}% — 기준 미달"
+            overall_status=1
           fi
           
           # XML 리포트 생성
           coverage xml
+          
+          if [ $overall_status -ne 0 ]; then
+            echo "❌ 일부 앱이 coverage 기준을 충족하지 못했습니다."
+            exit 1
+          fi
 
       - name: Upload coverage reports
         if: always()
