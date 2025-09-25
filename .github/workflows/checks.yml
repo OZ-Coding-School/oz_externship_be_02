@@ -86,14 +86,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      # 향상된 다단계 캐싱
+      # 🎯 캐시 체크 (ID 추가)
       - name: Multi-layer dependency cache
         uses: actions/cache@v4
+        id: cache-deps
         with:
           path: |
             ~/.local/
@@ -104,20 +100,30 @@ jobs:
             deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
             deps-${{ runner.os }}-
 
-      - name: Fast dependency installation
+      # 🚀 캐시 miss일 때만 도구 설치
+      - name: Install tools and dependencies (cache miss only)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
-          # Poetry 설치 (캐시된 경우 빠름)
-          if [ ! -f "$HOME/.local/bin/poetry" ]; then
-            curl -sSL https://install.python-poetry.org | python3 -
-            ~/.local/bin/poetry self add poetry-plugin-export
-          fi
-          export PATH="$HOME/.local/bin:$PATH"
+          # Poetry 설치
+          curl -sSL https://install.python-poetry.org | python3 -
+          ~/.local/bin/poetry self add poetry-plugin-export
           
-          # 빠른 export + uv 설치
+          # uv 설치 
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          
+          # PATH 설정
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          
+          # 의존성 설치
           poetry export --format=requirements.txt --output=requirements.txt --with=dev --without-hashes
-          
           uv venv
           uv pip sync requirements.txt
+
+      # 🎯 PATH 설정 (항상 실행)
+      - name: Setup PATH
+        run: |
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Setup environment
         run: |
@@ -187,14 +193,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      # 동일한 고급 캐싱
+      # 🎯 캐시 체크 (ID 추가)
       - name: Multi-layer dependency cache
         uses: actions/cache@v4
+        id: cache-deps
         with:
           path: |
             ~/.local/
@@ -205,19 +207,31 @@ jobs:
             deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
             deps-${{ runner.os }}-
 
-      - name: Fast dependency installation
+      # 🚀 캐시 miss일 때만 도구 설치
+      - name: Install tools and dependencies (cache miss only)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
-          if [ ! -f "$HOME/.local/bin/poetry" ]; then
-            curl -sSL https://install.python-poetry.org | python3 -
-            ~/.local/bin/poetry self add poetry-plugin-export
-          fi
-          export PATH="$HOME/.local/bin:$PATH"
+          # Poetry 설치
+          curl -sSL https://install.python-poetry.org | python3 -
+          ~/.local/bin/poetry self add poetry-plugin-export
           
+          # uv 설치
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          
+          # PATH 설정
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          
+          # 의존성 설치
           poetry export --format=requirements.txt --output=requirements.txt --with=dev --without-hashes
           echo "tblib" >> requirements.txt
-          
           uv venv
           uv pip sync requirements.txt
+
+      # 🎯 PATH 설정 (항상 실행)
+      - name: Setup PATH
+        run: |
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Setup optimized environment
         run: |
