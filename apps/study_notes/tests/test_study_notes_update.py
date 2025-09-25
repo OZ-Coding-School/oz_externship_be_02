@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import cast
 from unittest.mock import Mock, patch
 
 from django.test import TestCase
@@ -13,10 +14,11 @@ from apps.study_notes.models.study_notes import (
     StudyNoteAttachment,
     StudyNoteImage,
 )
+from apps.study_notes.services.study_notes_services import StudyNoteService
 from apps.users.models.user import User
 
 
-class StudyNoteUpdateFullTestCase(TestCase):
+class StudyNoteUpdateTestCase(TestCase):
     client: APIClient
     user: User
     other_user: User
@@ -24,10 +26,11 @@ class StudyNoteUpdateFullTestCase(TestCase):
     note: StudyNote
     image1: StudyNoteImage
     attachment1: StudyNoteAttachment
+    service: StudyNoteService
 
     @classmethod
     def setUpTestData(cls) -> None:
-        # 유저 생성
+        # 유저 & 그룹 생성
         cls.user = User.objects.create_user(
             email="user1@example.com",
             password="password123",
@@ -46,7 +49,6 @@ class StudyNoteUpdateFullTestCase(TestCase):
             gender="여성",
             birthday="2000-01-02",
         )
-        # 그룹 생성
         cls.study_group = StudyGroup.objects.create(
             name="테스트그룹",
             max_headcount=5,
@@ -54,81 +56,94 @@ class StudyNoteUpdateFullTestCase(TestCase):
             end_at=timezone.make_aware(datetime(2025, 9, 30, 12, 0, 0)),
         )
         cls.study_group.members.add(cls.user)
-        cls.note = StudyNote.objects.create(
-            study_group=cls.study_group,
-            author=cls.user,
-            title="노트 1",
-            content="내용 1",
-            ai_summary="요약 1",
+
+        # 스터디 노트 + 이미지/첨부 생성
+        cls.note = StudyNote.objects.create_note(
+            author=cls.user, study_group=cls.study_group, title="노트 1", content="내용 1"
         )
-        # 테스트용 이미지/첨부파일 생성
         cls.image1 = cls.note.images.create(img_url="https://fake-s3.com/image1.png")
         cls.attachment1 = cls.note.attachments.create(file_name="file1.pdf", file_url="https://fake-s3.com/file1.pdf")
 
     def setUp(self) -> None:
         self.client = APIClient()
-        self.note = self.note
+        self.service = StudyNoteService()
+        self.note.refresh_from_db()
 
-    # 정상 수정
+    # 1. 정상 수정 (기존 이미지 유지 + 새 이미지/첨부 추가)
     @patch("apps.study_notes.services.study_notes_services.generate_study_summary", return_value="MOCKED SUMMARY")
-    def test_normal_update_with_files(self, mock_summary: Mock) -> None:
+    @patch("apps.study_notes.services.study_notes_services.transaction.on_commit")
+    def test_normal_update_with_files(self, mock_on_commit: Mock, mock_summary: Mock) -> None:
         self.client.force_authenticate(user=self.user)
-        url = reverse(
-            "study-note-update",
-            kwargs={"group_uuid": str(self.study_group.uuid), "note_id": self.note.id},
-        )
+        url = reverse("study-note-detail", kwargs={"group_uuid": str(self.study_group.uuid), "note_id": self.note.id})
 
+        # 기존 이미지 URL 포함 + 새 이미지 URL 추가
         data = {
             "title": "수정된 제목",
             "content": "수정된 본문",
-            "image_urls": ["https://fake-s3.com/new_img.png"],
-            "attachment_urls": [{"file_name": "new_file.pdf", "url": "https://fake-s3.com/new_file.pdf"}],
+            "image_urls": [
+                "https://fake-s3.com/image1.png",  # 기존 이미지 유지
+                "https://fake-s3.com/new_img.png",  # 새 이미지 추가
+            ],
+            "attachment_urls": [
+                {"file_name": "file1.pdf", "file_url": "https://fake-s3.com/file1.pdf"},  # 기존 첨부 유지
+                {"file_name": "new_file.pdf", "file_url": "https://fake-s3.com/new_file.pdf"},  # 새 첨부 추가
+            ],
         }
+
         response = self.client.patch(url, data, format="json")
+        mock_on_commit.call_args.args[0]()  # 트랜잭션 커밋 후 AI 요약 강제 실행
         self.note.refresh_from_db()
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.note.title, "수정된 제목")
         self.assertEqual(self.note.content, "수정된 본문")
         self.assertEqual(self.note.ai_summary, "MOCKED SUMMARY")
-        # 기존 1개 + 새 1개 = 2개
-        self.assertEqual(self.note.images.count(), 2)
+        self.assertEqual(self.note.images.count(), 2)  # 기존 1 + 새 1
         self.assertEqual(self.note.attachments.count(), 2)
+        image = cast(StudyNoteImage, self.note.images.first())
+        self.assertEqual(image.img_url, "https://fake-s3.com/image1.png")  # 기존 이미지 확인
+        attachment = cast(StudyNoteAttachment, self.note.attachments.first())
+        self.assertEqual(attachment.file_url, "https://fake-s3.com/file1.pdf")  # 기존 첨부 확인
 
-    # 기존 파일 삭제 테스트
-    @patch("apps.study_notes.services.study_notes_services.S3Uploader")
-    def test_delete_files(self, mock_s3_class: Mock) -> None:
-        mock_s3 = mock_s3_class.return_value
-        mock_s3.delete_files.return_value = None
-
+    # 2. 기존 파일 삭제 테스트 (요청에 없는 파일 삭제)
+    @patch("apps.study_notes.services.study_notes_services.transaction.on_commit")
+    def test_update_removes_old_files(self, mock_on_commit: Mock) -> None:
         self.client.force_authenticate(user=self.user)
-        url = reverse(
-            "study-note-update",
-            kwargs={"group_uuid": str(self.study_group.uuid), "note_id": self.note.id},
-        )
+        url = reverse("study-note-detail", kwargs={"group_uuid": str(self.study_group.uuid), "note_id": self.note.id})
+
+        # 기존 파일 없이 새 파일만 요청 -> 기존 파일 삭제
         data = {
-            "delete_image_ids": [self.image1.id],
-            "delete_attachment_ids": [self.attachment1.id],
+            "title": "수정 후 제목",
+            "content": "수정 후 내용",
+            "image_urls": ["https://fake-s3.com/new_img.png"],  # 기존 image1 삭제
+            "attachment_urls": [
+                {"file_name": "new_file.pdf", "file_url": "https://fake-s3.com/new_file.pdf"}
+            ],  # 기존 첨부 삭제
         }
+
         response = self.client.patch(url, data, format="json")
+        mock_on_commit.call_args.args[0]()
         self.note.refresh_from_db()
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(self.note.images.count(), 0)
-        self.assertEqual(self.note.attachments.count(), 0)
+        self.assertEqual(self.note.images.count(), 1)
+        self.assertEqual(self.note.attachments.count(), 1)
 
-    # 권한 없는 유저
+        # mypy 안전하게 cast 사용
+        image = cast(StudyNoteImage, self.note.images.first())
+        self.assertEqual(image.img_url, "https://fake-s3.com/new_img.png")
+
+        attachment = cast(StudyNoteAttachment, self.note.attachments.first())
+        self.assertEqual(attachment.file_url, "https://fake-s3.com/new_file.pdf")
+
+    # 3. 권한 없는 유저
     def test_update_unauthorized_user(self) -> None:
         self.client.force_authenticate(user=self.other_user)
-        url = reverse(
-            "study-note-update",
-            kwargs={"group_uuid": str(self.study_group.uuid), "note_id": self.note.id},
-        )
+        url = reverse("study-note-detail", kwargs={"group_uuid": str(self.study_group.uuid), "note_id": self.note.id})
+
         data = {"title": "권한 없는 수정"}
         response = self.client.patch(url, data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.note.refresh_from_db()
-
         self.assertEqual(self.note.title, "노트 1")
         self.assertEqual(self.note.content, "내용 1")
