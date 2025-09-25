@@ -16,6 +16,7 @@ class TwilioAuthService:
     def __init__(self) -> None:
         self.client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
         self.service_sid = settings.TWILIO_VERIFY_SERVICE_SID
+        self.verify_service = self.client.verify.v2.services(self.service_sid)
 
     # 인증번호 전송
     def send_verification_code(self, phone_number: str, purpose: VerificationPurpose) -> None:
@@ -28,16 +29,14 @@ class TwilioAuthService:
 
     def check_verification_code(self, phone_number: str, verification_code: str, purpose: VerificationPurpose) -> None:
         try:
-            verification_check = self.client.verify.v2.services(self.service_sid).verification_checks.create(
-                to=phone_number, code=verification_code
-            )
+            response = self.verify_service.verification_checks.create(to=phone_number, code=verification_code)
         except TwilioRestException as e:
             raise PhoneVerificationCodeFailedError(f"휴대폰 인증에 실패했습니다 {e}")
-        if verification_check.status != "approved":
+        if response.status != "approved":
             raise PhoneVerificationCodeFailedError("휴대폰 인증번호가 일치하지 않습니다")
 
-        verified_key = f"{purpose.value}-verified-{phone_number}-{verification_code}"
-        cache.set(verified_key, True, timeout=600)
+        verified_key = f"{purpose.value}-verified-{phone_number}"
+        cache.set(verified_key, verification_code, timeout=600)
 
 
 class PhoneVerificationService:
@@ -46,5 +45,5 @@ class PhoneVerificationService:
         """
         번호 + 코드 검증 완료 상태 확인
         """
-        verified_key = f"{purpose.value}-verified-{phone_number}-{verification_code}"
-        return cache.get(verified_key) is True
+        verified_key = f"{purpose.value}-verified-{phone_number}"
+        return bool(str(cache.get(verified_key)) == verification_code)
