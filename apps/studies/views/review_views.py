@@ -4,12 +4,13 @@ from uuid import UUID
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.studies.models import StudyGroup, StudyReview
+from apps.studies.permissions import IsReviewAuthor
 from apps.studies.serializers.review_serializers import (
     ReviewCreateRequestSerializer,
     ReviewCreateResponseSerializer,
@@ -76,16 +77,14 @@ class ReviewCreateListUpdateAPIView(APIView):
 
 
 class ReviewUpdateView(APIView):
+
+    permission_classes = [IsAuthenticated, IsReviewAuthor]
+
     # 리뷰 수정
     def patch(self, request: Request, group_uuid: UUID, review_id: int, *args: Any, **kwargs: Any) -> Response:
         review = get_object_or_404(StudyReview, id=review_id, study_group__uuid=group_uuid)
 
-        # 권한 체크
-        if review.user_id != request.user.id:
-            return Response(
-                {"detail": "본인이 작성한 리뷰만 수정할 수 있습니다."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        self.check_object_permissions(request, review)
 
         serializer = ReviewUpdateRequestSerializer(review, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)

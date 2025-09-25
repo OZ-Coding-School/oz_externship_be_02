@@ -70,12 +70,16 @@ class ReviewUpdateRequestSerializer(serializers.ModelSerializer[StudyReview]):
 
 
 class ReviewUpdateResponseSerializer(serializers.ModelSerializer[StudyReview]):
+
+    study_group_uuid = serializers.UUIDField(source="study_group.uuid", read_only=True)
+    user_uuid = serializers.UUIDField(source="user.uuid", read_only=True)
+
     class Meta:  # 리뷰 수정 응답전용 시리얼라이져
         model = StudyReview
         fields = [
             "id",
-            "user_id",
-            "study_group_id",
+            "user_uuid",
+            "study_group_uuid",
             "star_rating",
             "content",
             "updated_at",
