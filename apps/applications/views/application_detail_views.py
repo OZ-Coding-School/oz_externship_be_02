@@ -39,15 +39,21 @@ class ApplicationDetailView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class ApplicationApproveView(APIView):
+class ApplicationStatusBaseView(APIView):
     permission_classes = [IsRecruiterOnly]
+    action: str = ""
 
     def patch(self, request: Request, application_id: int) -> Response:
         try:
             application = ApplicationStatusService.get_application(application_id)
             self.check_object_permissions(request, application)
 
-            application = ApplicationStatusService.approve(application)
+            if self.action == "approve":
+                application = ApplicationStatusService.approve(application)
+            elif self.action == "reject":
+                application = ApplicationStatusService.reject(application)
+            else:
+                raise ValidationError("Invalid action")
 
         except NotFound as e:
             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
@@ -65,27 +71,9 @@ class ApplicationApproveView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class ApplicationRejectView(APIView):
-    permission_classes = [IsRecruiterOnly]
+class ApplicationApproveView(ApplicationStatusBaseView):
+    action = "approve"
 
-    def patch(self, request: Request, application_id: int) -> Response:
-        try:
-            application = ApplicationStatusService.get_application(application_id)
-            self.check_object_permissions(request, application)
 
-            application = ApplicationStatusService.reject(application)
-
-        except NotFound as e:
-            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
-        except PermissionDenied as e:
-            return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except ValidationError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(
-                {"detail": f"처리 중 오류가 발생했습니다: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        serializer = ApplicationDetailSerializer(application)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+class ApplicationRejectView(ApplicationStatusBaseView):
+    action = "reject"
