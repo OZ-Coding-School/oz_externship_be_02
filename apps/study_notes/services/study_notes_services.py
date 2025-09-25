@@ -114,8 +114,6 @@ class StudyNoteService:
         content: Optional[str] = None,
         images: Optional[list[str]] = None,  # 업로드 URL 리스트
         attachments: Optional[list[Dict[str, str]]] = None,  # {"file_name", "file_url"}
-        delete_image_ids: Optional[list[int]] = None,
-        delete_attachment_ids: Optional[list[int]] = None,
     ) -> StudyNote:
         """스터디 노트 수정"""
 
