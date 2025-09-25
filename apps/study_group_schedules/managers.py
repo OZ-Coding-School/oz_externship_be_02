@@ -16,9 +16,9 @@ if TYPE_CHECKING:
 class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
     """스터디 그룹 스케줄 커스텀 QuerySet"""
 
-    def filter_by_study_group(self, study_group_id: int) -> "StudyGroupScheduleQuerySet":
+    def filter_by_study_group(self, study_group_uuid: UUID) -> "StudyGroupScheduleQuerySet":
         """특정 스터디 그룹의 스케줄만 필터링"""
-        return self.filter(study_group_id=study_group_id)
+        return self.filter(study_group_id=study_group_uuid)
 
     def filter_by_date_range(
         self, start_date: date | None = None, end_date: date | None = None
