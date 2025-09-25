@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from django.db import models
 from django.db.models import Count
@@ -15,9 +16,9 @@ if TYPE_CHECKING:
 class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
     """스터디 그룹 스케줄 커스텀 QuerySet"""
 
-    def filter_by_study_group(self, study_group_id: int) -> "StudyGroupScheduleQuerySet":
+    def filter_by_study_group(self, study_group_uuid: UUID) -> "StudyGroupScheduleQuerySet":
         """특정 스터디 그룹의 스케줄만 필터링"""
-        return self.filter(study_group_id=study_group_id)
+        return self.filter(study_group_id=study_group_uuid)
 
     def filter_by_date_range(
         self, start_date: date | None = None, end_date: date | None = None
@@ -40,8 +41,7 @@ class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
 
     def filter_today(self) -> "StudyGroupScheduleQuerySet":
         """오늘 스케줄만 필터링"""
-        today = date.today()
-        return self.filter(session_date=today)
+        return self.filter(session_date=date.today())
 
     def order_by_date_asc(self) -> "StudyGroupScheduleQuerySet":
         """날짜순 정렬 (오래된 것부터)"""
@@ -64,12 +64,45 @@ class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
         return self.annotate(participant_count=Count("participants", distinct=True))
 
     def optimized_for_list(self) -> "StudyGroupScheduleQuerySet":
-        """목록 조회용 최적화된 쿼리셋"""
-        return self.select_related("study_group").annotate(participant_count=Count("participants", distinct=True))
+        """목록 조회용 쿼리셋"""
+        return self.with_study_group_info().with_participant_count()
 
     def filter_by_user_access(self, user_id: int) -> "StudyGroupScheduleQuerySet":
-        """사용자가 접근 가능한 스케줄만 필터링 (스터디 그룹 멤버인 경우)"""
+        """사용자가 접근 가능한 스케줄만 필터링"""
         return self.filter(study_group__members__id=user_id)
+
+    def get_schedule_for_user_detail(self, schedule_id: int, user_id: int) -> "StudyGroupScheduleQuerySet":
+        """상세조회용 스케줄 쿼리셋"""
+        return (
+            self.filter(id=schedule_id)
+            .filter_by_user_access(user_id)
+            .select_related("study_group")
+            .prefetch_related("participants", "participants__user")
+            .with_participant_count()
+        )
+
+    def get_with_detailed_info(self) -> "StudyGroupScheduleQuerySet":
+        """상세 정보를 포함한 스케줄 조회용 쿼리셋"""
+        return (
+            self.select_related("study_group")
+            .prefetch_related("participants", "participants__user")
+            .with_participant_count()
+        )
+
+    def filter_accessible_by_user_and_group(
+        self, user_id: int, study_group_uuid: str | UUID
+    ) -> "StudyGroupScheduleQuerySet":
+        """
+        특정 사용자가 특정 스터디 그룹에서 접근 가능한 스케줄만 필터링
+
+        Args:
+            user_id: 사용자 ID
+            study_group_uuid: 스터디 그룹 UUID
+
+        Returns:
+            필터링된 QuerySet
+        """
+        return self.filter(study_group__members__id=user_id, study_group__uuid=study_group_uuid)
 
 
 StudyGroupScheduleManager = models.Manager.from_queryset(StudyGroupScheduleQuerySet)
