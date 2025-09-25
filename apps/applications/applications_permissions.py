@@ -32,12 +32,6 @@ class IsApplicantOrRecruiter(BasePermission):
         is_recruiter = obj.recruitment is not None and obj.recruitment.author == user
         return is_applicant or is_recruiter
 
-    @staticmethod
-    def _is_recruiter(user: User, obj: Application) -> bool:
-        if not user or not user.is_authenticated:
-            return False
-        return getattr(obj.recruitment, "author", None) == user
-
 
 class IsRecruiterOnly(BasePermission):
     def has_object_permission(self, request: Request, view: APIView, obj: Application) -> bool:

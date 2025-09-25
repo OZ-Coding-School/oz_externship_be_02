@@ -16,11 +16,19 @@ from apps.applications.serializers.application_detail_serializers import (
 from apps.applications.services.application_status_services import (
     ApplicationStatusService,
 )
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 
 class ApplicationDetailView(APIView):
     permission_classes = [IsApplicantOrRecruiter]
-
+    @extend_schema(
+        responses={
+            200: ApplicationDetailSerializer,
+            403: OpenApiResponse(description="권한 없음"),
+            404: OpenApiResponse(description="지원서 없음"),
+            500: OpenApiResponse(description="서버 에러"),
+        },
+    )
     def get(self, request: Request, application_id: int) -> Response:
         try:
             try:
@@ -38,6 +46,16 @@ class ApplicationDetailView(APIView):
         serializer = ApplicationDetailSerializer(application)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+@extend_schema(
+    summary="지원서 승인",
+    responses={
+        200: ApplicationDetailSerializer,
+        400: OpenApiResponse(description="잘못된 요청"),
+        403: OpenApiResponse(description="권한 없음"),
+        404: OpenApiResponse(description="지원서 없음"),
+        500: OpenApiResponse(description="서버 에러"),
+    },
+)
 
 class ApplicationStatusBaseView(APIView):
     permission_classes = [IsRecruiterOnly]
@@ -70,10 +88,28 @@ class ApplicationStatusBaseView(APIView):
         serializer = ApplicationDetailSerializer(application)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
+@extend_schema(
+    summary="지원서 승인",
+    responses={
+        200: ApplicationDetailSerializer,
+        400: OpenApiResponse(description="잘못된 요청"),
+        403: OpenApiResponse(description="권한 없음"),
+        404: OpenApiResponse(description="지원서 없음"),
+        500: OpenApiResponse(description="서버 에러"),
+    },
+)
 class ApplicationApproveView(ApplicationStatusBaseView):
     action = "approve"
 
-
+@extend_schema(
+    summary="지원서 거절",
+    responses={
+        200: ApplicationDetailSerializer,
+        400: OpenApiResponse(description="잘못된 요청"),
+        403: OpenApiResponse(description="권한 없음"),
+        404: OpenApiResponse(description="지원서 없음"),
+        500: OpenApiResponse(description="서버 에러"),
+    },
+)
 class ApplicationRejectView(ApplicationStatusBaseView):
     action = "reject"
