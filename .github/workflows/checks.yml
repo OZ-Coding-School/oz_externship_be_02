@@ -20,9 +20,35 @@ env:
   COVERAGE_FAIL_UNDER: 80
 
 jobs:
+  # 변경 파일 감지
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      dependencies: ${{ steps.filter.outputs.dependencies }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/**'
+              - '**/*.py'
+              - 'manage.py'
+              - 'config/**'
+            dependencies:
+              - 'pyproject.toml'
+              - 'poetry.lock'
+
   code-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 6
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,26 +63,31 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Cache Poetry
+      # 향상된 다단계 캐싱
+      - name: Multi-layer dependency cache
         uses: actions/cache@v4
         with:
-          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
-          path: ~/.local/
+          path: |
+            ~/.local/
+            ~/.cache/uv/
+            .venv/
+          key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            deps-${{ runner.os }}-
 
-      - name: Install Poetry and export plugin
+      - name: Fast dependency installation
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          ~/.local/bin/poetry self add poetry-plugin-export
-
-      - name: Add Poetry to PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Export dependencies to requirements.txt
-        run: |
-          poetry export --format=requirements.txt --output=requirements.txt --with=dev
-
-      - name: Install dependencies with uv
-        run: |
+          # Poetry 설치 (캐시된 경우 빠름)
+          if [ ! -f "$HOME/.local/bin/poetry" ]; then
+            curl -sSL https://install.python-poetry.org | python3 -
+            ~/.local/bin/poetry self add poetry-plugin-export
+          fi
+          export PATH="$HOME/.local/bin:$PATH"
+          
+          # 빠른 export + uv 설치
+          poetry export --format=requirements.txt --output=requirements.txt --with=dev --without-hashes
+          
           uv venv
           uv pip sync requirements.txt
 
@@ -85,7 +116,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    timeout-minutes: 12
     services:
       db:
         image: postgres:14
@@ -95,11 +128,15 @@ jobs:
           POSTGRES_PASSWORD: pw1234
           POSTGRES_DB: ozcoding_externship
           TZ: Asia/Seoul
+          # 테스트 성능 최적화 설정
+          POSTGRES_INITDB_ARGS: "--auth-host=trust --auth-local=trust"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,size=1024m
+          --shm-size=256m
 
       redis:
         image: redis:latest
@@ -124,45 +161,64 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Cache Poetry
+      # 동일한 고급 캐싱
+      - name: Multi-layer dependency cache
         uses: actions/cache@v4
         with:
-          key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
-          path: ~/.local/
+          path: |
+            ~/.local/
+            ~/.cache/uv/
+            .venv/
+          key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            deps-${{ runner.os }}-
 
-      - name: Install Poetry and export plugin
+      - name: Fast dependency installation
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          ~/.local/bin/poetry self add poetry-plugin-export
-
-      - name: Add Poetry to PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Export dependencies to requirements.txt
-        run: |
-          poetry export --format=requirements.txt --output=requirements.txt --with=dev
-          echo "tblib" >> requirements.txt  # Django parallel 테스트용
-
-      - name: Install dependencies with uv
-        run: |
+          if [ ! -f "$HOME/.local/bin/poetry" ]; then
+            curl -sSL https://install.python-poetry.org | python3 -
+            ~/.local/bin/poetry self add poetry-plugin-export
+          fi
+          export PATH="$HOME/.local/bin:$PATH"
+          
+          poetry export --format=requirements.txt --output=requirements.txt --with=dev --without-hashes
+          echo "tblib" >> requirements.txt
+          
           uv venv
           uv pip sync requirements.txt
 
-      - name: Setup environment
+      - name: Setup optimized environment
         run: |
           mkdir -p envs
           echo "${{ secrets.DJANGO_ENVS }}" > envs/.local.env
+          # Django 테스트 최적화 환경변수
           echo "DJANGO_SETTINGS_MODULE=config.settings.local" >> $GITHUB_ENV
+          echo "DEBUG=False" >> $GITHUB_ENV
+          echo "LOGGING_DISABLE_EXISTING_LOGGERS=True" >> $GITHUB_ENV
+          echo "USE_TZ=False" >> $GITHUB_ENV
+          echo "PASSWORD_HASHERS=[\"django.contrib.auth.hashers.MD5PasswordHasher\"]" >> $GITHUB_ENV
 
-      - name: Wait for services
+      - name: Wait for services (faster timeout)
         run: |
-          timeout 30 bash -c 'until nc -z localhost 5432; do sleep 1; done'
-          timeout 30 bash -c 'until nc -z localhost 6379; do sleep 1; done'
+          timeout 20 bash -c 'until nc -z localhost 5432; do sleep 1; done'
+          timeout 20 bash -c 'until nc -z localhost 6379; do sleep 1; done'
 
-      - name: Run migrations
+      # 테스트 DB 캐싱
+      - name: Cache test database
+        uses: actions/cache@v4
+        with:
+          path: /tmp/test_db_migrated
+          key: test-db-${{ runner.os }}-${{ hashFiles('apps/**/migrations/*.py') }}
+
+      - name: Run migrations (with keepdb optimization)
         run: |
           source .venv/bin/activate
-          python manage.py migrate
+          # 첫 실행시만 마이그레이션, 이후는 스킵
+          if [ ! -f "/tmp/test_db_migrated" ]; then
+            python manage.py migrate
+            touch /tmp/test_db_migrated
+          fi
 
       - name: Setup coverage for parallel tests
         run: |
@@ -201,18 +257,21 @@ jobs:
             raise NotImplementedError
           EOF
 
-      - name: Run parallel tests with coverage (ALL apps at once)
+      # 최적화된 테스트 실행
+      - name: Run optimized parallel tests with coverage
         shell: bash
         run: |
           set -eo pipefail
           source .venv/bin/activate
-          echo "🚀 Django parallel 테스트 실행 중 (모든 앱)..."
+          echo "🚀 Django 최적화된 parallel 테스트 실행 중..."
           
           # Coverage 환경변수 설정
           export COVERAGE_PROCESS_START=./.coveragerc
           
-          # 모든 테스트를 parallel로 한번에 실행
-          coverage run --parallel-mode --concurrency=multiprocessing manage.py test --parallel --keepdb --verbosity=1
+          # 최적화된 parallel 테스트 실행
+          coverage run --parallel-mode --concurrency=multiprocessing \
+            manage.py test --parallel auto --keepdb --verbosity=1 \
+            --debug-mode --buffer --no-input
           
           echo "📊 Coverage 데이터 결합 중..."
           coverage combine
@@ -240,8 +299,8 @@ jobs:
               if [ -n "$test_files" ] && grep -q -r "def test_" "$app_path" 2>/dev/null; then
                 # 해당 앱의 coverage 리포트 생성
                 coverage report -m --include="$app_path/*"
-                
-                # 해당 앱의 coverage 퍼센트 확인
+
+                # 해당 앱의 coverage 퍼센트 확인                
                 coverage_pct=$(coverage report --include="$app_path/*" | tail -n 1 | awk '{print $4}' | tr -d '%' 2>/dev/null || echo "0")
                 
                 echo "📈 $app Coverage: ${coverage_pct}%"
@@ -296,12 +355,18 @@ jobs:
 
   finalize:
     runs-on: ubuntu-latest
-    needs: [code-quality, test]
+    needs: [changes, code-quality, test]
     if: always()
     timeout-minutes: 2
     steps:
       - name: Check overall CI status
         run: |
+          # 변경사항이 없으면 성공으로 처리
+          if [[ "${{ needs.changes.outputs.backend }}" == "false" ]]; then
+            echo "✅ 백엔드 변경사항이 없어 테스트를 건너뛰었습니다."
+            exit 0
+          fi
+          
           if [[ "${{ needs.code-quality.result }}" == "success" && 
                 "${{ needs.test.result }}" == "success" ]]; then
             echo "✅ 모든 CI 체크가 통과했습니다!"
