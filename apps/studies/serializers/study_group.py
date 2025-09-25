@@ -120,3 +120,11 @@ class StudyGroupCreateUpdateSerializer(serializers.ModelSerializer[StudyGroup]):
         ret = super().to_representation(instance)
         ret["lectures"] = list(instance.lectures.values_list("id", flat=True))
         return ret
+
+
+class StudyGroupLeaderDelegateSerializer(serializers.Serializer[Any]):
+    """
+    스터디 그룹 리더 위임 Serializer
+    """
+
+    new_leader_id = serializers.UUIDField()
