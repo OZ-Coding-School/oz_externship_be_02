@@ -1,3 +1,4 @@
+from typing import cast
 from uuid import UUID
 
 from django.db import transaction
@@ -11,6 +12,7 @@ from rest_framework.views import APIView
 from apps.studies.models import GroupMember, StudyGroup
 from apps.studies.permissions import IsStudyGroupLeaderPermission
 from apps.studies.serializers.study_group import StudyGroupLeaderDelegateSerializer
+from apps.users.models import User
 
 
 class StudyGroupLeaderDelegateView(APIView):
@@ -44,11 +46,12 @@ class StudyGroupLeaderDelegateView(APIView):
             )
 
         with transaction.atomic():
+            user = cast(User, request.user)
             update = group.members.through.objects.filter(
                 study_group=group.id, user=new_leader.user, is_leader=False
             ).update(is_leader=True)
             if update:
-                group.members.through.objects.filter(study_group=group.id, is_leader=True).exclude(
-                    user=new_leader.user
-                ).update(is_leader=False)
+                group.members.through.objects.filter(study_group=group.id, user=user, is_leader=True).update(
+                    is_leader=False
+                )
             return Response(status=status.HTTP_200_OK)
