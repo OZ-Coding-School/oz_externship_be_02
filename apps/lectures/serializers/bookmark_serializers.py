@@ -37,9 +37,12 @@ class LectureSerializer(serializers.ModelSerializer[Lecture]):
     duration_hhmm = serializers.SerializerMethodField()
     difficulty = serializers.SerializerMethodField()
 
+    lecture_id = serializers.IntegerField(source="id", read_only=True)
+
     class Meta:
         model = Lecture
         fields = (
+            "lecture_id",
             "title",
             "instructor",
             "thumbnail_img_url",
