@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 from uuid import UUID
 
 from django.db.models import QuerySet
@@ -64,7 +64,7 @@ class ReviewCreateListUpdateAPIView(APIView):
             .order_by("-created_at")
         )
 
-    def get(self, request: Request, group_uuid: UUID, *args, **kwargs) -> Response:
+    def get(self, request: Request, group_uuid: UUID, *args: object, **kwargs: object) -> Response:
         if not StudyGroup.objects.filter(uuid=group_uuid).exists():
             return Response(
                 {"error": "study_group_uuid invalid."},
@@ -74,12 +74,11 @@ class ReviewCreateListUpdateAPIView(APIView):
         res = ReviewListResponseSerializer(qs, many=True)
         return Response(res.data, status=status.HTTP_200_OK)
 
+
 class ReviewUpdateView(APIView):
     # 리뷰 수정
-    def patch(self, request: Request, group_uuid: UUID, review_id: int) -> Response:
-        review = get_object_or_404(
-            StudyReview, id=review_id, study_group__uuid=group_uuid
-        )
+    def patch(self, request: Request, group_uuid: UUID, review_id: int, *args: Any, **kwargs: Any) -> Response:
+        review = get_object_or_404(StudyReview, id=review_id, study_group__uuid=group_uuid)
 
         # 권한 체크
         if review.user_id != request.user.id:
@@ -88,13 +87,9 @@ class ReviewUpdateView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        serializer = ReviewUpdateRequestSerializer(
-            review, data=request.data, partial=True
-        )
+        serializer = ReviewUpdateRequestSerializer(review, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_review = serializer.save()
 
         res = ReviewUpdateResponseSerializer(updated_review)
         return Response(res.data, status=status.HTTP_200_OK)
-    
-    

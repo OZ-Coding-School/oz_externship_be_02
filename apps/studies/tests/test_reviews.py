@@ -212,7 +212,7 @@ class TestReviewUpdateAPI(APITestCase):
             nickname="tester",
             phone_number="01000000001",
         )
-            #  다른 사용자 추가
+        #  다른 사용자 추가
         self.other_user = User.objects.create_user(
             email="other@test.com",
             password="1234",
@@ -230,15 +230,15 @@ class TestReviewUpdateAPI(APITestCase):
             status=StudyGroup.StatusChoices.ENDED,
         )
         self.review = StudyReview.objects.create(
-                    study_group=self.study_group,
-                    user=self.user,
-                    star_rating=5,
-                    content="테스트 리뷰",
-                )
+            study_group=self.study_group,
+            user=self.user,
+            star_rating=5,
+            content="테스트 리뷰",
+        )
         self.url = f"/api/v1/study-groups/{self.study_group.uuid}/reviews/{self.review.id}"
 
-    def test_update_review_success(self):
-        #본인 리뷰 수정 성공
+    def test_update_review_success(self) -> None:
+        # 본인 리뷰 수정 성공
         self.client.force_authenticate(user=self.user)
         payload = {"star_rating": 4, "content": "시간이 부족했어요."}
         resp = self.client.patch(self.url, payload, format="json")
@@ -247,8 +247,8 @@ class TestReviewUpdateAPI(APITestCase):
         self.assertEqual(resp.data["star_rating"], 4)
         self.assertEqual(resp.data["content"], "시간이 부족했어요.")
 
-    def test_update_review_fail_not_author(self):
-        #작성자가 아닌 경우 403
+    def test_update_review_fail_not_author(self) -> None:
+        # 작성자가 아닌 경우 403
         self.client.force_authenticate(user=self.other_user)
         payload = {"star_rating": 1}
         resp = self.client.patch(self.url, payload, format="json")
@@ -256,8 +256,8 @@ class TestReviewUpdateAPI(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(resp.data["detail"], "본인이 작성한 리뷰만 수정할 수 있습니다.")
 
-    def test_update_review_fail_unauthenticated(self):
-        #비로그인 사용자는 401
+    def test_update_review_fail_unauthenticated(self) -> None:
+        # 비로그인 사용자는 401
         payload = {"star_rating": 2}
         resp = self.client.patch(self.url, payload, format="json")
 

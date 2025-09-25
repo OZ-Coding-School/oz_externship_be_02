@@ -59,8 +59,8 @@ class ReviewListResponseSerializer(serializers.ModelSerializer[StudyReview]):
         fields = ["study_group_uuid", "star_rating", "content", "created_at"]
 
 
-class ReviewUpdateRequestSerializer(serializers.ModelSerializer):
-    class Meta: # 리뷰 수정 요청전용 시리얼라이져 
+class ReviewUpdateRequestSerializer(serializers.ModelSerializer[StudyReview]):
+    class Meta:  # 리뷰 수정 요청전용 시리얼라이져
         model = StudyReview
         fields = ["star_rating", "content"]
         extra_kwargs = {
@@ -68,8 +68,9 @@ class ReviewUpdateRequestSerializer(serializers.ModelSerializer):
             "content": {"required": False},
         }
 
-class ReviewUpdateResponseSerializer(serializers.ModelSerializer):
-    class Meta: # 리뷰 수정 응답전용 시리얼라이져 
+
+class ReviewUpdateResponseSerializer(serializers.ModelSerializer[StudyReview]):
+    class Meta:  # 리뷰 수정 응답전용 시리얼라이져
         model = StudyReview
         fields = [
             "id",
