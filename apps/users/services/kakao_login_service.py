@@ -5,6 +5,7 @@ from typing import Any, Optional
 import requests
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -97,7 +98,8 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
 
         validated_data: dict[str, Any] = serializer.validated_data.copy()
         validated_data["birthday"] = cls.parse_kakao_birth_date(
-            validated_data["kakao_account"].pop("birthday"), validated_data["kakao_account"].pop("birthyear")
+            validated_data["kakao_account"].pop("birthday"),
+            validated_data["kakao_account"].pop("birthyear", str(timezone.now().year)),
         )
         return validated_data
 
