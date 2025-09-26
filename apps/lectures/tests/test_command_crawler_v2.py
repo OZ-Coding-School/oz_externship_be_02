@@ -13,11 +13,10 @@ from apps.lectures.models import Category, Lecture, LectureReview
 from apps.lectures.tasks import run_crawler_v2
 
 
-class TestCrawlerV2Command(TestCase):
+class TestCrawlerV2Command(IsolatedAsyncioTestCase):
     """
     crawler_v2 명령어 테스트 클래스
     """
-
     @patch("apps.lectures.management.commands.crawler_v2.logger")
     @patch("apps.lectures.management.commands.crawler_v2.httpx.AsyncClient")
     async def test_handle_success(self, mock_async_client: MagicMock, mock_logger: MagicMock) -> None:
