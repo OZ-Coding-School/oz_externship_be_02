@@ -8,7 +8,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.users.models import User
+from apps.users.models.user import User
+from apps.users.utils.enums import VerificationPurpose
 
 
 class UserInfoTest(APITestCase):
@@ -43,13 +44,12 @@ class UserInfoTest(APITestCase):
         self.login()  # 로그인
         response = self.client.get(self.url)  # 정보 조회 요청
         self.assertEqual(response.status_code, status.HTTP_200_OK)  # 조회 성공
-        print("1) 로그인 후 조회 완료:", response.data)  # 조회한 데이터 체크
 
     # 실패: 비로그인 상태로 조회 시도(401)
     def test_get_user_info_unauthorized(self) -> None:
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertTrue("detail" in response.data or "error" in response.data, print(response.data))
+        self.assertTrue("detail" in response.data or "error" in response.data)
 
 
 class UserInfoEditTest(APITestCase):
@@ -80,9 +80,8 @@ class UserInfoEditTest(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
 
     # 성공: 수정 완료(200)
-    @patch(
-        "apps.users.services.user_info_service.PhoneVerificationService.is_verified", return_value=True
-    )  # 실제로 PhoneVerificationService를 호출하지 않고, mock으로 대체
+    @patch("apps.users.services.phone_service.PhoneVerificationService.is_verified", return_value=True)
+    # 실제로 PhoneVerificationService를 호출하지 않고, mock으로 대체
     def test_patch_user_info_success(self, mock_is_verified: Mock) -> None:
         self.login()
         data = {
@@ -91,15 +90,13 @@ class UserInfoEditTest(APITestCase):
             "phone_number": "01098798789",
             "verification_code": "123456",
         }
-        print("2-1) 수정 이전의 원본 데이터: ", data)
 
         response = self.client.patch(self.edit_url, data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        print("2-2) 수정 이후의 바뀐 데이터: ", response.data)
 
         mock_is_verified.assert_called_once_with(
-            data["phone_number"], data["verification_code"]
+            data["phone_number"], data["verification_code"], VerificationPurpose.PROFILE_UPDATE
         )  # mock 함수가 정확히 1회만 호출되었고, 인자가 기댓값과 일치하는지 확인
 
     # 실패: 비로그인 상태로 수정 시도(401)
@@ -117,9 +114,8 @@ class UserInfoEditTest(APITestCase):
         self.assertIn("detail", response.data)
 
     # 실패: 인증 코드 누락(401) - "인증이 필요한데 하지 않았다"
-    @patch(
-        "apps.users.services.user_info_service.PhoneVerificationService.is_verified", return_value=False
-    )  # 실제로 PhoneVerificationService를 호출하지 않고, mock으로 대체
+    @patch("apps.users.services.phone_service.PhoneVerificationService.is_verified", return_value=False)
+    # 실제로 PhoneVerificationService를 호출하지 않고, mock으로 대체
     def test_patch_user_info_without_verification_code(self, mock_is_verified: Mock) -> None:
         self.login()
         data = {"phone_number": "01011112222"}
@@ -129,9 +125,8 @@ class UserInfoEditTest(APITestCase):
         mock_is_verified.assert_not_called()  # 호출되지 않았어야 함
 
     # 실패: 잘못된 인증 코드(400)
-    @patch(
-        "apps.users.services.user_info_service.PhoneVerificationService.is_verified", return_value=False
-    )  # 실제로 PhoneVerificationService를 호출하지 않고, mock으로 대체
+    @patch("apps.users.services.phone_service.PhoneVerificationService.is_verified", return_value=False)
+    # 실제로 PhoneVerificationService를 호출하지 않고, mock으로 대체
     def test_patch_user_info_invalid_verification_code(self, mock_is_verified: Mock) -> None:
         self.login()
         data = {
@@ -142,7 +137,7 @@ class UserInfoEditTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("detail", response.data)
         mock_is_verified.assert_called_once_with(
-            data["phone_number"], data["verification_code"]
+            data["phone_number"], data["verification_code"], VerificationPurpose.PROFILE_UPDATE
         )  # mock 함수가 정확히 1회만 호출되었고, 인자가 기댓값과 일치하는지 확인
 
     # 실패: 중복 닉네임(400)
