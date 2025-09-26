@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
@@ -6,7 +7,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.models import user
+from apps.users.models import user, User
 from apps.users.serializers.auth_serializers import (
     EmailLoginSerializer,
 )
@@ -29,6 +30,14 @@ class UserSignupAPIView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
+        email = request.data.get("email")
+        phone = request.data.get("phone_number")
+
+        if User.objects.filter(email=email).exists():
+            return Response({"error": "이미 존재하는 이메일입니다"}, status=409)
+        if User.objects.filter(phone_number=phone).exists():
+            return Response({"error": "이미 존재하는 휴대폰 번호입니다"}, status=409)
+
         serializer = UserSignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
