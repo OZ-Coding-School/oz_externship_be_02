@@ -338,8 +338,8 @@ jobs:
           
           # 🎯 parallel mode로 실행 (combine하지 않음!)
           coverage run --parallel-mode --concurrency=multiprocessing \
-            manage.py test $TEST_APPS --parallel 4 --keepdb --verbosity=1 \
-            --debug-mode --buffer --no-input
+            manage.py test $TEST_APPS --parallel 2 --keepdb --verbosity=1 \
+            --debug-mode --no-input
           
           echo "📁 생성된 coverage 파일들:"
           ls -la .coverage* || echo "No coverage files found"
