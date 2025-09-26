@@ -116,5 +116,5 @@ class AccountRecoveryAPIView(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
 
         except Exception:
-            logger.exception("계정 복구 처리 중 알 수 없는 오류 발생.") # 로그 기록
+            logger.exception("계정 복구 처리 중 알 수 없는 오류 발생.")  # 로그 기록
             return Response({"detail": "알 수 없는 오류가 발생했습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
