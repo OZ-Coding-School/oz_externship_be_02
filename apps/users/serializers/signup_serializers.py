@@ -36,7 +36,7 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         extra_kwargs = {
             "password": {"write_only": True},
             "email": {"validators": []},
-            "phone_number": {"validators": []}
+            "phone_number": {"validators": []},
         }
 
     def validate_email(self, value: str) -> str:
