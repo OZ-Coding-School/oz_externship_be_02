@@ -1,6 +1,5 @@
 from uuid import UUID
 
-from django.db import transaction
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import NotFound
@@ -114,10 +113,5 @@ class RecruitmentDetailView(APIView):
         if request.user != recruitment.author:
             return Response({"error": "이 공고를 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
 
-        with transaction.atomic():
-            # 연결된 모든 지원 내역을 먼저 삭제
-            recruitment.applications.all().delete()
-            # 그 다음 공고를 삭제
-            recruitment.delete()
-
+        recruitment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
