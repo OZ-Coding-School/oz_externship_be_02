@@ -29,7 +29,7 @@ class KakaoProfileSerializer(serializers.Serializer[dict[str, Any]]):
 
 class KakaoAccountSerializer(serializers.Serializer[dict[str, Any]]):
     email = serializers.EmailField()
-    name = serializers.CharField(default="이름없음")
+    name = serializers.CharField(required=False, default="이름없음")
     birthday = serializers.RegexField(regex=r"^\d{4}$")
     birthyear = serializers.RegexField(regex=r"^\d{4}$")
     profile = KakaoProfileSerializer()
