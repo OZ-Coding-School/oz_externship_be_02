@@ -98,15 +98,17 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
 
         validated_data: dict[str, Any] = serializer.validated_data.copy()
         validated_data["birthday"] = cls.parse_kakao_birth_date(
-            validated_data["kakao_account"].pop("birthday"),
+            validated_data["kakao_account"].pop("birthday", str("0101")),
             validated_data["kakao_account"].pop("birthyear", str(timezone.now().year)),
         )
+        validated_data["gender"] = validated_data["kakao_account"].pop("gender", "알수없음")
+
         return validated_data
 
     @classmethod
     def parse_kakao_birth_date(cls, birth_day: str, birth_year: str) -> date:
-        day = birth_day[:2]
-        month = birth_day[2:]
+        day = birth_day[2:]
+        month = birth_day[:2]
         birthday_string = f"{birth_year}-{month}-{day}"
         return datetime.strptime(birthday_string, "%Y-%m-%d").date()
 
