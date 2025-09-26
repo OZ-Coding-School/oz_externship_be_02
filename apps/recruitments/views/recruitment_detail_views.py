@@ -111,7 +111,7 @@ class RecruitmentDetailView(APIView):
         recruitment = self._get_object(recruitment_uuid)
 
         if request.user != recruitment.author:
-            return Response({"이 공고를 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "이 공고를 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
 
         recruitment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

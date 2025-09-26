@@ -10,6 +10,7 @@ from moto import mock_aws
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
+from apps.applications.models import Application
 from apps.lectures.models.crawled_lectures import Lecture
 from apps.recruitments.models import RecruitmentImage
 from apps.recruitments.models.recruitment_attachments import RecruitmentAttachment
@@ -225,3 +226,28 @@ class RecruitmentDetailViewTest(APITransactionTestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertTrue(Recruitment.objects.filter(uuid=self.recruitment.uuid).exists())
+
+    def test_delete_recruitment_deletes_associated_applications(self) -> None:
+        # GIVEN: An applicant and an application for the recruitment
+        applicant = self.other_user
+        Application.objects.create(
+            recruitment=self.recruitment,
+            user=applicant,
+            objective="Test Objective",
+            motivation="Test Motivation",
+            self_introduction="Test Intro",
+            available_time="Any time",
+        )
+        self.assertEqual(Application.objects.count(), 1)
+        self.assertEqual(Recruitment.objects.count(), 1)
+
+        # WHEN: The author deletes the recruitment
+        self.client.force_authenticate(user=self.author)
+        url = reverse("recruitment-detail", kwargs={"recruitment_uuid": self.recruitment.uuid})
+        response = self.client.delete(url)
+
+        # THEN: The response is successful and both the recruitment and the application are deleted
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Recruitment.objects.count(), 0)
+        self.assertEqual(Application.objects.count(), 0)
+        self.assertFalse(Recruitment.objects.filter(uuid=self.recruitment.uuid).exists())
