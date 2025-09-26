@@ -21,17 +21,6 @@ class LectureQuerySet(models.QuerySet["Lecture"]):
         names = [name.strip() for name in category_names.split(",")]
         return self.filter(categories__name__in=names).distinct()
 
-    def sort_by_ordering(self, ordering: str) -> LectureQuerySet:
-        order_map = {
-            "price_asc": "original_price",
-            "price_desc": "-original_price",
-            "rating_asc": "average_rating",
-            "rating_desc": "-average_rating",
-            "oldest": "updated_at",
-        }
-        order_by_field = order_map.get(ordering, "-updated_at")
-        return self.order_by(order_by_field)
-
 
 class LectureManager(models.Manager["Lecture"]):
     def get_queryset(self) -> LectureQuerySet:

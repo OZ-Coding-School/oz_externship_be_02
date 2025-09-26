@@ -26,7 +26,7 @@ class LectureTestCase(TestCase):
         # Given
         cache.clear()
         self.client = Client()
-        self.url = reverse("lectures:lecture_list")
+        self.url = reverse("lecture_list")
 
         self.category_ai = Category.objects.create(name="AI")
         self.category_web = Category.objects.create(name="웹 개발")
@@ -147,21 +147,3 @@ class LectureQuerySetManagerTest(LectureTestCase):  # 기존 LectureTestCase 활
 
         qs = Lecture.objects.filter_by_categories("")
         self.assertEqual(qs.count(), 2)  # 빈 문자열이면 전체 반환
-
-    def test_sort_by_ordering_queryset(self) -> None:
-        #
-        # price_asc
-        qs = Lecture.objects.all().sort_by_ordering("price_asc")  # type: ignore
-        self.assertEqual(list(qs), [self.lecture1, self.lecture2])
-        # price_desc
-        qs = Lecture.objects.all().sort_by_ordering("price_desc")  # type: ignore
-        self.assertEqual(list(qs), [self.lecture2, self.lecture1])
-        # rating_desc
-        qs = Lecture.objects.all().sort_by_ordering("rating_desc")  # type: ignore
-        self.assertEqual(list(qs), [self.lecture1, self.lecture2])
-        # rating_asc
-        qs = Lecture.objects.all().sort_by_ordering("rating_asc")  # type: ignore
-        self.assertEqual(list(qs), [self.lecture2, self.lecture1])
-        # default
-        qs = Lecture.objects.all().sort_by_ordering(None)  # type: ignore
-        self.assertEqual(list(qs), [self.lecture2, self.lecture1])
