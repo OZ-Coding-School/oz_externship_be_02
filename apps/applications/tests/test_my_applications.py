@@ -150,16 +150,3 @@ class MyApplicationListTest(APITestCase):
         self.assertEqual(response2.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response2.data["results"]), 1)
         self.assertIsNone(response2.data["next_cursor"])  # 마지막 페이지이므로 next_cursor는 null
-
-    def test_cascade_delete_on_recruitment_deletion(self) -> None:
-        """성공: 공고 삭제 시, 관련 지원 내역도 함께 삭제되는지 확인 (CASCADE)"""
-        # GIVEN: user1이 지원한 application 객체와 그 ID
-        application_to_delete = Application.objects.get(user=self.user1, recruitment__title="공고 1")
-        application_id = application_to_delete.id
-
-        # WHEN: 해당 공고를 삭제
-        application_to_delete.recruitment.delete()
-
-        # THEN: 해당 application 객체가 더 이상 존재하지 않아야 함
-        with self.assertRaises(Application.DoesNotExist):
-            Application.objects.get(id=application_id)

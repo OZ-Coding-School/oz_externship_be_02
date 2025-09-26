@@ -17,7 +17,8 @@ class Application(BaseModel):
     # Recruitment.applications 으로 사용 가능
     recruitment = models.ForeignKey(
         Recruitment,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,  # , or IntegrityError
         related_name="applications",
         help_text="지원한 공고의 ID",
     )
