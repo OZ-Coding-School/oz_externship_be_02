@@ -131,7 +131,7 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
             name="기존유저",
             phone_number="+821012345678",
             gender="F",
-            birthday="2000-01-01"
+            birthday="2000-01-01",
         )
         # 1차 회원가입
         self.client.post(self.url, self.signup_data)
@@ -149,13 +149,12 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
             password=self.signup_data["password"],
             nickname="existing",
             name="기존유저",
-            phone_number= self.signup_data["phone_number"],
+            phone_number=self.signup_data["phone_number"],
             gender="F",
-            birthday="2000-01-01"
+            birthday="2000-01-01",
         )
 
         mock_phone_verified.return_value = True
-
 
         # 1차 회원가입
         response = self.client.post(self.url, self.signup_data)
