@@ -1,5 +1,7 @@
 # apps/users/views/withdrawals_view.py
 
+import logging
+
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -24,6 +26,7 @@ from apps.users.services.withdrawals_service import create_withdrawal, recover_a
 from apps.users.utils.enums import VerificationPurpose
 
 email_service = EmailVerificationService()
+logger = logging.getLogger(__name__)
 
 
 class WithdrawalAPIView(APIView):
@@ -113,4 +116,5 @@ class AccountRecoveryAPIView(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
 
         except Exception:
-            return Response({"detail": "알 수 없는 오류가 발생했습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            logger.exception("계정 복구 처리 중 알 수 없는 오류 발생.")  # 로그 기록
+            return Response({"detail": "알 수 없는 오류가 발생했습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
