@@ -158,7 +158,7 @@ class RecruitmentsListTestCase(APITestCase):
         self.client.force_authenticate(user=self.users[1])
 
     def test_list_get(self) -> None:
-        url = reverse("recruitment-list")
+        url = reverse("recruitment-list-post")
         query_params: Dict[str, Union[int, str]] = {"page": 1, "ordering": "created_at"}
         res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
@@ -168,7 +168,7 @@ class RecruitmentsListTestCase(APITestCase):
         self.assertEqual(len(data["tags"]), 3)
 
     def test_list_page(self) -> None:
-        url = reverse("recruitment-list")
+        url = reverse("recruitment-list-post")
         query_params = {"page": 1, "size": 3}
         res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
@@ -176,7 +176,7 @@ class RecruitmentsListTestCase(APITestCase):
         self.assertEqual(len(results), 3)
 
     def test_list_search(self) -> None:
-        url = reverse("recruitment-list")
+        url = reverse("recruitment-list-post")
         query_params: Dict[str, Union[str, int]] = {"page": 1, "search": "3"}
         res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
@@ -184,7 +184,7 @@ class RecruitmentsListTestCase(APITestCase):
         self.assertEqual(len(results), 2)
 
     def test_list_order(self) -> None:
-        url = reverse("recruitment-list")
+        url = reverse("recruitment-list-post")
         query_params: Dict[str, Union[str, int]] = {"page": 1, "size": 20, "ordering": "-bookmarks_count,-created_at"}
         res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
@@ -193,7 +193,7 @@ class RecruitmentsListTestCase(APITestCase):
         self.assertEqual(results[2]["bookmarks_count"], 3)
 
     def test_list_filter(self) -> None:
-        url = reverse("recruitment-list")
+        url = reverse("recruitment-list-post")
         query_params: Dict[str, Union[str, int]] = {"page": 1, "tag": "tag1"}
         res = self.client.get(url, query_params)
         self.assertEqual(res.status_code, 200)
