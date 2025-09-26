@@ -55,9 +55,10 @@ class StudyNoteAITestCase(TestCase):
         그리고 업로드 과정에 생기는 고아객체를 처리하는 로직도 만들었다.
         """
 
+    @patch("apps.study_notes.services.study_notes_services.transaction.on_commit")
     @patch("apps.study_notes.services.study_note_ai_summary.GOOGLE_API_KEY", "fake-api-key-for-test")
     @patch("apps.study_notes.services.study_note_ai_summary.genai.GenerativeModel")
-    def test_normal_creation_with_mocked_ai(self, mock_model_class: Mock) -> None:
+    def test_normal_creation_with_mocked_ai(self, mock_model_class: Mock, mock_on_commit: Mock) -> None:
         """AI 호출을 mock 처리해서 노트 생성 테스트"""
         service = StudyNoteService()
 
@@ -82,6 +83,9 @@ class StudyNoteAITestCase(TestCase):
             images=[image1, image2],
             attachments=[attachment1],
         )
+
+        mock_on_commit.call_args.args[0]()
+        note.refresh_from_db()
 
         # 검증
         self.assertEqual(note.ai_summary, "요약된 AI 내용")

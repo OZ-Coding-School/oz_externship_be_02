@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Any, Sequence
 
 from django.core.files.uploadedfile import UploadedFile
 from rest_framework import serializers
@@ -22,6 +22,11 @@ class StudyNoteAttachmentSerializer(serializers.ModelSerializer[StudyNoteAttachm
     class Meta:
         model = StudyNoteAttachment
         fields = ["id", "file_name", "file_url"]
+
+
+class AttachmentInputSerializer(serializers.Serializer[dict[str, Any]]):
+    file_name = serializers.CharField(max_length=255)
+    file_url = serializers.URLField()
 
 
 class UserInfoSerializer(serializers.ModelSerializer[User]):
@@ -92,3 +97,24 @@ class StudyNoteListSerializer(serializers.ModelSerializer[StudyNote]):
     class Meta:
         model = StudyNote
         fields = ["id", "title", "author", "created_at"]
+
+
+class StudyNoteUpdateSerializer(serializers.ModelSerializer[StudyNote]):
+    title = serializers.CharField(required=False, max_length=50)
+    content = serializers.CharField(required=False)
+    image_urls = serializers.ListField(child=serializers.URLField(), required=False, write_only=True)
+    attachment_urls = AttachmentInputSerializer(many=True, required=False, write_only=True)
+
+    class Meta:
+        model = StudyNote
+        fields = [
+            "title",
+            "content",
+            "image_urls",
+            "attachment_urls",
+        ]
+
+
+class StudyNoteUploadSerializer(serializers.Serializer[dict[str, Any]]):
+    image_files = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False)
+    attachment_files = serializers.ListField(child=serializers.FileField(), write_only=True, required=False)
