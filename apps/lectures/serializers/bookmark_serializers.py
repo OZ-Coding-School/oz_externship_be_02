@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from rest_framework import serializers
 
-from apps.lectures.models.crawled_lectures import Lecture
+from apps.lectures.models.crawled_lectures import DifficultyChoices, Lecture
 from apps.lectures.models.lecture_bookmarks import LectureBookmark
 
 
@@ -32,19 +32,23 @@ def _minutes_to_hhmm(minutes: int) -> str:
     return f"{hours:02d}:{mins:02d}"
 
 
-# Lecture 목록
-class LectureSerializer(serializers.ModelSerializer[Lecture]):
+class BookmarkLectureSerializer(serializers.ModelSerializer[Lecture]):
+    lecture_uuid = serializers.UUIDField(source="uuid", read_only=True)
     duration_hhmm = serializers.SerializerMethodField()
-    difficulty = serializers.SerializerMethodField()
+    difficulty = serializers.ChoiceField(choices=DifficultyChoices.choices, read_only=True)
+    difficulty_display = serializers.CharField(source="get_difficulty_display", read_only=True)
 
     class Meta:
         model = Lecture
         fields = (
+            "lecture_uuid",
             "title",
             "instructor",
             "thumbnail_img_url",
             "platform",
             "difficulty",
+            "difficulty_display",
+            "duration",
             "duration_hhmm",
             "original_price",
             "discount_price",
@@ -54,20 +58,10 @@ class LectureSerializer(serializers.ModelSerializer[Lecture]):
     def get_duration_hhmm(self, obj: Lecture) -> str:
         return _minutes_to_hhmm(int(obj.duration or 0))
 
-    def get_difficulty(self, obj: Lecture) -> str:
-        raw = (obj.difficulty or "").upper()
-        return "MIDDLE" if raw == "NORMAL" else raw
 
-
-# 북마크 목록
 class LectureBookmarkListSerializer(serializers.ModelSerializer[LectureBookmark]):
-    lecture = LectureSerializer(read_only=True)
+    lecture = BookmarkLectureSerializer()
 
     class Meta:
         model = LectureBookmark
-        fields = ("lecture",)
-
-    def to_representation(self, instance: LectureBookmark) -> dict[str, Any]:
-        rep = super().to_representation(instance)
-        lecture_rep = rep.get("lecture", {})
-        return dict(lecture_rep)
+        fields = ["user_id", "lecture"]

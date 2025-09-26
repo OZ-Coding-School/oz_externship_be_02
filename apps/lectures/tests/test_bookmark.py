@@ -2,7 +2,7 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.lectures.models.crawled_lectures import Lecture
+from apps.lectures.models.crawled_lectures import DifficultyChoices, Lecture
 from apps.lectures.models.lecture_bookmarks import LectureBookmark
 from apps.users.models.user import User
 
@@ -127,15 +127,15 @@ class TestBookmarkView(APITestCase):
         self.assertEqual(len(res.data.get("results", [])), 1)
 
         item = res.data["results"][0]
-        self.assertEqual(item["title"], "파이썬 심화")
-        self.assertEqual(item["instructor"], "Alice")
-        self.assertEqual(item["platform"], "Inflearn")
-        self.assertEqual(item["url_link"], "https://example.com/python-advanced")
-        self.assertEqual(item["duration_hhmm"], "02:05")
-        self.assertEqual(item["difficulty"], "MIDDLE")
-        self.assertIn("thumbnail_img_url", item)
-        self.assertIn("original_price", item)
-        self.assertIn("discount_price", item)
+        self.assertEqual(item["lecture"]["title"], "파이썬 심화")
+        self.assertEqual(item["lecture"]["instructor"], "Alice")
+        self.assertEqual(item["lecture"]["platform"], "Inflearn")
+        self.assertEqual(item["lecture"]["url_link"], "https://example.com/python-advanced")
+        self.assertEqual(item["lecture"]["duration_hhmm"], "02:05")
+        self.assertEqual(item["lecture"]["difficulty"], DifficultyChoices.NORMAL)
+        self.assertIn("thumbnail_img_url", item["lecture"])
+        self.assertIn("original_price", item["lecture"])
+        self.assertIn("discount_price", item["lecture"])
 
     def test_list_bookmarks_pagination(self) -> None:
         for i in range(12):
@@ -199,13 +199,13 @@ class TestBookmarkView(APITestCase):
         res_title = self.client.get(self.list_url, data={"search": "django"})
         self.assertEqual(res_title.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res_title.data.get("results", [])), 1)
-        self.assertEqual(res_title.data["results"][0]["title"], "Django 입문")
+        self.assertEqual(res_title.data["results"][0]["lecture"]["title"], "Django 입문")
 
         # 강사 검색
         res_instructor = self.client.get(self.list_url, data={"search": "bob"})
         self.assertEqual(res_instructor.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res_instructor.data.get("results", [])), 1)
-        self.assertEqual(res_instructor.data["results"][0]["instructor"], "Bob")
+        self.assertEqual(res_instructor.data["results"][0]["lecture"]["instructor"], "Bob")
 
     def test_list_requires_authentication(self) -> None:
         """목록 조회도 인증 필요"""
