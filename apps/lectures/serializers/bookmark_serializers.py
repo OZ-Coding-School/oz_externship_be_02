@@ -4,7 +4,7 @@ from typing import Any, TypedDict, cast
 
 from rest_framework import serializers
 
-from apps.lectures.models.crawled_lectures import Lecture
+from apps.lectures.models.crawled_lectures import DifficultyChoices, Lecture
 from apps.lectures.models.lecture_bookmarks import LectureBookmark
 
 
@@ -35,7 +35,8 @@ def _minutes_to_hhmm(minutes: int) -> str:
 class BookmarkLectureSerializer(serializers.ModelSerializer[Lecture]):
     lecture_uuid = serializers.UUIDField(source="uuid", read_only=True)
     duration_hhmm = serializers.SerializerMethodField()
-    difficulty = serializers.SerializerMethodField()
+    difficulty = serializers.ChoiceField(choices=DifficultyChoices.choices, read_only=True)
+    difficulty_display = serializers.CharField(source="get_difficulty_display", read_only=True)
 
     class Meta:
         model = Lecture
@@ -46,6 +47,8 @@ class BookmarkLectureSerializer(serializers.ModelSerializer[Lecture]):
             "thumbnail_img_url",
             "platform",
             "difficulty",
+            "difficulty_display",
+            "duration",
             "duration_hhmm",
             "original_price",
             "discount_price",
@@ -55,19 +58,10 @@ class BookmarkLectureSerializer(serializers.ModelSerializer[Lecture]):
     def get_duration_hhmm(self, obj: Lecture) -> str:
         return _minutes_to_hhmm(int(obj.duration or 0))
 
-    def get_difficulty(self, obj: Lecture) -> str:
-        raw = (obj.difficulty or "").upper()
-        return "MIDDLE" if raw == "NORMAL" else raw
-
 
 class LectureBookmarkListSerializer(serializers.ModelSerializer[LectureBookmark]):
     lecture = BookmarkLectureSerializer()
 
     class Meta:
         model = LectureBookmark
-        fields = ("lecture",)
-
-    def to_representation(self, instance: LectureBookmark) -> dict[str, Any]:
-        base: dict[str, Any] = super().to_representation(instance)
-        lecture_data = base.get("lecture")
-        return lecture_data if isinstance(lecture_data, dict) else {}
+        fields = ["user_id", "lecture"]
