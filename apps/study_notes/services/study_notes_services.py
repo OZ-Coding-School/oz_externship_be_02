@@ -1,5 +1,6 @@
 import logging
-from typing import Dict, List, Optional
+from datetime import datetime
+from typing import Dict, List, Optional, cast
 
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
@@ -22,22 +23,6 @@ class StudyNoteService:
         # 실제 기능: None이면 S3Uploader() 사용, 테스트: MockS3Uploader 주입
         self.s3: S3Uploader = s3_uploader or S3Uploader()
 
-    def _generate_ai_summary_on_commit(self, note: StudyNote, content: str) -> None:
-        """트랜잭션 커밋 후 AI 요약 생성"""
-
-        def update_summary() -> None:
-            try:
-                note.ai_summary = generate_study_summary(
-                    content=content,
-                    author_name=note.author.name,
-                    date_str=note.created_at.strftime("%Y년 %-m월 %-d일 %A"),
-                )
-                note.save(update_fields=["ai_summary"])
-            except Exception as e:
-                logger.warning(f"AI 요약 생성 실패 (note_id={note.id}): {e}")
-
-        transaction.on_commit(update_summary)
-
     def create_study_note(
         self,
         author: User,
@@ -52,19 +37,24 @@ class StudyNoteService:
         image_urls: List[str] = []
         attachment_data: List[Dict[str, str]] = []
 
-        # S3 업로드 먼저 진행 (트랜잭션 밖)
+        # S3 업로드 (트랜잭션 밖)
         try:
             if images:
                 for img_file in images:
                     s3_data = self.s3.upload_file(img_file)
                     uploaded_keys.append(s3_data["key"])
-                    image_urls.append(s3_data["url"])
+                    image_urls.append(cast(str, s3_data.get("url")))
 
             if attachments:
                 for attach_file in attachments:
                     s3_data = self.s3.upload_file(attach_file)
                     uploaded_keys.append(s3_data["key"])
-                    attachment_data.append({"file_name": attach_file.name or "untitled", "url": s3_data["url"]})
+                    attachment_data.append(
+                        {
+                            "file_name": attach_file.name or "untitled",
+                            "url": cast(str, s3_data.get("url")),
+                        }
+                    )
 
         except Exception as e:
             try:
@@ -73,6 +63,18 @@ class StudyNoteService:
                 logger.warning(f"S3 객체 삭제 실패: {uploaded_keys}, error: {del_err}")
             raise RuntimeError(f"S3 업로드 실패, 롤백 완료. Error: {e}")
 
+        # 트랜잭션 시작 전 AI 요약 생성
+        try:
+            ai_summary: Optional[str] = generate_study_summary(
+                content=content,
+                author_name=author.name,
+                date_str=datetime.now().strftime("%Y년 %-m월 %-d일 %A"),
+            )
+        except Exception as e:
+            logger.warning(f"AI 요약 생성 실패: {e}")
+            ai_summary = None
+
+        # DB 트랜잭션
         try:
             with transaction.atomic():
                 note = StudyNote.objects.create_note(
@@ -81,6 +83,9 @@ class StudyNoteService:
                     title=title,
                     content=content,
                 )
+                if ai_summary is not None:
+                    note.ai_summary = ai_summary
+                    note.save(update_fields=["ai_summary"])
 
                 if image_urls:
                     StudyNoteImage.objects.bulk_create(
@@ -94,9 +99,6 @@ class StudyNoteService:
                             for d in attachment_data
                         ]
                     )
-
-            #  트랜잭션 후 AI 요약 생성
-            self._generate_ai_summary_on_commit(note, content)
 
             return note
 
@@ -124,6 +126,19 @@ class StudyNoteService:
         if attachments:
             uploaded_keys.extend(att["file_url"].split("/")[-1] for att in attachments)
 
+        # 트랜잭션 전 AI 요약 생성 (content가 있을 때만)
+        ai_summary: Optional[str] = None
+        if content is not None:
+            try:
+                ai_summary = generate_study_summary(
+                    content=content,
+                    author_name=note.author.name,
+                    date_str=note.created_at.strftime("%Y년 %-m월 %-d일 %A"),
+                )
+            except Exception as e:
+                logger.warning(f"AI 요약 생성 실패 (note_id={note.id}): {e}")
+
+        # DB 트랜잭션
         try:
             with transaction.atomic():
                 # 기존 이미지/첨부 중 요청에 없는 것 삭제
@@ -133,13 +148,19 @@ class StudyNoteService:
                     requested_urls = [att["file_url"] for att in attachments]
                     StudyNoteAttachment.objects.filter(study_note=note).exclude(file_url__in=requested_urls).delete()
 
-                # 제목/내용 업데이트
+                # 제목/내용/AI 요약 업데이트
+                updated_fields: List[str] = []
                 if title is not None:
                     note.title = title
+                    updated_fields.append("title")
                 if content is not None:
                     note.content = content
-                if title is not None or content is not None:
-                    note.save()
+                    updated_fields.append("content")
+                if ai_summary is not None:
+                    note.ai_summary = ai_summary
+                    updated_fields.append("ai_summary")
+                if updated_fields:
+                    note.save(update_fields=updated_fields)
 
                 # 새 이미지/첨부 추가
                 if images:
@@ -159,10 +180,6 @@ class StudyNoteService:
                     ]
                     if new_attachments:
                         StudyNoteAttachment.objects.bulk_create(new_attachments)
-
-            # 트랜잭션 후 AI 요약 생성
-            if content is not None:
-                self._generate_ai_summary_on_commit(note, content)
 
             return note
 
