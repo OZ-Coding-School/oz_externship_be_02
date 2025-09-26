@@ -27,17 +27,10 @@ class UserSignupAPIView(APIView):
         responses={
             201: UserSignupSerializer,
             400: {"type": "object", "properties": {"error": {"type": "string"}}},
+            409: {"type": "object", "properties": {"error": {"type": "string"}}},
         },
     )
     def post(self, request: Request) -> Response:
-        email = request.data.get("email")
-        phone = request.data.get("phone_number")
-
-        if User.objects.filter(email=email).exists():
-            return Response({"error": "이미 존재하는 이메일입니다"}, status=status.HTTP_409_CONFLICT)
-        if User.objects.filter(phone_number=phone).exists():
-            return Response({"error": "이미 존재하는 휴대폰 번호입니다"}, status=status.HTTP_409_CONFLICT)
-
         serializer = UserSignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
