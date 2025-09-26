@@ -1,6 +1,7 @@
 from django.db import models
 
 from apps.core.models.base import BaseModel
+from apps.recruitments.managers.bookmark_managers import RecruitmentBookmarkManager
 from apps.recruitments.models.recruitments import Recruitment
 from apps.users.models.user import User
 
@@ -11,6 +12,8 @@ class RecruitmentBookmark(BaseModel):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="북마크한 유저 ID")
     recruitment = models.ForeignKey(Recruitment, on_delete=models.CASCADE, help_text="공고 ID")
+
+    objects = RecruitmentBookmarkManager()
 
     class Meta:
         db_table = "recruitment_bookmarks"
