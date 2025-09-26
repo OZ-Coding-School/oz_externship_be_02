@@ -13,7 +13,7 @@ from apps.lectures.models import Category, Lecture, LectureReview
 from apps.lectures.tasks import run_crawler_v2
 
 
-class TestCrawlerV2Command(IsolatedAsyncioTestCase):
+class TestCrawlerV2Command(TestCase):
     """
     crawler_v2 명령어 테스트 클래스
     """
@@ -178,7 +178,7 @@ class TestCrawlerV2Command(IsolatedAsyncioTestCase):
         mock_logger.warning.assert_called_with("API로부터 가져올 강의 데이터가 없습니다.")
 
 
-class TestRunCrawlerV2Task(IsolatedAsyncioTestCase):
+class TestRunCrawlerV2Task(TestCase):
     @patch("apps.lectures.tasks.call_command")
     def test_task_calls_crawler_command(self, mock_call_command: MagicMock) -> None:
         run_crawler_v2()
@@ -191,7 +191,7 @@ class TestRunCrawlerV2Task(IsolatedAsyncioTestCase):
         mock_call_command.assert_called_once_with("crawler_v2")
 
 
-class TestCrawlerV2ErrorLogging(IsolatedAsyncioTestCase):
+class TestCrawlerV2ErrorLogging(TestCase):
     @patch("apps.lectures.management.commands.crawler_v2.logger")
     async def test_page_crawling_error_logged(self, mock_logger: MagicMock) -> None:
         cmd: Command = Command()
