@@ -122,3 +122,50 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
+
+    def test_serializer_conflict_email(self) -> None:
+        User.objects.create_user(
+            email=self.signup_data["email"],
+            password=self.signup_data["password"],
+            nickname="existing",
+            name="기존유저",
+            phone_number="+821012345678",
+            gender="F",
+            birthday="2000-01-01"
+        )
+        # 1차 회원가입
+        self.client.post(self.url, self.signup_data)
+        # 2차 회원가입
+        response = self.client.post(self.url, self.signup_data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("error", response.data)
+        self.assertIn("email", response.data["error"])
+
+    @patch("apps.users.serializers.signup_serializers.phone_service.is_verified")
+    def test_signup_conflict_phone_number(self, mock_phone_verified: MagicMock) -> None:
+        User.objects.create_user(
+            email=self.signup_data["email"],
+            password=self.signup_data["password"],
+            nickname="existing",
+            name="기존유저",
+            phone_number= self.signup_data["phone_number"],
+            gender="F",
+            birthday="2000-01-01"
+        )
+
+        mock_phone_verified.return_value = True
+
+
+        # 1차 회원가입
+        response = self.client.post(self.url, self.signup_data)
+
+        # 휴대폰 번호만 중복
+        new_data = self._create_signup_data(email="test999@email.com")
+        new_data["phone_number"] = self.signup_data["phone_number"]
+        # 2차 회원가입
+        response = self.client.post(self.url, new_data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("error", response.data)
+        self.assertIn("phone_number", response.data["error"])
