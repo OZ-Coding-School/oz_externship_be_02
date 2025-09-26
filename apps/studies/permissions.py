@@ -31,6 +31,21 @@ class IsStudyGroupLeaderPermission(permissions.BasePermission):
         return study_group.members.through.objects.filter(user=request.user, is_leader=True).exists()
 
 
+class IsStudyGroupMemberPermission(permissions.BasePermission):
+    """
+    스터디 그룹원 여부 확인
+    """
+
+    def has_object_permission(self, request: Request, view: APIView, obj: Any) -> Any:
+        """
+        :param request: HTTP request
+        :param view: APIView
+        :param obj: StudyGroup 인스턴스
+        :return: bool
+        """
+        return obj.members.through.objects.filter(user=request.user).exists()
+
+
 class IsReviewAuthor(permissions.BasePermission):
     message = "본인이 작성한 리뷰만 수정할 수 있습니다."
 
