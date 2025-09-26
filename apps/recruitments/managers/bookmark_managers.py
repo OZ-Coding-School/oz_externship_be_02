@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from django.db import models
 
-if TYPE_CHECKING:   # pragma: no cover
+if TYPE_CHECKING:  # pragma: no cover
     from apps.recruitments.models.recruitment_bookmarks import RecruitmentBookmark
     from apps.recruitments.models.recruitments import Recruitment
     from apps.users.models import User
