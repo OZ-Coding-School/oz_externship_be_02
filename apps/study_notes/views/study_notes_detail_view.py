@@ -90,20 +90,17 @@ class StudyNoteDetailView(APIView):
         },
     )
     def patch(self, request: Request, group_uuid: UUID, note_id: int) -> Response:
+        """
+        스터디 노트 수정
+        - 작성자만 수정 가능
+        - validated_data를 서비스로 그대로 전달
+        """
         note = self.get_object(group_uuid, note_id)
         self.check_object_permissions(request, note)
 
         serializer = StudyNoteUpdateSerializer(note, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        updated_note = self.get_service().update_study_note(
-            note=note,
-            title=serializer.validated_data.get("title"),
-            content=serializer.validated_data.get("content"),
-            images=serializer.validated_data.get("image_urls", []),
-            attachments=[
-                {"file_name": att["file_name"], "file_url": att.get("url") or att.get("file_url")}
-                for att in serializer.validated_data.get("attachment_urls", [])
-            ],
-        )
+        updated_note = self.get_service().update_study_note(note=note, **serializer.validated_data)
+
         return Response(StudyNoteSerializer(updated_note).data, status=status.HTTP_200_OK)
