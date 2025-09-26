@@ -20,6 +20,9 @@ def create_withdrawal(user: User, reason: str, reason_detail: str) -> Withdrawal
     # 비즈니스 로직 2: 모델 객체 생성(탈퇴 요청 생성) 후 withdrawal 모델에 탈퇴 요청 저장
     withdrawal = Withdrawals.objects.create(user=user, reason=reason, reason_detail=reason_detail, due_date=due_date)
 
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+
     return withdrawal
 
 
