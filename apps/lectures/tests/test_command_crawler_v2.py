@@ -178,7 +178,7 @@ class TestCrawlerV2Command(IsolatedAsyncioTestCase):
         mock_logger.warning.assert_called_with("API로부터 가져올 강의 데이터가 없습니다.")
 
 
-class TestRunCrawlerV2Task(TestCase):
+class TestRunCrawlerV2Task(IsolatedAsyncioTestCase):
     @patch("apps.lectures.tasks.call_command")
     def test_task_calls_crawler_command(self, mock_call_command: MagicMock) -> None:
         run_crawler_v2()
