@@ -3,8 +3,10 @@ from typing import Any, Optional
 from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django_eventstream import send_event  # type: ignore[import-untyped]
 
 from apps.applications.models import Application
+from apps.notifications.models import Notification
 from apps.notifications.services.noti_create_service import (
     ApplicationNotificationService,
     StudyNoteNotificationService,
@@ -78,3 +80,25 @@ def notify_add_study_note(instance: StudyNote, created: bool, **kwargs: Any) -> 
         StudyNoteNotificationService.from_id(sn_id).notify_add_study_note()
 
     transaction.on_commit(add_study_note)
+
+
+@receiver(post_save, sender=Notification, dispatch_uid="sse_push_create_notification")
+def sse_push_create_notification(instance: Notification, created: bool, **kwargs: Any) -> None:
+    if not created:
+        return
+
+    raw_type: Any = instance.notification_type
+    notif_type = str(getattr(raw_type, "value", raw_type))
+
+    send_event(
+        f"user-{instance.user_id}",
+        "notification",
+        {
+            "id": instance.id,
+            "type": notif_type,
+            "content": instance.content,
+            "back_url_link": instance.back_url_link,
+            "created_at": instance.created_at.isoformat(),
+            "is_read": instance.is_read,
+        },
+    )

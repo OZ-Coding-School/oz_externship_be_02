@@ -1,3 +1,4 @@
+import django_eventstream  # type: ignore[import-untyped]
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import URLPattern, URLResolver, include, path
@@ -20,6 +21,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("api/v1/study-notes", include("apps.study_notes.urls.study_note_urls")),
     path("api/v1/applications", include("apps.applications.urls")),
     path("api/v1/chat", include("apps.chat.urls")),
+    path("events/", include("django_eventstream.urls")),
 ]
 
 if settings.DEBUG:

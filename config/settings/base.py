@@ -33,6 +33,7 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "django_celery_beat",
     "rest_framework_simplejwt.token_blacklist",
+    "django_eventstream",
 ]
 
 CUSTOM_APPS = [
@@ -260,3 +261,11 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=0, minute=1),
     },
 }
+
+EVENTSTREAM_REDIS = {
+    "host": REDIS_HOST,
+    "port": REDIS_PORT,
+    "db": 5,
+}
+
+EVENTSTREAM_CHANNELMANAGER_CLASS = "apps.notifications.channelmanager.NotificationChannelManager"
