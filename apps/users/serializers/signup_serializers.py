@@ -34,6 +34,20 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
         ]
         extra_kwargs = {"password": {"write_only": True}}
 
+    def validate_email(self, value: str) -> str:
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "이미 존재하는 이메일입니다.", code="unique"
+            )
+        return value
+
+    def validate_phone_number(self, value: str) -> str:
+        if User.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError(
+                "이미 존재하는 휴대폰 번호입니다.", code="unique"
+            )
+        return value
+
     def validate_email_verification_code(self, value: str) -> str:
         """
         이메일 인증 코드 검증
