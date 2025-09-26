@@ -34,9 +34,9 @@ class UserSignupAPIView(APIView):
         phone = request.data.get("phone_number")
 
         if User.objects.filter(email=email).exists():
-            return Response({"error": "이미 존재하는 이메일입니다"}, status=409)
+            return Response({"error": "이미 존재하는 이메일입니다"}, status=status.HTTP_409_CONFLICT)
         if User.objects.filter(phone_number=phone).exists():
-            return Response({"error": "이미 존재하는 휴대폰 번호입니다"}, status=409)
+            return Response({"error": "이미 존재하는 휴대폰 번호입니다"}, status=status.HTTP_409_CONFLICT)
 
         serializer = UserSignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
