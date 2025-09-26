@@ -29,6 +29,8 @@ dependencies = [
     "celery (>=5.5.3,<6.0.0)",
     "google-generativeai (>=0.8.5,<0.9.0)",
     "google-genai (>=1.38.0,<2.0.0)",
+    "freezegun (>=1.5.5,<2.0.0)",
+    "faker (>=37.8.0,<38.0.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]
