@@ -2,6 +2,7 @@ from typing import Any, Dict
 
 from rest_framework import serializers
 
+from apps.core.exceptions import ConflictException
 from apps.users.models import User
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.services.phone_service import (
@@ -32,16 +33,20 @@ class UserSignupSerializer(serializers.ModelSerializer[User]):
             "email_verification_code",
             "phone_verification_code",
         ]
-        extra_kwargs = {"password": {"write_only": True}}
+        extra_kwargs = {
+            "password": {"write_only": True},
+            "email": {"validators": []},
+            "phone_number": {"validators": []}
+        }
 
     def validate_email(self, value: str) -> str:
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("이미 존재하는 이메일입니다.", code="unique")
+            raise ConflictException("이미 존재하는 이메일입니다.")
         return value
 
     def validate_phone_number(self, value: str) -> str:
         if User.objects.filter(phone_number=value).exists():
-            raise serializers.ValidationError("이미 존재하는 휴대폰 번호입니다.", code="unique")
+            raise ConflictException("이미 존재하는 휴대폰 번호입니다.")
         return value
 
     def validate_email_verification_code(self, value: str) -> str:
