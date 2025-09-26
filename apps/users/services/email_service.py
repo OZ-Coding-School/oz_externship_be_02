@@ -1,13 +1,9 @@
 import uuid
 from smtplib import SMTPException
-from typing import Any, Dict
 
 from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import send_mail
-from rest_framework import status
-from rest_framework.exceptions import APIException, ValidationError
-from rest_framework.response import Response
 
 from apps.core.utils.base62 import Base62
 from apps.users.services.exceptions import (
@@ -22,10 +18,11 @@ class EmailVerificationService:
     def generate_verification_code() -> str:
         return Base62.uuid_encode(u=uuid.uuid4())
 
-    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> None:
+    def send_verification_email(self, email: str, purpose: VerificationPurpose, timeout: int = 300) -> str:
 
         verification_code = self.generate_verification_code()
         cache_key = f"{purpose.value}-{email}"
+
         cache.set(cache_key, verification_code, timeout=timeout)
 
         subject_map = {
@@ -50,11 +47,11 @@ class EmailVerificationService:
         except SMTPException as e:
             cache.delete(cache_key)
             raise EmailSendingFailedError(f"이메일 발송에 실패했습니다: {e}")
+        return verification_code
 
     @staticmethod
     def verify_code(purpose: VerificationPurpose, email: str, verification_code: str) -> None:
-
-        cache_key = f"{purpose}-{email}"
+        cache_key = f"{purpose.value}-{email}"
         cache_verification_code = cache.get(cache_key)
 
         if cache_verification_code != verification_code:
@@ -64,13 +61,13 @@ class EmailVerificationService:
         # 검증이 완료됐다는 cache.set(f"is_verified_email_{email}") -> 여기서 캐시 검증됬다는 값 비교하는 로직 추가
 
         # 인증 완료 상태 저장
-        verified_key = f"is_verified_email_{email}_{verification_code}"
-        cache.set(verified_key, True, timeout=600)
+        verified_key = f"{purpose.value}-verified-{email}"
+        cache.set(verified_key, verification_code, timeout=600)
 
     @staticmethod
-    def is_verified(email: str, verification_code: str) -> bool:
+    def is_verified(email: str, verification_code: str, purpose: VerificationPurpose) -> bool:
         """
         이메일 검증된 상태인지 확인
         """
-        verified_key = f"is_verified_email_{email}_{verification_code}"
-        return cache.get(verified_key) is True
+        verified_key = f"{purpose.value}-verified-{email}"
+        return bool(str(cache.get(verified_key)) == verification_code)

@@ -72,7 +72,6 @@ class SignUpEmailVerifiCationVerifyAPIView(APIView):
     def post(self, request: Request) -> Response:
         serializer = EmailVerifyCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         purpose = VerificationPurpose.SIGNUP
         try:
             email_service.verify_code(purpose, **serializer.validated_data)

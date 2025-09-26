@@ -3,6 +3,8 @@ from typing import Any, ClassVar, Dict
 from django.urls import reverse
 
 from apps.users.models.user import User
+from apps.users.services.email_service import EmailVerificationService
+from apps.users.services.phone_service import PhoneVerificationService
 
 
 class TestUserMixin:
@@ -68,3 +70,5 @@ class VerificationMixin(TestUserMixin):
     login_url: ClassVar[str]
     refresh_url: ClassVar[str]
     revoke_url: ClassVar[str]
+    email_service: ClassVar[EmailVerificationService]
+    phone_service: ClassVar[PhoneVerificationService]
