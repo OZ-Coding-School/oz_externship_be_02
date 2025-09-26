@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from apps.users.models.user import User
 from apps.users.services.phone_service import PhoneVerificationService
+from apps.users.utils.enums import VerificationPurpose
 
 
 # 유저 정보 직렬화
@@ -46,7 +47,8 @@ class UserInfoSerializer(serializers.ModelSerializer[User]):
 
         # 휴대폰 번호 변경 + 코드 검증
         if new_phone and code:
-            if not PhoneVerificationService.is_verified(new_phone, code):
+            purpose = VerificationPurpose.PROFILE_UPDATE
+            if not PhoneVerificationService.is_verified(new_phone, code, purpose):
                 raise serializers.ValidationError({"verification_code": "휴대폰 인증이 완료되지 않았습니다."})
 
         # 검증 완료 시 verification_code 제거
