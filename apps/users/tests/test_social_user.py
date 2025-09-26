@@ -6,8 +6,9 @@ from django.urls import reverse
 from requests import Response
 from rest_framework import status
 from rest_framework.test import APITestCase
-from apps.users.services.kakao_login_service import KakaoService
+
 from apps.users.models import SocialUser, User
+from apps.users.services.kakao_login_service import KakaoService
 
 
 class TestKakaoLogin(APITestCase):
