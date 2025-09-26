@@ -97,10 +97,6 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
             raise APIException("카카오 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.")
 
         validated_data: dict[str, Any] = serializer.validated_data.copy()
-        validated_data["birthday"] = cls.parse_kakao_birth_date(
-            validated_data["kakao_account"].pop("birthday", str("0101")),
-            validated_data["kakao_account"].pop("birthyear", str(timezone.now().year)),
-        )
 
         return validated_data
 
@@ -149,6 +145,9 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
         with transaction.atomic():
             user_data = kakao_user_data["kakao_account"]
             user_data.update(user_data.pop("profile"))
+            birthday = user_data.get("birthday")
+            birthyear = user_data.pop("birthyear")
+            user_data["birthday"] = cls.parse_kakao_birth_date(birthday, birthyear)
 
             serializer = KakaoUserCreateSerializer(data=user_data)
             serializer.is_valid(raise_exception=True)

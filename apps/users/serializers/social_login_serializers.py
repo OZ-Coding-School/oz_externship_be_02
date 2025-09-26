@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.users.models import User
@@ -30,8 +31,8 @@ class KakaoProfileSerializer(serializers.Serializer[dict[str, Any]]):
 class KakaoAccountSerializer(serializers.Serializer[dict[str, Any]]):
     email = serializers.EmailField()
     name = serializers.CharField(required=False, default="이름없음")
-    birthday = serializers.RegexField(regex=r"^\d{4}$", required=False)
-    birthyear = serializers.RegexField(regex=r"^\d{4}$", required=False)
+    birthday = serializers.RegexField(regex=r"^\d{4}$", required=False, default=str("0101"))
+    birthyear = serializers.RegexField(regex=r"^\d{4}$", required=False, default=str(timezone.now().year))
     profile = KakaoProfileSerializer()
     gender = serializers.CharField(required=False, default="알수없음")
 
