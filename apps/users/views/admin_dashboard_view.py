@@ -7,7 +7,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.services.admin_dashboard_services import AdminDashboardService, Period
+from apps.users.services.admin_dashboard_services import (
+    AdminDashboardPeriod,
+    AdminDashboardService,
+)
 
 
 @extend_schema(
@@ -34,12 +37,14 @@ class SignUpTrendAPIView(APIView):
 
     def get(self, request: Request) -> Response:
         period_str = request.query_params.get("period", "monthly")
-        if period_str not in ["monthly", "yearly"]:
+
+        try:
+            period = AdminDashboardPeriod(period_str)
+        except ValueError:
             return Response(
                 {"error": "period는 'monthly' 또는 'yearly'만 가능합니다."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        period = cast(Period, period_str)
         data = AdminDashboardService.get_signup_trends(period=period)
         return Response(data)
 
@@ -68,11 +73,13 @@ class WithdrawalTrendAPIView(APIView):
 
     def get(self, request: Request) -> Response:
         period_str = request.query_params.get("period", "monthly")
-        if period_str not in ["monthly", "yearly"]:
+
+        try:
+            period = AdminDashboardPeriod(period_str)
+        except ValueError:
             return Response(
                 {"error": "period는 'monthly' 또는 'yearly'만 가능합니다."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        period = cast(Period, period_str)
         data = AdminDashboardService.get_withdrawals_trends(period=period)
         return Response(data)
