@@ -6,7 +6,6 @@ from rest_framework.exceptions import ValidationError
 
 from apps.users.models.user import User
 from apps.users.serializers.user_info_serializer import UserInfoSerializer
-from apps.users.services.phone_service import PhoneVerificationService
 
 
 # 사용자 정보 조회: 시리얼라이저로 직렬화
