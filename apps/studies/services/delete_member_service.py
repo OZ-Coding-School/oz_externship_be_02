@@ -20,9 +20,9 @@ class DeleteMemberService:
         """
         return self.group.members.through.objects.get(user=self.target, study_group=self.group).is_leader
 
-    def studygroup_withdraw_service(self) -> None:
+    def groupmember_delete_service(self) -> None:
         """
-        스터디 그룹 탈퇴 기능
+        스터디 그룹 탈퇴 및 강퇴 기능
         """
         if self.check_leader():
             raise PermissionDenied("그룹 리더는 리더 위임 후 그룹을 탈퇴할 수 있습니다.")
