@@ -216,7 +216,7 @@ class RecruitmentCreateSerializer(serializers.ModelSerializer[Recruitment]):
 
         # estimated_fee를 입력하지 않았다면 스터디그룹의 강의 비용을 합산해서 자동 등록
         if "estimated_fee" not in validated_data:
-            study_group = validated_data["estimated_fee"]
+            study_group = validated_data["study_group"]
             total = study_group.lectures.aggregate(total=Sum("original_price"))["total"]
             if total is None:
                 total = 0
