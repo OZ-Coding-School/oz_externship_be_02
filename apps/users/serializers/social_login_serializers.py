@@ -33,7 +33,7 @@ class KakaoAccountSerializer(serializers.Serializer[dict[str, Any]]):
     birthday = serializers.RegexField(regex=r"^\d{4}$", required=False)
     birthyear = serializers.RegexField(regex=r"^\d{4}$", required=False)
     profile = KakaoProfileSerializer()
-    gender = serializers.CharField()
+    gender = serializers.CharField(required=False, default="알수없음")
 
 
 class KakaoUserSerializer(serializers.Serializer[dict[str, Any]]):

@@ -101,7 +101,6 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
             validated_data["kakao_account"].pop("birthday", str("0101")),
             validated_data["kakao_account"].pop("birthyear", str(timezone.now().year)),
         )
-        validated_data["gender"] = validated_data["kakao_account"].pop("gender", "알수없음")
 
         return validated_data
 
@@ -150,11 +149,6 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
         with transaction.atomic():
             user_data = kakao_user_data["kakao_account"]
             user_data.update(user_data.pop("profile"))
-
-            if "birthday" not in user_data:
-                bday = kakao_user_data.get("birthday")
-                if bday is not None:
-                    user_data["birthday"] = bday
 
             serializer = KakaoUserCreateSerializer(data=user_data)
             serializer.is_valid(raise_exception=True)
