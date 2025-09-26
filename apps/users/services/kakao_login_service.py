@@ -5,6 +5,7 @@ from typing import Any, Optional
 import requests
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -102,7 +103,10 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
         return validated_data
 
     @classmethod
-    def parse_kakao_birth_date(cls, birth_day: str, birth_year: str) -> date:
+    def parse_kakao_birth_date(cls, birth_day: Optional[str], birth_year: Optional[str]) -> date:
+        if not birth_year:
+            birth_year = timezone.now().year
+
         day = birth_day[:2]
         month = birth_day[2:]
         birthday_string = f"{birth_year}-{month}-{day}"
