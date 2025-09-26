@@ -58,36 +58,55 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      # 향상된 다단계 캐싱
-      - name: Multi-layer dependency cache
+      # uv와 Poetry 도구 캐시 (설치 overhead 줄임)
+      - name: Cache uv and Poetry tools
         uses: actions/cache@v4
         with:
           path: |
             ~/.local/
             ~/.cache/uv/
-            .venv/
+          key: tools-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            tools-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            tools-${{ runner.os }}-
+
+      # 조건부 uv와 Poetry 설치 (캐시 없으면 설치)
+      - name: Setup cached uv and Poetry
+        run: |
+          # PATH 설정 (캐시된 도구 사용)
+          export PATH="$HOME/.local/bin:$PATH"
+
+          # uv 확인 및 설치
+          if ! command -v uv &> /dev/null; then
+            echo "uv not found, installing..."
+            curl -sSL https://raw.githubusercontent.com/astral-sh/uv/main/install.sh | bash
+          else
+            echo "uv found in cache, skipping install"
+          fi
+
+          # Poetry 확인 및 설치
+          if ! command -v poetry &> /dev/null; then
+            echo "Poetry not found, installing..."
+            curl -sSL https://install.python-poetry.org | python3 -
+            poetry self add poetry-plugin-export
+          else
+            echo "Poetry found in cache, skipping install"
+          fi
+
+      # 의존성 캐시 (기존과 동일)
+      - name: Multi-layer dependency cache
+        uses: actions/cache@v4
+        with:
+          path: .venv/
           key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
           restore-keys: |
             deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
             deps-${{ runner.os }}-
 
+      # 의존성 설치 (uv와 Poetry 사용)
       - name: Fast dependency installation
         run: |
-          # Poetry 설치 (캐시된 경우 빠름)
-          if [ ! -f "$HOME/.local/bin/poetry" ]; then
-            curl -sSL https://install.python-poetry.org | python3 -
-            ~/.local/bin/poetry self add poetry-plugin-export
-          fi
-          export PATH="$HOME/.local/bin:$PATH"
-          
-          # 빠른 export + uv 설치
           poetry export --format=requirements.txt --output=requirements.txt --with=dev --without-hashes
-          
           uv venv
           uv pip sync requirements.txt
 
@@ -156,38 +175,57 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      # 동일한 고급 캐싱
-      - name: Multi-layer dependency cache
+      # uv와 Poetry 도구 캐시 (code-quality와 공유)
+      - name: Cache uv and Poetry tools
         uses: actions/cache@v4
         with:
           path: |
             ~/.local/
             ~/.cache/uv/
-            .venv/
+          key: tools-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            tools-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+            tools-${{ runner.os }}-
+
+      # 조건부 uv와 Poetry 설치 (동일 로직 재사용)
+      - name: Setup cached uv and Poetry
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+
+          if ! command -v uv &> /dev/null; then
+            echo "uv not found, installing..."
+            curl -sSL https://raw.githubusercontent.com/astral-sh/uv/main/install.sh | bash
+          else
+            echo "uv found in cache, skipping install"
+          fi
+
+          if ! command -v poetry &> /dev/null; then
+            echo "Poetry not found, installing..."
+            curl -sSL https://install.python-poetry.org | python3 -
+            poetry self add poetry-plugin-export
+          else
+            echo "Poetry found in cache, skipping install"
+          fi
+
+      # 의존성 캐시 (기존과 동일)
+      - name: Multi-layer dependency cache
+        uses: actions/cache@v4
+        with:
+          path: .venv/
           key: deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
           restore-keys: |
             deps-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
             deps-${{ runner.os }}-
 
+      # 의존성 설치 (추가: tblib for parallel tests)
       - name: Fast dependency installation
         run: |
-          if [ ! -f "$HOME/.local/bin/poetry" ]; then
-            curl -sSL https://install.python-poetry.org | python3 -
-            ~/.local/bin/poetry self add poetry-plugin-export
-          fi
-          export PATH="$HOME/.local/bin:$PATH"
-          
           poetry export --format=requirements.txt --output=requirements.txt --with=dev --without-hashes
           echo "tblib" >> requirements.txt
-          
           uv venv
           uv pip sync requirements.txt
 
+      # 나머지 단계는 기존과 동일 (Setup optimized environment, Wait for services, Cache test database 등)
       - name: Setup optimized environment
         run: |
           mkdir -p envs
@@ -204,7 +242,6 @@ jobs:
           timeout 20 bash -c 'until nc -z localhost 5432; do sleep 1; done'
           timeout 20 bash -c 'until nc -z localhost 6379; do sleep 1; done'
 
-      # 테스트 DB 캐싱
       - name: Cache test database
         uses: actions/cache@v4
         with:
@@ -257,7 +294,6 @@ jobs:
             raise NotImplementedError
           EOF
 
-      # 최적화된 테스트 실행
       - name: Run optimized parallel tests with coverage
         shell: bash
         run: |
