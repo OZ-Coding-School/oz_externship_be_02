@@ -143,7 +143,7 @@ class StudyNoteNotificationService:
         created = Notification.objects.bulk_create(notifications)
         counts = Counter(n.user_id for n in created)
 
-        def sse_push() -> None: # bulk_create 신호는 signal이 감지하지 못하기에
+        def sse_push() -> None:  # bulk_create 신호는 signal이 감지하지 못하기에
             for uid, count in counts.items():
                 send_event(
                     f"user-{uid}",
