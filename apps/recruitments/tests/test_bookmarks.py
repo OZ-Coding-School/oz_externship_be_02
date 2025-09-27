@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, timedelta
 
 from django.urls import reverse
@@ -72,7 +73,7 @@ class BookmarkAPITestCase(APITestCase):
     def test_add_bookmark_success(self) -> None:
         """인증된 사용자가 북마크 추가 시 201 응답 및 DB 레코드 확인"""
         self.client.force_authenticate(user=self.user2)
-        url = reverse("recruitment-bookmark", kwargs={"recruitment_id": self.recruitment1.id})
+        url = reverse("recruitment-bookmark", kwargs={"recruitment_uuid": self.recruitment1.uuid})
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -80,7 +81,7 @@ class BookmarkAPITestCase(APITestCase):
 
     def test_add_bookmark_unauthenticated(self) -> None:
         """인증되지 않은 사용자의 북마크 추가 요청 시 401 응답 확인"""
-        url = reverse("recruitment-bookmark", kwargs={"recruitment_id": self.recruitment1.id})
+        url = reverse("recruitment-bookmark", kwargs={"recruitment_uuid": self.recruitment1.uuid})
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -90,7 +91,7 @@ class BookmarkAPITestCase(APITestCase):
         # 먼저 북마크를 추가
         RecruitmentBookmark.objects.create(user=self.user2, recruitment=self.recruitment1)
 
-        url = reverse("recruitment-bookmark", kwargs={"recruitment_id": self.recruitment1.id})
+        url = reverse("recruitment-bookmark", kwargs={"recruitment_uuid": self.recruitment1.uuid})
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -99,8 +100,8 @@ class BookmarkAPITestCase(APITestCase):
     def test_add_bookmark_nonexistent_recruitment(self) -> None:
         """존재하지 않는 공고에 북마크 요청 시 404 응답 확인"""
         self.client.force_authenticate(user=self.user2)
-        non_existent_id = 9999
-        url = reverse("recruitment-bookmark", kwargs={"recruitment_id": non_existent_id})
+        non_existent_uuid = uuid.uuid4()
+        url = reverse("recruitment-bookmark", kwargs={"recruitment_uuid": non_existent_uuid})
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -112,7 +113,7 @@ class BookmarkAPITestCase(APITestCase):
         # 먼저 북마크를 추가
         RecruitmentBookmark.objects.create(user=self.user2, recruitment=self.recruitment1)
 
-        url = reverse("recruitment-bookmark", kwargs={"recruitment_id": self.recruitment1.id})
+        url = reverse("recruitment-bookmark", kwargs={"recruitment_uuid": self.recruitment1.uuid})
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -121,7 +122,7 @@ class BookmarkAPITestCase(APITestCase):
     def test_remove_bookmark_not_bookmarked(self) -> None:
         """북마크하지 않은 공고에 삭제 요청 시 404 응답 확인"""
         self.client.force_authenticate(user=self.user2)
-        url = reverse("recruitment-bookmark", kwargs={"recruitment_id": self.recruitment1.id})
+        url = reverse("recruitment-bookmark", kwargs={"recruitment_uuid": self.recruitment1.uuid})
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
