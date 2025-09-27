@@ -1,6 +1,7 @@
 from unittest.mock import patch
+
 from django.urls import reverse
-from rest_framework import status, serializers
+from rest_framework import serializers, status
 from rest_framework.test import APITestCase
 
 from apps.recruitments.models.tags import Tag
@@ -136,7 +137,7 @@ class TagSerializerProfanityValidationTests(APITestCase):
 
         detail = cm.exception.detail
         if isinstance(detail, dict):
-            self.assertEqual(detail['name'], ["태그에 욕설이나 비속어를 포함할 수 없습니다."])
+            self.assertEqual(detail["name"], ["태그에 욕설이나 비속어를 포함할 수 없습니다."])
         else:
             self.fail("ValidationError.detail이 예상과 달리 dict 타입이 아닙니다.")
 
@@ -152,6 +153,6 @@ class TagSerializerProfanityValidationTests(APITestCase):
 
         detail = cm.exception.detail
         if isinstance(detail, dict):
-            self.assertEqual(detail['name'], ["태그에 욕설이나 비속어를 포함할 수 없습니다."])
+            self.assertEqual(detail["name"], ["태그에 욕설이나 비속어를 포함할 수 없습니다."])
         else:
             self.fail("ValidationError.detail이 예상과 달리 dict 타입이 아닙니다.")
