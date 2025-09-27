@@ -54,8 +54,8 @@ class AdminRecruitmentListViewTest(APITestCase):
         )
 
         # 테스트용 태그 생성
-        cls.tag_django = Tag.objects.create(name="Django")
-        cls.tag_python = Tag.objects.create(name="Python")
+        cls.tag_django, _ = Tag.objects.get_or_create(name="Django")
+        cls.tag_python, _ = Tag.objects.get_or_create(name="Python")
 
         # 2. GIVEN: 다양한 속성을 가진 공고 데이터 생성
         # 공고 1: 모집중, 조회수 100, 북마크 1개, 태그: Django, Python
