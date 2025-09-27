@@ -12,7 +12,7 @@ from apps.users.models import User
 from ..models import Application
 from apps.applications.serializers.application_detail_serializers import MyApplicationDetailSerializer
 from ..serializers.applications_list_serializers import MyApplicationListSerializer
-from ..services.my_application_services import get_my_detail_aply
+from ..services.my_application_services import get_my_detail_aply, cancel_my_aply
 
 
 class MyApplicationsListView(generics.ListAPIView[Application]):
@@ -42,8 +42,8 @@ class MyDetailApplicationView(APIView):
         serializer = MyApplicationDetailSerializer(my_aply)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def delete(self, request, application_id):
-        cnt=get_my_detail_aply(request.user, application_id).delete()
-        if cnt==0:
-            return Response({"error": "삭제된 데이터가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    def patch(self, request, application_id):
+        result=cancel_my_aply(request.user, application_id)
+        if result:
+            return Response({"success": "지원을 취소했습니다."}, status=status.HTTP_200_OK)
+        return Response({"fail":"대기 중 지원만 취소 가능합니다."}, status=status.HTTP_404_NOT_FOUND)

@@ -18,5 +18,5 @@ urlpatterns = [
     path("/<int:application_id>/reject", ApplicationRejectView.as_view(), name="application-reject"),
 
     # 내 지원 목록 상세 조회 및 취소
-    path("/me/<int:application_id>", MyApplicationsListView.as_view(), name="my-aply-detail-delete"),
+    path("/me/<int:application_id>", MyApplicationsListView.as_view(), name="my-aply-detail-cancel"),
 ]
