@@ -18,7 +18,7 @@ urlpatterns = [
     path("/<uuid:recruitment_uuid>/applications", ApplicationAPIView.as_view(), name="recruitment-applications"),
     # 북마크 기능 URL
     path("/bookmarks/me", MyBookmarkedRecruitmentListView.as_view(), name="my-bookmark-list"),
-    path("/<int:recruitment_id>/bookmarks/", BookmarkToggleView.as_view(), name="recruitment-bookmark"),
+    path("/<uuid:recruitment_uuid>/bookmarks/", BookmarkToggleView.as_view(), name="recruitment-bookmark"),
     # 상세 조회 URL은 다른 UUID를 사용하는 URL보다 뒤에 위치해야 의도치 않은 매칭을 피할 수 있습니다.
     path("/<uuid:recruitment_uuid>", RecruitmentDetailView.as_view(), name="recruitment-detail"),
 ]
