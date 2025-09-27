@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from apps.users.views.admin_dashboard_view import (
     SignUpTrendAPIView,
+    WithdrawalReasonTrendAPIView,
     WithdrawalTrendAPIView,
 )
 from apps.users.views.admin_views import UserAdminViewSet, UserPermissionUpdateAPIView
@@ -18,6 +19,7 @@ router.register("withdrawals", WithdrawalAdminViewSet, basename="admin-withdrawa
 urlpatterns: list[URLPattern | URLResolver] = [
     path("dashboard/signup-trends/", SignUpTrendAPIView.as_view(), name="dashboard-signup-trends"),
     path("dashboard/withdrawal-trends/", WithdrawalTrendAPIView.as_view(), name="dashboard-withdrawal-trends"),
+    path("dashboard/withdrawal-reasons/", WithdrawalReasonTrendAPIView.as_view(), name="dashboard-withdrawal-reasons"),
     path("users/<uuid:user_uuid>/permission/", UserPermissionUpdateAPIView.as_view(), name="user_permissions"),
     path("", include(router.urls)),
 ]
