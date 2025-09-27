@@ -9,6 +9,6 @@ urlpatterns = [
     path("/<uuid:group_uuid>/notes", StudyNoteView.as_view(), name="study-notes"),
     # GET, PATCH /api/v1/study-notes/<group_uuid>/notes/<note_id> - 스터디 노트 상세 조회, 수정
     path("/<uuid:group_uuid>/notes/<int:note_id>", StudyNoteDetailView.as_view(), name="study-note-detail"),
-    # POST /api/v1/study-notes/<group_uuid>/upload - 이미지/첨부파일 업로드
-    path("/<uuid:group_uuid>/upload", StudyNoteUploadView.as_view(), name="upload-study-note-files"),
+    # POST /api/v1/study-notes/upload - 이미지/첨부파일 업로드
+    path("study-notes/upload", StudyNoteUploadView.as_view(), name="upload-study-note-files"),
 ]

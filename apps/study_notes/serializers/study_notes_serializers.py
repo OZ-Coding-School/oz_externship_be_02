@@ -65,7 +65,6 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
             "updated_at",
         ]
         read_only_fields = ["id", "study_group", "ai_summary"]
-
     # 이미지 유효성 검사
     def validate_image_files(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
         if len(files) > 5:
@@ -115,6 +114,9 @@ class StudyNoteUpdateSerializer(serializers.ModelSerializer[StudyNote]):
         ]
 
 
+# 업로드용
 class StudyNoteUploadSerializer(serializers.Serializer[dict[str, Any]]):
     image_files = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False)
     attachment_files = serializers.ListField(child=serializers.FileField(), write_only=True, required=False)
+
+
