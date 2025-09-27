@@ -1,11 +1,12 @@
 from functools import partial
-from typing import Any, Dict
+from typing import Any, Dict, Final
 
 from django.db import transaction
 from django.db.models import Sum
 from rest_framework import serializers
 
 from apps.lectures.models.crawled_lectures import Lecture
+from apps.studies.models.study_groups import StudyGroup
 from apps.users.models.user import User
 
 from ...core.utils import S3Uploader
@@ -198,17 +199,19 @@ class RecruitmentCreateSerializer(serializers.ModelSerializer[Recruitment]):
 
     def validate(self, data: Dict[str, Any]) -> Dict[str, Any]:
         # 첨부파일 제한
+        MAX_RECRUITMENT_ATTACHMENTS_COUNT: Final = 3
         attachments = data.get("attachments")
-        if attachments and len(attachments) > 3:
+        if attachments and len(attachments) > MAX_RECRUITMENT_ATTACHMENTS_COUNT:
             raise serializers.ValidationError({"attachments": "첨부 파일은 최대 3개까지 등록 가능합니다."})
 
         # 스터디그룹 상태 제한
         study_group = data.get("study_group")
-        if study_group and study_group.status == "ENDED":
+        if study_group and study_group.status == StudyGroup.StatusChoices.ENDED:
             raise serializers.ValidationError({"study_group": "종료된 스터디 그룹은 등록 불가능합니다."})
 
         return data
 
+    @transaction.atomic
     def create(self, validated_data: Dict[str, Any]) -> Recruitment:
         images = validated_data.pop("images", None)
         attachments = validated_data.pop("attachments", None)
