@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
@@ -6,7 +7,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.users.models import user
+from apps.users.models import User, user
 from apps.users.serializers.auth_serializers import (
     EmailLoginSerializer,
 )
@@ -26,6 +27,7 @@ class UserSignupAPIView(APIView):
         responses={
             201: UserSignupSerializer,
             400: {"type": "object", "properties": {"error": {"type": "string"}}},
+            409: {"type": "object", "properties": {"error": {"type": "string"}}},
         },
     )
     def post(self, request: Request) -> Response:

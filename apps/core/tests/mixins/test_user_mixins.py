@@ -1,5 +1,9 @@
+import copy
+import uuid
 from typing import Any, ClassVar, Dict
 
+from django.conf import settings
+from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
 from apps.users.models.user import User
@@ -56,7 +60,23 @@ class TestUserMixin:
         }
 
 
-class VerificationMixin(TestUserMixin):
+class IsolatedCacheTestMixin(SimpleTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        cache_settings = copy.deepcopy(settings.CACHES)
+        for cache_setting in cache_settings.values():
+            # 각 테스트마다 고유한 UUID로 KEY_PREFIX를 설정
+            cache_setting["KEY_PREFIX"] = f"test_{uuid.uuid4().hex}_"
+
+        self._isolated_cache_settings_override = override_settings(CACHES=cache_settings)
+        self._isolated_cache_settings_override.enable()
+
+    def teardown(self) -> None:
+        self._isolated_cache_settings_override.disable()
+        super().tearDown()
+
+
+class VerificationMixin(TestUserMixin, IsolatedCacheTestMixin):
     test_email: ClassVar[str]
     send_url: ClassVar[str]
     verify_url: ClassVar[str]

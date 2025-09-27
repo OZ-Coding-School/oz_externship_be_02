@@ -122,3 +122,51 @@ class UserSignupFailureTestCase(APITestCase, VerificationMixin):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
+
+    @patch("apps.users.serializers.signup_serializers.email_service.is_verified")
+    @patch("apps.users.serializers.signup_serializers.phone_service.is_verified")
+    def test_serializer_conflict_email(self, mock_phone_verified: MagicMock, mock_email_verified: MagicMock) -> None:
+
+        mock_phone_verified.return_value = True
+        mock_email_verified.return_value = True
+
+        User.objects.create_user(
+            email=self.signup_data["email"],
+            password=self.signup_data["password"],
+            nickname="existing",
+            name="기존유저",
+            phone_number="+821012345678",
+            gender="F",
+            birthday="2000-01-01",
+        )
+
+        response = self.client.post(self.url, self.signup_data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("error", response.data)
+        self.assertIn("이미 존재하는 이메일입니다.", response.data["error"])
+
+    @patch("apps.users.serializers.signup_serializers.email_service.is_verified")
+    @patch("apps.users.serializers.signup_serializers.phone_service.is_verified")
+    def test_signup_conflict_phone_number(self, mock_phone_verified: MagicMock, mock_email_verified: MagicMock) -> None:
+
+        mock_phone_verified.return_value = True
+        mock_email_verified.return_value = True
+
+        User.objects.create_user(
+            email="test123@example.com",
+            password=self.signup_data["password"],
+            nickname="existing",
+            name="기존유저",
+            phone_number=self.signup_data["phone_number"],
+            gender="F",
+            birthday="2000-01-01",
+        )
+
+        mock_phone_verified.return_value = True
+
+        response = self.client.post(self.url, self.signup_data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("error", response.data)
+        self.assertIn("이미 존재하는 휴대폰 번호입니다.", response.data["error"])
