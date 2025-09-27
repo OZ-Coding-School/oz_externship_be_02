@@ -2,6 +2,7 @@ from collections import Counter
 from datetime import date, datetime, time, timedelta
 from typing import Dict, Iterable, Tuple
 
+from django.db import transaction
 from django.db.models import Prefetch, QuerySet
 from django.utils import timezone
 from django_eventstream import send_event  # type: ignore[import-untyped]
@@ -139,9 +140,19 @@ class StudyNoteNotificationService:
             for uid in accepted_user_ids
         ]
 
-        Notification.objects.bulk_create(notifications)
+        created = Notification.objects.bulk_create(notifications)
+        counts = Counter(n.user_id for n in created)
 
-        return len(notifications)
+        def sse_push() -> None: # bulk_create 신호는 signal이 감지하지 못하기에
+            for uid, count in counts.items():
+                send_event(
+                    f"user-{uid}",
+                    "summary",
+                    {"added": count, "type": "STUDY_NOTE_CREATED"},
+                )
+
+        transaction.on_commit(sse_push)
+        return len(created)
 
 
 class StudyReviewNotificationService:
