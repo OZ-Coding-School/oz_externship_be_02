@@ -12,6 +12,7 @@ from apps.users.models import User
 from ..models import Application
 from apps.applications.serializers.application_detail_serializers import MyApplicationDetailSerializer
 from ..serializers.applications_list_serializers import MyApplicationListSerializer
+from ..services.my_application_services import get_my_detail_aply
 
 
 class MyApplicationsListView(generics.ListAPIView[Application]):
@@ -37,7 +38,12 @@ class MyDetailApplicationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, application_id):
-        pass
+        my_aply=get_my_detail_aply(request.user, application_id)
+        serializer = MyApplicationDetailSerializer(my_aply)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, application_id):
-        pass
+        cnt=get_my_detail_aply(request.user, application_id).delete()
+        if cnt==0:
+            return Response({"error": "삭제된 데이터가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
