@@ -7,9 +7,10 @@ from django.db import models
 from django.db.models import Count, OuterRef, Subquery
 
 # 순환참조를 하지 않고 범용성을 위해 _T 사용
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from apps.recruitments.models import Recruitment
     from apps.recruitments.models.recruitment_images import RecruitmentImage
+    from apps.users.models import User
 
 
 class RecruitmentListQuerySet(models.QuerySet["Recruitment"]):
@@ -34,10 +35,14 @@ class RecruitmentListQuerySet(models.QuerySet["Recruitment"]):
         )
         return optimized_queryset
 
+    def get_bookmarked_recruitments(self, user: "User") -> Self:
+        """특정 사용자가 북마크한 공고 목록을 반환합니다."""
+        return self.filter(bookmark_users=user).recm_list_queryset()
+
 
 # Mypy가 분석할 때 동적할당은 안잡아서 변수에 할당해서 정적클래스로 검사하고 동적으로 사용함
 _RecruitmentListManager = models.Manager.from_queryset(RecruitmentListQuerySet)
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
 
     class RecruitmentListManager(_RecruitmentListManager["Recruitment"]):
         pass
