@@ -34,7 +34,7 @@ class WithdrawGroupMemberView(APIView):
         self.check_object_permissions(request, group)
         user = cast(User, request.user)
         delete_member = DeleteMemberService(group=group, user=user)
-        delete_member.groupmember_delete_service()
+        delete_member.withdraw_studygroup()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -57,5 +57,5 @@ class KickGroupMemberView(APIView):
         except ObjectDoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
         delete_member = DeleteMemberService(group=group, user=user.user)
-        delete_member.groupmember_delete_service()
+        delete_member.kick_groupmember()
         return Response(status=status.HTTP_204_NO_CONTENT)
