@@ -35,13 +35,13 @@ class StudyNoteUploadView(APIView):
         request=StudyNoteUploadSerializer,
         responses={200: {"type": "object"}},
     )
-    def post(self, request: Request, group_uuid: str) -> Response:
+    def post(self, request: Request) -> Response:
         service = self.get_service()
         assert service is not None
 
         files_to_upload = {
-            "images": request.FILES.getlist("images_file"),
-            "attachments": request.FILES.getlist("attachments_file"),
+            "images": request.FILES.getlist("image_files"),
+            "attachments": request.FILES.getlist("attachment_files"),
         }
 
         result: Dict[str, List[Union[str, Dict[str, str]]]] = {"images": [], "attachments": [], "failed": []}

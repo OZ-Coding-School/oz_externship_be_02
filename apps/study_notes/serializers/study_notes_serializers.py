@@ -115,6 +115,7 @@ class StudyNoteUpdateSerializer(serializers.ModelSerializer[StudyNote]):
         ]
 
 
+# 업로드용
 class StudyNoteUploadSerializer(serializers.Serializer[dict[str, Any]]):
     image_files = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False)
     attachment_files = serializers.ListField(child=serializers.FileField(), write_only=True, required=False)
