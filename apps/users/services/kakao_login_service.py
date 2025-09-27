@@ -43,7 +43,7 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
             )
 
             if res.status_code == 400 and "invalid_grant" in res.text:
-                raise ValidationError({"code": "invalid code"})
+                raise ValidationError("invalid code")
 
             if not (res.status_code >= 200 and res.status_code < 300):
                 raise APIException("카카오 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.")
