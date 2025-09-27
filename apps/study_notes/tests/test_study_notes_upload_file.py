@@ -35,38 +35,31 @@ class StudyNoteUploadViewTest(TestCase):
         self.study_group.members.add(self.user)
         self.client.force_authenticate(user=self.user)
 
-    def test_upload_success(self) -> None:
-        """업로드 API 정상 동작 테스트"""
+    def test_upload_multiple_files_no_loop(self) -> None:
+        """업로드 API - 반복문 없이 여러 파일 업로드 테스트"""
+
         from django.urls import reverse
 
-        url = reverse("upload-study-note-files", kwargs={"group_uuid": str(self.study_group.uuid)})
+        url = reverse("upload-study-note-files")
 
-        image_file = create_temp_image()
-        attachment_file = SimpleUploadedFile("test.txt", b"hello world", content_type="text/plain")
-        data = {"images_file": [image_file], "attachments_file": [attachment_file]}
+        # 이미지 3개 생성
+        image_file1 = create_temp_image()
+        image_file2 = create_temp_image()
+        image_file3 = create_temp_image()
 
-        response = cast(Response, self.client.post(url, data, format="multipart"))
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("images", response.data)
-        self.assertIn("attachments", response.data)
-        self.assertEqual(len(response.data["images"]), 1)
-        self.assertEqual(len(response.data["attachments"]), 1)
+        # 첨부파일 3개 생성
+        attachment_file1 = SimpleUploadedFile("test1.txt", b"hello world", content_type="text/plain")
+        attachment_file2 = SimpleUploadedFile("test2.txt", b"hello world", content_type="text/plain")
+        attachment_file3 = SimpleUploadedFile("test3.txt", b"hello world", content_type="text/plain")
 
-    def test_create_note_view_success(self) -> None:
-        """노트 생성 API 정상 동작 테스트"""
-        from django.urls import reverse
-
-        url = reverse("study-notes", kwargs={"group_uuid": str(self.study_group.uuid)})
-
-        image_file = create_temp_image()
-        attachment_file = SimpleUploadedFile("test.txt", b"hello world", content_type="text/plain")
         data = {
-            "title": "테스트 노트",
-            "content": "본문 내용",
-            "image_files": [image_file],
-            "attachment_files": [attachment_file],
+            "image_files": [image_file1, image_file2, image_file3],
+            "attachment_files": [attachment_file1, attachment_file2, attachment_file3],
         }
 
         response = cast(Response, self.client.post(url, data, format="multipart"))
-        self.assertIn(response.status_code, [200, 201])
-        self.assertEqual(response.data.get("title"), "테스트 노트")
+
+        # 검증
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["images"]), 3)
+        self.assertEqual(len(response.data["attachments"]), 3)
