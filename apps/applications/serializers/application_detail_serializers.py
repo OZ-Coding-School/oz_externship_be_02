@@ -32,3 +32,22 @@ class ApplicationDetailSerializer(serializers.ModelSerializer[Application]):
             "status",
             "applied_at",
         ]
+
+# 나의 지원내역 상세 조회
+class MyApplicationDetailSerializer(serializers.ModelSerializer[Application]):
+    recruitment_title=serializers.CharField(source="recruitment.title", read_only=True)
+    applied_at=serializers.DateTimeField(source="created_at", read_only=True)
+    class Meta:
+        model = Application
+        fields = [
+            "id",
+            "recruitment_title",
+            "self_introduction",
+            "motivation",
+            "objective",
+            "available_time",
+            "has_study_experience",
+            "study_experience",
+            "status",
+            "applied_at"
+        ]
