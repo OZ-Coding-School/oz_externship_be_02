@@ -1,8 +1,10 @@
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
+from django.contrib.auth.models import AbstractBaseUser
 from rest_framework import exceptions
 from rest_framework.request import Request
-from rest_framework_simplejwt.authentication import AuthUser, JWTAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.tokens import Token
 
 
 class JWTAuthenticationOrReadOnly(JWTAuthentication):
@@ -11,7 +13,7 @@ class JWTAuthenticationOrReadOnly(JWTAuthentication):
     다른 메서드: JWT 인증 적용 (토큰 미제공 시 에러 발생)
     """
 
-    def authenticate(self, request: Request) -> Optional[Tuple[Any, Optional[object]]]:
+    def authenticate(self, request: Request) -> Optional[Tuple[AbstractBaseUser, Token]]:  # type: ignore[override]
         if request.method == "GET":
             return None  # GET은 인증 스킵
 
