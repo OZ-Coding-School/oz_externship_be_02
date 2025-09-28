@@ -1,8 +1,10 @@
+from typing import Optional
+
 from apps.applications.models.applications import Application
 from apps.users.models.user import User
 
 
-def get_my_detail_aply(user: User, application_id: int) -> Application:
+def get_my_detail_aply(user: User, application_id: int) -> Optional[Application]:
     try:
         aply = Application.objects.get(user=user, id=application_id)
     except Application.DoesNotExist:
