@@ -1,5 +1,5 @@
 from datetime import date
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 from django.test import TestCase
 
@@ -43,7 +43,7 @@ class NotificationSSEReceiverTests(TestCase):
 
 class BulkSSETests(TestCase):
     @patch("apps.notifications.services.noti_create_service.send_event")
-    def test_bulk_create_push(self, mock_send: Mock) -> None :
+    def test_bulk_create_push(self, mock_send: Mock) -> None:
         with self.captureOnCommitCallbacks(execute=True):  # on_commit 콜백 지금 실행
             leader = User.objects.create_user(
                 email="ox@example.com",
