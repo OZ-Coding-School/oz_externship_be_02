@@ -175,6 +175,7 @@ class RecruitmentCreateSerializer(serializers.ModelSerializer[Recruitment]):
     attachments = AttachmentInputSerializer(many=True, required=False)
     tags = serializers.ListField(child=serializers.IntegerField(), required=False)
     author = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    study_group = serializers.SlugRelatedField(queryset=StudyGroup.objects.all(), slug_field="uuid", required=True)
 
     class Meta:
         model = Recruitment
