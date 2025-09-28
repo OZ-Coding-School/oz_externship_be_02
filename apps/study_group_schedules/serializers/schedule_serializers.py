@@ -33,6 +33,8 @@ class StudyGroupScheduleResponseSerializer(serializers.ModelSerializer[GroupSche
 class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedule]):
     """스터디 그룹 일정 생성 시리얼라이저 - 검증 로직 포함"""
 
+    study_group = serializers.SlugRelatedField(queryset=StudyGroup.objects.all(), slug_field="uuid", required=True)
+
     class Meta:
         model = GroupSchedule
         fields = ["study_group", "title", "objective", "session_date", "start_time", "end_time"]

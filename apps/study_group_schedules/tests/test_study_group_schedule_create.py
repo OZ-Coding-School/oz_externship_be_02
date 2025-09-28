@@ -51,7 +51,7 @@ class StudyGroupScheduleCreateTest(APITestCase):
         tomorrow = date.today() + timedelta(days=1)  # 내일 날짜로 설정
 
         self.valid_data = {
-            "study_group": self.test_study_group.id,
+            "study_group": self.test_study_group.uuid,
             "title": "1주차 스터디",
             "objective": "Django REST Framework 기초 학습",
             "session_date": tomorrow.strftime("%Y-%m-%d"),  # 동적 날짜 설정
