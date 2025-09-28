@@ -33,7 +33,6 @@ class MyApplicationsListView(generics.ListAPIView[Application]):
         )
         return queryset
 
-# 나의 지원내역 상세페이지 기능 뷰
 class MyDetailApplicationView(APIView):
     permission_classes = [IsAuthenticated]
 
