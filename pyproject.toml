@@ -31,6 +31,7 @@ dependencies = [
     "google-genai (>=1.38.0,<2.0.0)",
     "freezegun (>=1.5.5,<2.0.0)",
     "faker (>=37.8.0,<38.0.0)",
+    "scikit-learn (>=1.7.2,<2.0.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]
@@ -42,6 +43,7 @@ mypy = "^1.16.0"
 coverage = "^7.8.2"
 django-debug-toolbar = "^5.2.0"
 django-stubs = "^5.2.0"
+fakeredis = "^2.31.1"
 moto = "^5.1.12"
 celery-types = "^0.23.0"
 django-filter-stubs = "^0.1.3"
