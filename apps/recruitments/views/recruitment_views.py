@@ -26,7 +26,7 @@ from apps.users.models.user import User
 
 
 class RecruitmentView(APIView):
-    authentication_classes = (JWTAuthenticationOrReadOnly,) # 읽기에서는 JWTAuthentication None 반환
+    authentication_classes = (JWTAuthenticationOrReadOnly,)  # 읽기에서는 JWTAuthentication None 반환
 
     # 검색정보
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]

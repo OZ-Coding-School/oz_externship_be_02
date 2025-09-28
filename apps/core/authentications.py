@@ -1,5 +1,5 @@
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import exceptions
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class JWTAuthenticationOrReadOnly(JWTAuthentication):
@@ -9,11 +9,11 @@ class JWTAuthenticationOrReadOnly(JWTAuthentication):
     """
 
     def authenticate(self, request):
-        if request.method == 'GET':
+        if request.method == "GET":
             return None  # GET은 인증 스킵
 
         auth_result = super().authenticate(request)
         if auth_result is None:
             # 토큰이 없으면 명시적 에러 발생
-            raise exceptions.AuthenticationFailed('Authentication credentials were not provided.')
+            raise exceptions.AuthenticationFailed("Authentication credentials were not provided.")
         return auth_result
