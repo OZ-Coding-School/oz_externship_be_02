@@ -119,3 +119,12 @@ class StudyNoteUpdateSerializer(serializers.ModelSerializer[StudyNote]):
 class StudyNoteUploadSerializer(serializers.Serializer[dict[str, Any]]):
     image_files = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False)
     attachment_files = serializers.ListField(child=serializers.FileField(), write_only=True, required=False)
+
+
+# 노트 삭제용
+class StudyNoteDeleteSerializer(serializers.Serializer[dict[str, Any]]):
+    note_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,  # 단일 삭제는 URL의 note_id 사용
+        help_text="삭제할 스터디 노트 ID 목록",
+    )
