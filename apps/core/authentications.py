@@ -1,5 +1,8 @@
+from typing import Any, Optional, Tuple
+
 from rest_framework import exceptions
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.request import Request
+from rest_framework_simplejwt.authentication import AuthUser, JWTAuthentication
 
 
 class JWTAuthenticationOrReadOnly(JWTAuthentication):
@@ -8,7 +11,7 @@ class JWTAuthenticationOrReadOnly(JWTAuthentication):
     다른 메서드: JWT 인증 적용 (토큰 미제공 시 에러 발생)
     """
 
-    def authenticate(self, request):
+    def authenticate(self, request: Request) -> Optional[Tuple[Any, Optional[object]]]:
         if request.method == "GET":
             return None  # GET은 인증 스킵
 
