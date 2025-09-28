@@ -51,4 +51,4 @@ class MyDetailApplicationView(APIView):
         result = cancel_my_aply(user, application_id)
         if result:
             return Response({"success": "지원을 취소했습니다."}, status=status.HTTP_200_OK)
-        return Response({"fail": "대기 중 지원만 취소 가능합니다."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"fail": "대기 중 지원만 취소 가능합니다."}, status=status.HTTP_400_BAD_REQUEST)

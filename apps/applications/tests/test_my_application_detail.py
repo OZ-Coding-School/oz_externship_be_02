@@ -83,6 +83,6 @@ class MyApplicationDetailTestCase(APITestCase):
         # 대기 중이 아닌 지원내역 취소
         url = reverse("my-aply-detail-cancel", kwargs={"application_id": self.applications[1].id})
         res = self.client.patch(url)
-        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         aply = Application.objects.get(id=self.applications[1].id)
         self.assertNotEqual(aply.status, Application.ApplicationStatus.CANCELED)
