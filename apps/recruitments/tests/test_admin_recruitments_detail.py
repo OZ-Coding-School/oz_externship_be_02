@@ -114,3 +114,13 @@ class AdminRecruitmentDetailViewTest(APITestCase):
     def test_get_detail_unauthenticated(self) -> None:
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_expected_payment_return_discount_sum(self) -> None:
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        expected = (self.lecture1.original_price + self.lecture2.original_price) - (
+            (self.lecture1.discount_price or 0) + (self.lecture2.discount_price or 0)
+        )
+        self.assertEqual(data["expected_payment_cost"], expected)
