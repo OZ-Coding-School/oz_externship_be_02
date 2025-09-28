@@ -259,4 +259,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.notify_upcoming_schedules",
         "schedule": crontab(hour=0, minute=1),
     },
+    "delete_expired_withdrawals_users": {
+        "task": "apps.users.tasks.delete_expired_withdrawals_users",  # 테스크 경로
+        "schedule": crontab(hour=0, minute=10),  # 매일 0시 15뷴 실행 (자정이후)
+    },
 }
