@@ -1,11 +1,10 @@
-from typing import cast
+from typing import Any, List, cast
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import status
-from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -24,7 +23,7 @@ from apps.users.models import User
 
 class StudyNoteDetailView(APIView):
     """
-    스터디 노트 조회/수정 통합 뷰
+    스터디 노트 조회/수정/삭제 통합 뷰
     """
 
     service_class = StudyNoteService
@@ -33,7 +32,7 @@ class StudyNoteDetailView(APIView):
         return self.service_class(s3_uploader=getattr(self, "s3_uploader", None))
 
     def get_permissions(self) -> list[BasePermission]:
-        if self.request.method == "PATCH":
+        if self.request.method in ["PATCH", "DELETE"]:
             return [IsAuthenticated(), IsStudyNoteAuthor()]
         return [IsAuthenticated()]
 
@@ -94,11 +93,6 @@ class StudyNoteDetailView(APIView):
         },
     )
     def patch(self, request: Request, group_uuid: UUID, note_id: int) -> Response:
-        """
-        스터디 노트 수정
-        - 작성자만 수정 가능
-        - validated_data를 서비스로 그대로 전달
-        """
         note = self.get_object(group_uuid, note_id)
         self.check_object_permissions(request, note)
 
@@ -125,39 +119,25 @@ class StudyNoteDetailView(APIView):
                 description="권한 없음",
                 examples=[OpenApiExample("권한 없음 예시", value={"detail": "작성자만 삭제할 수 있습니다."})],
             ),
-            404: OpenApiResponse(
-                response=OpenApiTypes.OBJECT,
-                description="노트 없음",
-                examples=[OpenApiExample("노트 없음 예시", value={"detail": "삭제할 노트를 찾을 수 없습니다."})],
-            ),
         },
     )
     def delete(self, request: Request, group_uuid: UUID, note_id: int) -> Response:
         """
-        단일/다중 삭제 처리
-        - note_id: URL에서 전달되는 단일 삭제
-        - note_ids: request.data로 리스트를 전달하면 다중 삭제
+        스터디 노트 삭제 API
+        - 작성자만 삭제 가능
+        - 단일/다중 삭제 모두 지원
         """
         serializer = StudyNoteDeleteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         note_ids = serializer.validated_data.get("note_ids", [note_id])
 
-        # 삭제 대상 노트
-        notes_query = StudyNote.objects.filter(id__in=note_ids)
-
-        if not notes_query.exists():
-            raise NotFound("삭제할 노트를 찾을 수 없습니다.")
-
-        # 작성자 필터
         user = cast(User, request.user)
-        own_notes = notes_query.filter(author=user)
+        notes_qs = StudyNote.objects.filter(id__in=note_ids, author=user)
 
-        if not own_notes.exists():
-            raise PermissionDenied("작성자만 삭제할 수 있습니다.")
-        # 삭제 수행
-        deleted_count = own_notes.delete()[0]
+        if not notes_qs.exists():
+            return Response({"detail": "삭제할 권한이 있는 노트가 없습니다."}, status=status.HTTP_403_FORBIDDEN)
 
-        return Response(
-            {"deleted_count": deleted_count, "requested_ids": note_ids},
-            status=status.HTTP_200_OK,
-        )
+        service = self.get_service()
+        deleted_count = service.delete_study_notes(notes_qs)
+
+        return Response({"deleted_count": deleted_count, "requested_ids": note_ids}, status=status.HTTP_200_OK)

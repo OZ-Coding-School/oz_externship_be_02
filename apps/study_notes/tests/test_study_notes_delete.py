@@ -20,8 +20,10 @@ class StudyNoteDeleteViewTests(TestCase):
     user: User
     other_user: User
     study_group: StudyGroup
+    other_group: StudyGroup
     note1: StudyNote
     note2: StudyNote
+    other_note: StudyNote
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -54,12 +56,23 @@ class StudyNoteDeleteViewTests(TestCase):
         )
         cls.study_group.members.add(cls.user)
 
+        cls.other_group = StudyGroup.objects.create(
+            name="그룹2",
+            max_headcount=5,
+            start_at=timezone.make_aware(datetime(2025, 9, 16, 12, 0, 0)),
+            end_at=timezone.make_aware(datetime(2025, 9, 30, 12, 0, 0)),
+        )
+        cls.other_group.members.add(cls.other_user)
+
         # 노트 생성
         cls.note1 = StudyNote.objects.create(
             study_group=cls.study_group, author=cls.user, title="노트1", content="내용1"
         )
         cls.note2 = StudyNote.objects.create(
             study_group=cls.study_group, author=cls.user, title="노트2", content="내용2"
+        )
+        cls.other_note = StudyNote.objects.create(
+            study_group=cls.other_group, author=cls.other_user, title="다른노트", content="내용"
         )
 
     def setUp(self) -> None:
@@ -96,3 +109,9 @@ class StudyNoteDeleteViewTests(TestCase):
         response = self.client.delete(self.get_delete_url(self.study_group.uuid, self.note1.id), data={})
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(StudyNote.objects.filter(id=self.note1.id).exists())
+
+    def test_delete_other_group_note(self) -> None:
+        """다른 그룹 노트 삭제 시도"""
+        response = self.client.delete(self.get_delete_url(self.other_group.uuid, self.other_note.id), data={})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(StudyNote.objects.filter(id=self.other_note.id).exists())
