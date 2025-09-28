@@ -3,16 +3,19 @@ from typing import cast
 from django.db.models import QuerySet
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
+from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from apps.applications.serializers.application_detail_serializers import (
+    MyApplicationDetailSerializer,
+)
 from apps.core.paginators import DefaultCursorPagination
 from apps.users.models import User
 
 from ..models import Application
-from apps.applications.serializers.application_detail_serializers import MyApplicationDetailSerializer
 from ..serializers.applications_list_serializers import MyApplicationListSerializer
-from ..services.my_application_services import get_my_detail_aply, cancel_my_aply
+from ..services.my_application_services import cancel_my_aply, get_my_detail_aply
 
 
 class MyApplicationsListView(generics.ListAPIView[Application]):
@@ -33,16 +36,19 @@ class MyApplicationsListView(generics.ListAPIView[Application]):
         )
         return queryset
 
+
 class MyDetailApplicationView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, application_id):
-        my_aply=get_my_detail_aply(request.user, application_id)
+    def get(self, request: Request, application_id: int) -> Response:
+        user = cast(User, request.user)
+        my_aply = get_my_detail_aply(user, application_id)
         serializer = MyApplicationDetailSerializer(my_aply)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def patch(self, request, application_id):
-        result=cancel_my_aply(request.user, application_id)
+    def patch(self, request: Request, application_id: int) -> Response:
+        user = cast(User, request.user)
+        result = cancel_my_aply(user, application_id)
         if result:
             return Response({"success": "지원을 취소했습니다."}, status=status.HTTP_200_OK)
-        return Response({"fail":"대기 중 지원만 취소 가능합니다."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"fail": "대기 중 지원만 취소 가능합니다."}, status=status.HTTP_404_NOT_FOUND)

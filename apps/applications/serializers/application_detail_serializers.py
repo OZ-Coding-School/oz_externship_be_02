@@ -33,10 +33,12 @@ class ApplicationDetailSerializer(serializers.ModelSerializer[Application]):
             "applied_at",
         ]
 
+
 # 나의 지원내역 상세 조회
 class MyApplicationDetailSerializer(serializers.ModelSerializer[Application]):
-    recruitment_title=serializers.CharField(source="recruitment.title", read_only=True)
-    applied_at=serializers.DateTimeField(source="created_at", read_only=True)
+    recruitment_title = serializers.CharField(source="recruitment.title", read_only=True)
+    applied_at = serializers.DateTimeField(source="created_at", read_only=True)
+
     class Meta:
         model = Application
         fields = [
@@ -49,5 +51,5 @@ class MyApplicationDetailSerializer(serializers.ModelSerializer[Application]):
             "has_study_experience",
             "study_experience",
             "status",
-            "applied_at"
+            "applied_at",
         ]
