@@ -123,6 +123,7 @@ class RecruitmentView(APIView):
         "3. 참고 파일 업로드 ( 최대 3개,  파일 용량 5MB 이하 )\n\n"
         "### 부가 기능\n\n"
         "예상 결제 비용을 별도로 미입력 시 강의 항목 당 결제 비용을 모두 합산하여 자동 입력",
+        request=RecruitmentCreateSerializer,
         responses={
             201: RecruitmentCreateOutputSerializer,
             400: inline_serializer(
