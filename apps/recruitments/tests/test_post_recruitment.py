@@ -86,7 +86,7 @@ class RecruitmentPostTestCase(APITestCase):
             "content": "함께 성장할 스터디원을 모집합니다.",
             "close_at": "2025-10-01T23:59:59",
             "expected_headcount": 3,
-            "study_group": self.study_groups[0].id,
+            "study_group": self.study_groups[0].uuid,
             "images": ["http://example.com/img1.jpg", "http://example.com/img2.jpg"],
             "attachments": [
                 {"file_url": "http://example.com/file1.pdf", "file_name": "file_name_1"},
@@ -107,7 +107,7 @@ class RecruitmentPostTestCase(APITestCase):
             "content": "함께 성장할 스터디원을 모집합니다.",
             "close_at": "2025-10-01T23:59:59",
             "expected_headcount": 3,
-            "study_group": self.study_groups[0].id,
+            "study_group": self.study_groups[0].uuid,
         }
         res = self.client.post(url, data=data, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
@@ -122,7 +122,7 @@ class RecruitmentPostTestCase(APITestCase):
             "content": "함께 성장할 스터디원을 모집합니다.",
             "close_at": "2025-10-01T23:59:59",
             "expected_headcount": 3,
-            "study_group": self.study_groups[0].id,
+            "study_group": self.study_groups[0].uuid,
             "attachments": [
                 {"file_url": "http://example.com/file1.pdf", "file_name": "file_name_1"},
                 {"file_url": "http://example.com/file2.pdf", "file_name": "file_name_2"},
