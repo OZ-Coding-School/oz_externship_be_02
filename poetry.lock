@@ -152,6 +152,22 @@ frozenlist = ">=1.1.0"
 typing-extensions = {version = ">=4.2", markers = "python_version < \"3.13\""}
 
 [[package]]
+name = "alt-profanity-check"
+version = "1.7.2"
+description = "A fast, robust library to check for offensive language in strings. Dropdown replacement of \"profanity-check\"."
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "alt_profanity_check-1.7.2-py3-none-any.whl", hash = "sha256:444cfd8cfd8007a6b54ea96b3695aefcdb1dd7e54e0ed4d2140745b77a0b273a"},
+    {file = "alt_profanity_check-1.7.2.tar.gz", hash = "sha256:f2569e4cc8dfb1813b384ad59e88c5929216354b68213016acd00d2196357f14"},
+]
+
+[package.dependencies]
+joblib = "1.5.1"
+scikit-learn = "1.7.2"
+
+[[package]]
 name = "amqp"
 version = "5.3.1"
 description = "Low-level AMQP client for Python (fork of amqplib)."
@@ -2231,14 +2247,14 @@ files = [
 
 [[package]]
 name = "joblib"
-version = "1.5.2"
+version = "1.5.1"
 description = "Lightweight pipelining with Python functions"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "joblib-1.5.2-py3-none-any.whl", hash = "sha256:4e1f0bdbb987e6d843c70cf43714cb276623def372df3c22fe5266b2670bc241"},
-    {file = "joblib-1.5.2.tar.gz", hash = "sha256:3faa5c39054b2f03ca547da9b2f52fde67c06240c31853f306aea97f13647b55"},
+    {file = "joblib-1.5.1-py3-none-any.whl", hash = "sha256:4719a31f054c7d766948dcd83e9613686b27114f190f717cec7eaa2084f8a74a"},
+    {file = "joblib-1.5.1.tar.gz", hash = "sha256:f4f86e351f39fe3d0d32a9f2c3d8af1ee4cec285aafcb27003dda5205576b444"},
 ]
 
 [[package]]
@@ -4465,4 +4481,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "ad3875a01130d0afa5ae14a095357cf315eedaf6cc8e6bfb13c1f18e646b7e7a"
+content-hash = "02a153e95a2bc369b5ae73073cfa3959671bad5a85f947e6a8b35b95bc933151"

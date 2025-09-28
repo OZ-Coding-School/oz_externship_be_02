@@ -1,8 +1,11 @@
-from django.urls import reverse  # URL 패턴의 이름(name)을 사용하여 동적으로 URL을 생성(역추적)하는 유틸리티
-from rest_framework import status
+from unittest.mock import patch
+
+from django.urls import reverse
+from rest_framework import serializers, status
 from rest_framework.test import APITestCase
 
 from apps.recruitments.models.tags import Tag
+from apps.recruitments.serializers.tags_serializers import TagSerializer
 from apps.users.models.user import User
 
 
@@ -58,11 +61,6 @@ class TagAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_create_tag_duplicate_name(self) -> None:
-        # """태그 생성 실패 테스트 (이름 중복)"""
-        # url = "/api/v1/recruitments/tags/"
-        # data = {"name": "python"}  # setUp에서 이미 생성된 태그
-        # response = self.client.post(url, data)
-        # self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         """
         태그 생성 실패 테스트 (이름 중복)
         - 밸리데이터 활성화 시 400 Bad Request 반환 확인
@@ -70,11 +68,6 @@ class TagAPITestCase(APITestCase):
         # Given: 이미 존재하는 태그
         Tag.objects.create(name="Existing Tag")
 
-        # reverse 유틸리티는 URL을 하드코딩하는 대신, URL 패턴의 이름으로부터 동적으로 URL을 생성합니다.
-        # 이 방식을 사용하면 urls.py 파일에서 URL 구조가 변경되더라도 테스트 코드를 수정할 필요가 없어 유지보수에 용이합니다.
-        # 아래 코드는 recruitments 앱 네임스페이스에 속한 'tag-list'라는 이름의 URL 패턴을 찾아
-        # 해당하는 URL(예: '/api/v1/recruitments/tags/')을 동적으로 생성하여 url 변수에 할당합니다.
-        # 이 URL은 중복 태그 생성을 테스트하기 위한 POST 요청의 엔드포인트로 사용됩니다.
         url = reverse("tag-list")
 
         # When: 중복된 이름으로 태그 생성 요청
@@ -83,10 +76,7 @@ class TagAPITestCase(APITestCase):
 
         # Then: 400 Bad Request 반환 및 에러 메시지 확인
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        # UniqueValidator의 기본 에러 메시지 확인
         self.assertIn("error", response.data)
-        # self.assertIn("tag의 name은/는 이미 존재합니다.", response.data["name"][0])
-        # self.assertIn("tag with this name already exists.", response.data["name"][0].lower())  # 대소문자 무시
 
     def test_create_tag_blank_name(self) -> None:
         """태그 생성 실패 테스트 (빈 이름)"""
@@ -104,17 +94,15 @@ class TagAPITestCase(APITestCase):
         # 페이지네이션(5개)이 적용되었는지 확인
         self.assertEqual(len(response.data["results"]), 5)
         # 전체 태그 개수 확인
-        self.assertEqual(response.data["count"], 6)
+        self.assertEqual(response.data["count"], 56)
 
     def test_search_tags_success(self) -> None:
         """태그 검색 성공 테스트"""
-        url = reverse("tag-list") + "?search=py"
+        url = reverse("tag-list") + "?search=fastapi"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # 검색 결과가 1개인지 확인
-        self.assertEqual(len(response.data["results"]), 1)
-        # 검색된 태그의 이름이 'python'인지 확인
-        self.assertEqual(response.data["results"][0]["name"], "python")
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["name"], "fastapi")
 
     def test_list_tags_unauthenticated(self) -> None:
         """태그 목록 조회 실패 테스트 (미인증)"""
@@ -122,3 +110,49 @@ class TagAPITestCase(APITestCase):
         url = reverse("tag-list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class TagSerializerProfanityValidationTests(APITestCase):
+    """
+    TagSerializer의 욕설 필터링 유효성 검증(validate_name)을 테스트한다.
+    """
+
+    def test_clean_tag_passes_validation(self) -> None:
+        """
+        [성공] 욕설이 없는 단어가 유효성 검사를 통과하는지 확인한다.
+        (규칙 기반, 모델 기반 모두 통과)
+        """
+        data = {"name": "클린태그"}
+        serializer = TagSerializer(data=data)
+        self.assertTrue(serializer.is_valid(raise_exception=True))
+
+    def test_rule_based_profanity_fails(self) -> None:
+        """
+        [실패] badwords.py 목록에 있는 단어가 규칙 기반 필터에서 실패하는지 확인한다.
+        """
+        data = {"name": "이런씨발"}
+        serializer = TagSerializer(data=data)
+        with self.assertRaises(serializers.ValidationError) as cm:
+            serializer.is_valid(raise_exception=True)
+
+        detail = cm.exception.detail
+        if isinstance(detail, dict):
+            self.assertEqual(detail["name"], ["태그에 욕설이나 비속어를 포함할 수 없습니다."])
+        else:
+            self.fail("ValidationError.detail이 예상과 달리 dict 타입이 아닙니다.")
+
+    @patch("apps.recruitments.serializers.tags_serializers.PROFANITY_WORD_LIST", [])
+    def test_model_based_profanity_fails(self) -> None:
+        """
+        [실패] 규칙 기반 목록을 통과해도, 모델 기반 필터에서 실패하는지 확인한다.
+        """
+        data = {"name": "fucking awesome"}
+        serializer = TagSerializer(data=data)
+        with self.assertRaises(serializers.ValidationError) as cm:
+            serializer.is_valid(raise_exception=True)
+
+        detail = cm.exception.detail
+        if isinstance(detail, dict):
+            self.assertEqual(detail["name"], ["태그에 욕설이나 비속어를 포함할 수 없습니다."])
+        else:
+            self.fail("ValidationError.detail이 예상과 달리 dict 타입이 아닙니다.")

@@ -31,6 +31,7 @@ dependencies = [
     "google-genai (>=1.38.0,<2.0.0)",
     "freezegun (>=1.5.5,<2.0.0)",
     "faker (>=37.8.0,<38.0.0)",
+    "alt-profanity-check (>=1.7.2,<2.0.0)",
     "scikit-learn (>=1.7.2,<2.0.0)",
 ]
 
@@ -64,6 +65,12 @@ plugins = ["mypy_django_plugin.main"]
 python_version = 3.12
 strict = true
 exclude = ["migrations", "manage.py"]
+
+# profanity_check 라이브러리가 타입 힌트를 제공하지 않아 mypy 에러가 발생하므로,
+# 해당 모듈에 대한 타입 검사를 건너뛰도록 설정한다.
+[[tool.mypy.overrides]]
+module = "profanity_check"
+ignore_missing_imports = true
 
 [tool.django-stubs]
 django_settings_module = "config.settings.local"
