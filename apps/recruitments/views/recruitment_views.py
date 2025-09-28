@@ -1,4 +1,4 @@
-from typing import Self, cast
+from typing import cast
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
@@ -10,6 +10,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
+from apps.recruitments.serializers.recruitments_serializers import (
+    RecruitmentCreateOutputSerializer,
+    RecruitmentCreateSerializer,
+)
 from apps.recruitments.serializers.serializers_list import RecruitmentListSerializer
 from apps.recruitments.services.services_list import (
     filter_is_closed,
@@ -109,6 +113,33 @@ class RecruitmentView(APIView):
         serializer = RecruitmentListSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+    @extend_schema(
+        tags=["스터디 구인 공고"],
+        summary="구인 공고 작성",
+        description="스터디 구인 공고 작성이 가능합니다.\n\n"
+        "### 작성 제한\n\n"
+        "1. 이미지 업로드( 최대 5개, 이미지 용량 5MB 이하 )\n\n"
+        "2. 종료되지 않은 스터디 그룹에 대해서만 구인 공고 작성 가능\n\n"
+        "3. 참고 파일 업로드 ( 최대 3개,  파일 용량 5MB 이하 )\n\n"
+        "### 부가 기능\n\n"
+        "예상 결제 비용을 별도로 미입력 시 강의 항목 당 결제 비용을 모두 합산하여 자동 입력",
+        responses={
+            201: RecruitmentCreateOutputSerializer,
+            400: inline_serializer(
+                name="error_validate",
+                fields={
+                    "attachments": serializers.CharField(default="첨부 파일은 최대 3개까지 등록 가능합니다."),
+                    "study_group": serializers.CharField(default="종료된 스터디 그룹은 등록 불가능합니다."),
+                },
+            ),
+        },
+    )
+    def post(self, request: Request) -> Response:
+        serializer = RecruitmentCreateSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        new_recm = serializer.save()
+        return Response(RecruitmentCreateOutputSerializer(new_recm).data, status=status.HTTP_201_CREATED)
+
 
 class MyRecruitmentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -160,7 +191,8 @@ class MyRecruitmentView(APIView):
                 },
             ),
             400: inline_serializer(
-                name="get_my_pagelist", fields={"error": serializers.CharField(default="잘못된 is_closed 입력값")}
+                name="error_validate_is_closed",
+                fields={"error": serializers.CharField(default="잘못된 is_closed 입력값")},
             ),
         },
     )

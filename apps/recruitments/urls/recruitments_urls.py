@@ -11,7 +11,7 @@ from apps.recruitments.views.recruitment_detail_views import RecruitmentDetailVi
 from apps.recruitments.views.recruitment_views import MyRecruitmentView, RecruitmentView
 
 urlpatterns = [
-    path("", RecruitmentView.as_view(), name="recruitment-list"),
+    path("", RecruitmentView.as_view(), name="recruitment-list-post"),
     path("/me", MyRecruitmentView.as_view(), name="recruitment-mylist"),
     path("/attachments", RecruitmentFileView.as_view(), name="recruitment-attachments-upload"),
     path("/images", RecruitmentImageView.as_view(), name="recruitment-images-upload"),
