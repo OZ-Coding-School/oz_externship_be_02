@@ -1,17 +1,21 @@
-from unittest.mock import patch
+from datetime import date
+from unittest.mock import patch, Mock
+
 from django.test import TestCase
+
 from apps.notifications.models import Notification
 from apps.notifications.services.noti_create_service import StudyNoteNotificationService
-from apps.studies.models import StudyGroup, GroupMember
+from apps.studies.models import GroupMember, StudyGroup
 from apps.study_notes.models import StudyNote
 from apps.users.models import User
-from datetime import date
 
 
 class NotificationSSEReceiverTests(TestCase):
-    @patch("apps.notifications.receivers.send_event") # 시그널 리시버 내부에서 쓰는 send_event를 MOCK으로 바꿔치기 / 호출되는지 확인
-    def test_post_save_push_sse(self, mock_send):
-        u = User.objects.create_user( # 테스트용 유저
+    @patch(
+        "apps.notifications.receivers.send_event"
+    )  # 시그널 리시버 내부에서 쓰는 send_event를 MOCK으로 바꿔치기 / 호출되는지 확인
+    def test_post_save_push_sse(self, mock_send: Mock) -> None:
+        u = User.objects.create_user(  # 테스트용 유저
             email="oz@example.com",
             password="1q2w3e4r!",
             nickname="author",
@@ -20,13 +24,13 @@ class NotificationSSEReceiverTests(TestCase):
             gender="male",
             birthday=date(1990, 1, 1),
         )
-        n = Notification.objects.create( # post_save 시그널 생성 / send_event 호출
+        n = Notification.objects.create(  # post_save 시그널 생성 / send_event 호출
             user=u,
             content="hello",
             notification_type=Notification.NotificationType.ADD_APPLICATION,
             back_url_link="/x",
         )
-        mock_send.assert_called_once() # 한번만 호출 됐는지 확인
+        mock_send.assert_called_once()  # 한번만 호출 됐는지 확인
         channel, event, data = mock_send.call_args.args
         assert channel == f"user-{u.id}"
         assert event == "notification"
@@ -39,8 +43,8 @@ class NotificationSSEReceiverTests(TestCase):
 
 class BulkSSETests(TestCase):
     @patch("apps.notifications.services.noti_create_service.send_event")
-    def test_bulk_create_push(self, mock_send):
-        with self.captureOnCommitCallbacks(execute=True): # on_commit 콜백 지금 실행
+    def test_bulk_create_push(self, mock_send: Mock) -> None :
+        with self.captureOnCommitCallbacks(execute=True):  # on_commit 콜백 지금 실행
             leader = User.objects.create_user(
                 email="ox@example.com",
                 password="1q2w3e4r@",
@@ -68,8 +72,13 @@ class BulkSSETests(TestCase):
                 gender="male",
                 birthday=date(1995, 1, 1),
             )
-            g = StudyGroup.objects.create(name="G", introduction="i", max_headcount=5,
-                                          start_at="2025-01-01T00:00:00Z", end_at="2025-12-31T00:00:00Z")
+            g = StudyGroup.objects.create(
+                name="G",
+                introduction="i",
+                max_headcount=5,
+                start_at="2025-01-01T00:00:00Z",
+                end_at="2025-12-31T00:00:00Z",
+            )
             GroupMember.objects.create(study_group=g, user=leader, is_leader=True)
             GroupMember.objects.create(study_group=g, user=m1)
             GroupMember.objects.create(study_group=g, user=m2)
