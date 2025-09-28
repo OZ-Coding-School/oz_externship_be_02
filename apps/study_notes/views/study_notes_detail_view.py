@@ -141,9 +141,10 @@ class StudyNoteDetailView(APIView):
         serializer = StudyNoteDeleteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         note_ids = serializer.validated_data.get("note_ids", [note_id])
+
+        # 삭제 대상 노트
         notes_query = StudyNote.objects.filter(id__in=note_ids)
 
-        # 존재하지 않는 노트 체크
         if not notes_query.exists():
             raise NotFound("삭제할 노트를 찾을 수 없습니다.")
 
@@ -153,8 +154,7 @@ class StudyNoteDetailView(APIView):
 
         if not own_notes.exists():
             raise PermissionDenied("작성자만 삭제할 수 있습니다.")
-
-        # 삭제 수행 (작성자가 맞으면 삭제 가능)
+        # 삭제 수행
         deleted_count = own_notes.delete()[0]
 
         return Response(
