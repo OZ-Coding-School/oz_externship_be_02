@@ -9,6 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.authentications import JWTAuthenticationOrReadOnly
 from apps.recruitments.managers.managers_list import RecruitmentListQuerySet
 from apps.recruitments.serializers.recruitments_serializers import (
     RecruitmentCreateOutputSerializer,
@@ -25,7 +26,7 @@ from apps.users.models.user import User
 
 
 class RecruitmentView(APIView):
-    authentication_classes = ()
+    authentication_classes = (JWTAuthenticationOrReadOnly,)  # 읽기에서는 JWTAuthentication None 반환
 
     # 검색정보
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
