@@ -30,7 +30,8 @@ class AdminLectureDetailSerializer(serializers.ModelSerializer[Lecture]):
     class Meta:
         model = Lecture
         fields = (
-            "id" "lecture_uuid",
+            "id",
+            "lecture_uuid",
             "title",
             "instructor",
             "thumbnail_img_url",
