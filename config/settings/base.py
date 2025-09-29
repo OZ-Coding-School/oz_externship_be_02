@@ -264,3 +264,8 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=0, minute=10),  # 매일 0시 15뷴 실행 (자정이후)
     },
 }
+
+# Naver settings
+NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
+NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
+NAVER_REDIRECT_URI = os.getenv("NAVER_REDIRECT_URI")

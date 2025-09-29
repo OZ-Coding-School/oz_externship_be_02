@@ -18,7 +18,10 @@ from apps.users.views.phone_verification_view import (
     SendVerificationCodeAPIView,
     VerifyCodeAPIView,
 )
-from apps.users.views.social_login_views import KakaoLoginCallbackView
+from apps.users.views.social_login_views import (
+    KakaoLoginCallbackView,
+    NaverLoginCallbackView,
+)
 from apps.users.views.withdrawals_view import AccountRecoveryAPIView, WithdrawalAPIView
 
 urlpatterns = [
@@ -50,6 +53,7 @@ urlpatterns = [
     path("auth/email/login", EmailLoginAPIView.as_view(), name="email_login"),
     # 소셜 로그인
     path("auth/kakao/callback", KakaoLoginCallbackView.as_view(), name="kakao_callback"),
+    path("auth/naver/callback", NaverLoginCallbackView.as_view(), name="naver_callback"),
     # 로그아웃
     path("auth/logout", LogoutAPIView.as_view(), name="logout"),
     # 토큰 재발급
