@@ -29,7 +29,7 @@ class UserWithdrawalJWTAPITest(APITestCase, VerificationMixin):
             "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             "reason_detail": "개인정보/보안/우려",
         }  # 요청 데이터
-        response = self.client.post(self.url, data)
+        response = self.client.delete(self.url, data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -51,7 +51,7 @@ class UserWithdrawalJWTAPITest(APITestCase, VerificationMixin):
             "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             "reason_detail": "첫 요청",
         }
-        first_response = self.client.post(self.url, first_data)
+        first_response = self.client.delete(self.url, first_data)
         self.assertEqual(first_response.status_code, status.HTTP_200_OK)
 
         # 두 번째 중복 요청(비정상적)
@@ -59,7 +59,7 @@ class UserWithdrawalJWTAPITest(APITestCase, VerificationMixin):
             "reason": WithdrawalsReasonChoices.PRIVACY_CONCERNS,
             "reason_detail": "테스트용 중복 요청",
         }
-        second_response = self.client.post(self.url, second_data)
+        second_response = self.client.delete(self.url, second_data)
         self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
 
         self.assertIn("error", second_response.data)
