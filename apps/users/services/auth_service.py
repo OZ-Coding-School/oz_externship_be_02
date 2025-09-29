@@ -1,6 +1,7 @@
 from typing import Optional, Union, cast
 
 from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import check_password
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken, Token
@@ -15,10 +16,28 @@ class AuthService:
 
     @staticmethod
     def email_login(email: str, password: str) -> tuple[User, dict[str, str]]:
-        user: Union[User, None] = authenticate(email=email, password=password)
+        # 유저 조회
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise AuthenticationFailed("존재하지 않는 이메일입니다")
 
-        if user is None:
-            raise AuthenticationFailed("이메일 또는 비밀번호가 틀립니다")
+        # is_active 체크 및 비밀번호 검증
+        if user and not user.is_active:
+            if check_password(password, user.password):
+                withdrawal = getattr(user, "withdrawal", None)
+                raise AuthenticationFailed(
+                    detail={
+                        "detail": "탈퇴 계정입니다. 복구 가능 기간 확인 바랍니다.",
+                        "due_date": withdrawal.due_date if withdrawal else None,
+                    }
+                )
+            else:
+                raise AuthenticationFailed("탈퇴계정, 비밀번호가 틀립니다")
+
+        authenticate_user = authenticate(email=email, password=password)
+        if authenticate_user is None:
+            raise AuthenticationFailed("정상계정, 비밀번호가 틀립니다")
 
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
