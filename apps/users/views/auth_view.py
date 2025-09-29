@@ -77,9 +77,9 @@ class EmailLoginAPIView(APIView):
 
         # 로그인 분기 처리
 
-        response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
+        response = Response({"access_token": tokens["access"]}, status=status.HTTP_200_OK)
         response.set_cookie(
-            "refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
+            "refresh_token", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
         )
 
         return response
@@ -104,7 +104,7 @@ class LogoutAPIView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        refresh = request.COOKIES.get("refresh")
+        refresh = request.COOKIES.get("refresh_token")
 
         if not refresh:
             return Response({"error": "refresh 토큰이 필요합니다"}, status=status.HTTP_400_BAD_REQUEST)
@@ -114,7 +114,7 @@ class LogoutAPIView(APIView):
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
 
         response = Response({"detail": "로그아웃이 완료되었습니다"}, status=status.HTTP_200_OK)
-        response.delete_cookie("refresh")
+        response.delete_cookie("refresh_token")
         return response
 
 
@@ -143,7 +143,7 @@ class CookieTokenRefreshAPIView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        refresh_token = request.COOKIES.get("refresh")
+        refresh_token = request.COOKIES.get("refresh_token")
 
         try:
             access_token = JWTService.refresh_access_token(refresh_token)

@@ -24,8 +24,8 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         """
         response = self.client.post(self.login_url, {"email": self.email, "password": self.password})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("access", response.data)
-        self.assertIn("refresh", response.cookies)
+        self.assertIn("access_token", response.data)
+        self.assertIn("refresh_token", response.cookies)
 
     def test_login_failed(self) -> None:
         """
@@ -43,10 +43,10 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         # 1.로그인 해서 액세스,리프레시 토큰 발급(refresh만 쿠키로)
         login_response = self.client.post(self.login_url, {"email": self.email, "password": self.password})
         # 2. 발급받은 토큰으로 요청
-        refresh_cookie = cast(Morsel[str], login_response.cookies.get("refresh"))
+        refresh_cookie = cast(Morsel[str], login_response.cookies.get("refresh_token"))
         self.assertIsNotNone(refresh_cookie)
         # 3. 쿠키로 받은 리프레시 쿠키도 같이 요청
-        self.client.cookies["refresh"] = refresh_cookie.value
+        self.client.cookies["refresh_token"] = refresh_cookie.value
         response = self.client.post(self.refresh_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -69,15 +69,15 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         # 1. 로그인 -> refresh 토큰 발급
         response = self.client.post(self.login_url, {"email": self.email, "password": self.password})
 
-        refresh_cookie = cast(Morsel[str], response.cookies.get("refresh"))
+        refresh_cookie = cast(Morsel[str], response.cookies.get("refresh_token"))
 
         # 2. refresh 쿠키 포함해서 로그아웃 요청
-        self.client.cookies["refresh"] = refresh_cookie.value
+        self.client.cookies["refresh_token"] = refresh_cookie.value
         response = self.client.post(self.revoke_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["detail"], "로그아웃이 완료되었습니다")
-        self.assertEqual(response.cookies["refresh"].value, "")
+        self.assertEqual(response.cookies["refresh_token"].value, "")
 
     def test_logout_without_refresh_cookie(self) -> None:
         """
@@ -93,7 +93,7 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         블랙리스트 처리 또는 유효하지않은 refresh 인 경우
         """
         # 잘못된 토큰을 쿠키에 넣음
-        self.client.cookies["refresh"] = "invalidtoken123"
+        self.client.cookies["refresh_token"] = "invalidtoken123"
         response = self.client.post(self.revoke_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("리프레시 토큰이 유효하지 않습니다", response.data["error"])
