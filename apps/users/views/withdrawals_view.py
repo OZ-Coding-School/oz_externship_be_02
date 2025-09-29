@@ -42,13 +42,13 @@ class WithdrawalAPIView(APIView):
         examples=[
             OpenApiExample(
                 "계정 탈퇴 요청 예시",
-                value={"reason": "서비스 불만족"},
+                value={"reason": "서비스 불만족", "reason_detail": "탈퇴 요청 구체적인 사유"},
                 request_only=True,
             ),
         ],
     )
-    def post(self, request: Request) -> Response:
-        assert request.user.is_authenticated  # mypy 오류로 인한 검증 코드
+    def delete(self, request: Request) -> Response:
+
         request_serializer = WithdrawalRequestSerializer(data=request.data, context={"request": request})
         request_serializer.is_valid(raise_exception=True)
 
