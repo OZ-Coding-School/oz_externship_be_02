@@ -1,3 +1,4 @@
+from time import localtime
 from typing import Any, Dict
 
 from django.db.models import QuerySet
@@ -82,5 +83,25 @@ class ReviewUpdateResponseSerializer(serializers.ModelSerializer[StudyReview]):
             "study_group_uuid",
             "star_rating",
             "content",
+            "updated_at",
+        ]
+
+
+class AdminReviewListSerializer(serializers.ModelSerializer[StudyReview]):
+
+    study_group_name = serializers.CharField(source="study_group.name", read_only=True)
+    user_nickname = serializers.CharField(source="user.nickname", read_only=True)
+    user_email = serializers.CharField(source="user.email", read_only=True)
+
+    class Meta:
+        model = StudyReview
+        fields = [
+            "id",
+            "study_group_name",
+            "user_nickname",
+            "user_email",
+            "content",
+            "star_rating",
+            "created_at",
             "updated_at",
         ]
