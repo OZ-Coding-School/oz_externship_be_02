@@ -2,7 +2,8 @@ from typing import Any, cast
 from uuid import UUID
 
 from django.db import IntegrityError
-from rest_framework import status
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers, status
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -20,6 +21,15 @@ from apps.core.paginators import DefaultCursorPagination
 from apps.recruitments.models import Recruitment
 from apps.recruitments.recruitments_permissions import IsRecruitmentAuthor
 from apps.users.models import User
+
+
+class _ApplicationCreateResponseSerializer(serializers.Serializer):
+    application_id = serializers.IntegerField()
+    message = serializers.CharField()
+
+
+class _ErrorResponseSerializer(serializers.Serializer):
+    error = serializers.CharField()
 
 
 class ApplicationAPIView(APIView):
@@ -53,6 +63,16 @@ class ApplicationAPIView(APIView):
 
         return paginator.get_paginated_response(paginated_data)
 
+    @extend_schema(
+        summary="REQ-APLY-001: 스터디 공고 참여 신청",
+        tags=["스터디 공고 지원"],
+        request={"application/json": ApplicationCreateSerializer},
+        responses={
+            status.HTTP_201_CREATED: _ApplicationCreateResponseSerializer,
+            status.HTTP_404_NOT_FOUND: _ErrorResponseSerializer,
+            status.HTTP_409_CONFLICT: _ErrorResponseSerializer,
+        },
+    )
     def post(self, request: Request, recruitment_uuid: UUID) -> Response:
         """지원서 생성 요청(POST)을 처리한다."""
         try:
