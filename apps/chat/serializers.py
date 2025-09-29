@@ -8,7 +8,7 @@ from .models import ChatMessage
 class SenderInfoSerializer(serializers.ModelSerializer[User]):
     class Meta:
         model = User
-        fields = ["uuid", "nickname", "name", "gender"]
+        fields = ["uuid", "nickname", "name", "gender", "profile_img_url"]
 
 
 class ChatMessageSerializer(serializers.ModelSerializer[ChatMessage]):
