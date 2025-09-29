@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, cast
 
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
+from django.db.models import QuerySet
 
 from apps.core.utils.s3_uploader import S3Uploader
 from apps.studies.models import StudyGroup
@@ -190,3 +191,27 @@ class StudyNoteService:
                 except Exception as del_err:
                     logger.warning(f"트랜잭션 실패로 S3 rollback 실패: {uploaded_keys}, error: {del_err}")
             raise RuntimeError(f"스터디 노트 수정 실패, 롤백 완료. Error: {e}")
+
+    def delete_study_notes(self, notes_qs: QuerySet[StudyNote]) -> int:
+        """
+        스터디 노트와 관련 S3 파일을 삭제 후 DB에서 노트 삭제
+        """
+        # 삭제 대상 이미지/첨부 파일 URL 조회
+        image_urls = StudyNoteImage.objects.filter(study_note__in=notes_qs).values_list("img_url", flat=True)
+        attachment_urls = StudyNoteAttachment.objects.filter(study_note__in=notes_qs).values_list("file_url", flat=True)
+        all_urls = list(image_urls) + list(attachment_urls)
+
+        # S3 Key 추출
+        s3_keys_to_delete: List[str] = [url.split("/")[-1] for url in all_urls if "/" in url]
+
+        # DB에서 노트 삭제 (CASCADE로 이미지/첨부 레코드도 함께 삭제)
+        deleted_count = notes_qs.delete()[0]
+
+        # S3 파일 삭제
+        if s3_keys_to_delete:
+            try:
+                self.s3.delete_files(s3_keys_to_delete)
+            except Exception as e:
+                logger.error(f"노트는 삭제됐지만 S3 파일 삭제 실패. keys={s3_keys_to_delete}, error={e}")
+
+        return deleted_count
