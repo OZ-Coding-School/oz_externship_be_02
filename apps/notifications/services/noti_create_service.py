@@ -91,7 +91,7 @@ class ApplicationNotificationService:
                 user_id=uid,
                 content=f"{group.name}에 {new_user.nickname} 님이 참여했습니다. 환영해주세요!",
                 notification_type=Notification.NotificationType.STUDY_JOIN,
-                back_url_link=get_notification_back_url(Notification.NotificationType.STUDY_JOIN, group_id=group.id),
+                back_url_link=get_notification_back_url(Notification.NotificationType.STUDY_JOIN, group_uuid=group.uuid),
             )
             for uid in accepted_user_ids
         ]

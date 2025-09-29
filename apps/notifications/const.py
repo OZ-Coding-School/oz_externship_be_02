@@ -5,7 +5,7 @@ from apps.notifications.models import Notification
 # 알림 타입별 기본 URL 패턴
 BACK_URL_LINK_BY_NOTIFICATION_TYPE: Dict[Notification.NotificationType, str] = {
     Notification.NotificationType.STUDY_REVIEW_REQUEST: "/my-page/completed-study",
-    Notification.NotificationType.STUDY_JOIN: "/study-group/{group_id}/chat",
+    Notification.NotificationType.STUDY_JOIN: "/study-group/{group_uuid}/chat",
     Notification.NotificationType.STUDY_NOTE_CREATE: "/study-group/{group_id}",
     Notification.NotificationType.APPLICATION_ACCEPT: "/my-page/applications",
     Notification.NotificationType.APPLICATION_REJECT: "/my-page/applications",
