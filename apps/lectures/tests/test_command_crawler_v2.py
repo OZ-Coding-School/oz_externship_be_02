@@ -1,7 +1,5 @@
 import asyncio
 from io import StringIO
-from typing import Any, Dict, List, Optional
-from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -9,13 +7,14 @@ from django.core.management import call_command
 from django.test import TestCase
 
 from apps.lectures.management.commands.crawler_v2 import Command
-from apps.lectures.models import Category, Lecture, LectureReview
-from apps.lectures.tasks import run_crawler_v2
+from apps.lectures.models.categories import Category
+from apps.lectures.models.crawled_lecture_reviews import LectureReview
+from apps.lectures.models.crawled_lectures import Lecture, PlatformChoices
 
 
-class TestCrawlerV2Command(TestCase):
+class TestCrawlerV2CommandIntegration(TestCase):
     """
-    crawler_v2 명령어 테스트 클래스
+    crawler_v2 명령어 통합 테스트 클래스
     """
 
     @patch("apps.lectures.management.commands.crawler_v2.logger")
@@ -24,7 +23,8 @@ class TestCrawlerV2Command(TestCase):
         """
         명령어가 성공적으로 실행되는 경우를 테스트합니다.
         """
-        mock_response_page1: MagicMock = MagicMock()
+        # given: Mocking a successful API response
+        mock_response_page1 = MagicMock()
         mock_response_page1.json.return_value = {
             "data": {
                 "totalPage": 1,
@@ -48,27 +48,39 @@ class TestCrawlerV2Command(TestCase):
         }
         mock_response_page1.raise_for_status = MagicMock()
 
-        mock_response_reviews: MagicMock = MagicMock()
-        mock_response_reviews.json.return_value = {"data": {"items": [{"star": 5, "body": "Great lecture!"}]}}
+        mock_response_reviews = MagicMock()
+        mock_response_reviews.json.return_value = {
+            "data": {
+                "items": [
+                    {"star": 5, "body": "Great lecture!"},
+                ]
+            }
+        }
         mock_response_reviews.raise_for_status = MagicMock()
 
-        mock_get: AsyncMock = AsyncMock()
-        mock_get.side_effect = [mock_response_page1, mock_response_page1, mock_response_reviews]
+        mock_get = AsyncMock()
+        mock_get.side_effect = [
+            mock_response_page1,  # First call for total pages
+            mock_response_page1,  # Call for page 1
+            mock_response_reviews,  # Call for reviews
+        ]
 
-        mock_client_instance: MagicMock = MagicMock()
+        mock_client_instance = MagicMock()
         mock_client_instance.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client_instance
 
-        out: StringIO = StringIO()
+        # when: Running the command
+        out = StringIO()
         await asyncio.to_thread(call_command, "crawler_v2", stdout=out, stderr=out)
 
+        # then: Verifying the database state
         self.assertEqual(await Lecture.objects.acount(), 1)
         self.assertEqual(await Category.objects.acount(), 1)
         self.assertEqual(await LectureReview.objects.acount(), 1)
 
-        lecture: Optional[Lecture] = await Lecture.objects.afirst()
-        category: Optional[Category] = await Category.objects.afirst()
-        review: Optional[LectureReview] = await LectureReview.objects.afirst()
+        lecture = await Lecture.objects.afirst()
+        category = await Category.objects.afirst()
+        review = await LectureReview.objects.afirst()
 
         if lecture and category and review:
             self.assertEqual(lecture.title, "Test Lecture 1")
@@ -78,7 +90,8 @@ class TestCrawlerV2Command(TestCase):
             self.assertEqual(review.content, "Great lecture!")
             self.assertEqual(review.rating, "5_OUT_OF_5_STARS")
 
-            lecture_categories: List[str] = [cat.name async for cat in lecture.categories.all()]
+            # Check M2M relationship
+            lecture_categories = [cat.name async for cat in lecture.categories.all()]
             self.assertIn("Test Category 1", lecture_categories)
         else:
             self.fail("lecture, category or review is None")
@@ -89,11 +102,13 @@ class TestCrawlerV2Command(TestCase):
         """
         API에 더 이상 존재하지 않는 강의가 DB에서 삭제되는지 테스트합니다.
         """
+        # given: An existing lecture in the DB
         await Lecture.objects.acreate(
             title="Old Lecture", platform="inflearn", url_link="http://example.com/old", duration=0
         )
 
-        mock_response_page1: MagicMock = MagicMock()
+        # Mocking an API response that does not contain the old lecture
+        mock_response_page1 = MagicMock()
         mock_response_page1.json.return_value = {
             "data": {
                 "totalPage": 1,
@@ -117,24 +132,30 @@ class TestCrawlerV2Command(TestCase):
         }
         mock_response_page1.raise_for_status = MagicMock()
 
-        mock_response_reviews: MagicMock = MagicMock()
+        mock_response_reviews = MagicMock()
         mock_response_reviews.json.return_value = {"data": {"items": []}}
         mock_response_reviews.raise_for_status = MagicMock()
 
-        mock_get: AsyncMock = AsyncMock()
-        mock_get.side_effect = [mock_response_page1, mock_response_page1, mock_response_reviews]
+        mock_get = AsyncMock()
+        mock_get.side_effect = [
+            mock_response_page1,
+            mock_response_page1,
+            mock_response_reviews,
+        ]
 
-        mock_client_instance: MagicMock = MagicMock()
+        mock_client_instance = MagicMock()
         mock_client_instance.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client_instance
 
-        out: StringIO = StringIO()
+        # when: Running the command
+        out = StringIO()
         await asyncio.to_thread(call_command, "crawler_v2", stdout=out, stderr=out)
 
+        # then: Verifying the old lecture is deleted and the new one is added
         self.assertEqual(await Lecture.objects.acount(), 1)
-        lecture_exists: bool = await Lecture.objects.filter(title="Old Lecture").aexists()
+        lecture_exists = await Lecture.objects.filter(title="Old Lecture").aexists()
         self.assertFalse(lecture_exists)
-        new_lecture_exists: bool = await Lecture.objects.filter(title="New Lecture").aexists()
+        new_lecture_exists = await Lecture.objects.filter(title="New Lecture").aexists()
         self.assertTrue(new_lecture_exists)
 
     @patch("apps.lectures.management.commands.crawler_v2.logger")
@@ -143,14 +164,17 @@ class TestCrawlerV2Command(TestCase):
         """
         API 요청 실패 시 에러를 처리하는지 테스트합니다.
         """
-        mock_get: AsyncMock = AsyncMock(side_effect=httpx.RequestError("API request failed"))
-        mock_client_instance: MagicMock = MagicMock()
+        # given: Mocking a request error
+        mock_get = AsyncMock(side_effect=httpx.RequestError("API request failed"))
+        mock_client_instance = MagicMock()
         mock_client_instance.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client_instance
 
-        out: StringIO = StringIO()
+        # when: Running the command
+        out = StringIO()
         await asyncio.to_thread(call_command, "crawler_v2", stdout=out, stderr=out)
 
+        # then: Verifying no data is created and the process finishes gracefully
         self.assertEqual(await Lecture.objects.acount(), 0)
         self.assertEqual(await Category.objects.acount(), 0)
         self.assertEqual(await LectureReview.objects.acount(), 0)
@@ -162,109 +186,123 @@ class TestCrawlerV2Command(TestCase):
         """
         API에서 가져올 데이터가 없을 경우를 테스트합니다.
         """
-        mock_response: MagicMock = MagicMock()
+        # given: Mocking an empty API response
+        mock_response = MagicMock()
         mock_response.json.return_value = {"data": {"totalPage": 0, "items": []}}
         mock_response.raise_for_status = MagicMock()
 
-        mock_get: AsyncMock = AsyncMock(return_value=mock_response)
-        mock_client_instance: MagicMock = MagicMock()
+        mock_get = AsyncMock(return_value=mock_response)
+        mock_client_instance = MagicMock()
         mock_client_instance.get = mock_get
         mock_async_client.return_value.__aenter__.return_value = mock_client_instance
 
-        out: StringIO = StringIO()
+        # when: Running the command
+        out = StringIO()
         await asyncio.to_thread(call_command, "crawler_v2", stdout=out, stderr=out)
 
+        # then: Verifying no data is created and a warning is logged
         self.assertEqual(await Lecture.objects.acount(), 0)
         mock_logger.warning.assert_called_with("API로부터 가져올 강의 데이터가 없습니다.")
 
 
-class TestRunCrawlerV2Task(TestCase):
-    @patch("apps.lectures.tasks.call_command")
-    def test_task_calls_crawler_command(self, mock_call_command: MagicMock) -> None:
-        run_crawler_v2()
-        mock_call_command.assert_called_once_with("crawler_v2")
+class TestCrawlerV2CommandUnit(TestCase):
+    def setUp(self) -> None:
+        self.command = Command()
 
-    @patch("apps.lectures.tasks.call_command")
-    def test_task_runs_command_with_stdout(self, mock_call_command: MagicMock) -> None:
-        mock_call_command.return_value = None
-        run_crawler_v2()
-        mock_call_command.assert_called_once_with("crawler_v2")
+    async def test_get_total_pages_success(self) -> None:
+        """_get_total_pages가 성공적으로 페이지 수를 반환하는지 테스트합니다."""
+        # given
+        mock_client = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"data": {"totalPage": 10}}
+        mock_client.get.return_value = mock_response
 
+        # when
+        total_pages = await self.command._get_total_pages(mock_client)
 
-class TestCrawlerV2ErrorLogging(TestCase):
+        # then
+        self.assertEqual(total_pages, 10)
+        mock_client.get.assert_called_once()
+
+    async def test_get_total_pages_failure(self) -> None:
+        """_get_total_pages가 API 요청 실패 시 0을 반환하는지 테스트합니다."""
+        # given
+        mock_client = AsyncMock()
+        mock_client.get.side_effect = httpx.RequestError("API down")
+
+        # when
+        total_pages = await self.command._get_total_pages(mock_client)
+
+        # then
+        self.assertEqual(total_pages, 0)
+
+    def test_process_and_combine_data(self) -> None:
+        """_process_and_combine_data가 데이터를 올바르게 가공하고 조합하는지 테스트합니다."""
+        # given
+        course_id_map = {
+            1: {
+                "course": {
+                    "id": 1,
+                    "title": "Test Course",
+                    "star": 4.5,
+                    "runtimeSecond": 3600,
+                    "metadata": {"level": "초급", "categories": [{"title": "Dev"}]},
+                    "description": "A test course.",
+                    "slug": "test-course",
+                    "thumbnailUrl": "http://example.com/thumb.jpg",
+                },
+                "instructor": {"name": "John Doe"},
+                "listPrice": {"regularPrice": 100, "payPrice": 80},
+            }
+        }
+        all_reviews_map = {1: [{"rating": "5_OUT_OF_5_STARS", "content": "Great!"}]}
+
+        # when
+        processed_data = self.command._process_and_combine_data(course_id_map, all_reviews_map)
+
+        # then
+        self.assertEqual(len(processed_data), 1)
+        course = processed_data[0]
+        self.assertEqual(course["title"], "Test Course")
+        self.assertEqual(course["instructor"], "John Doe")
+        self.assertEqual(course["average_rating"], 4.5)
+        self.assertEqual(course["duration"], 60)
+        self.assertEqual(course["difficulty"], "easy")
+        self.assertEqual(course["platform"], PlatformChoices.INFLEARN)
+        self.assertEqual(course["original_price"], 100)
+        self.assertEqual(course["discount_price"], 80)
+        self.assertIn("Dev", course["categories"])
+        self.assertEqual(len(course["lecture_reviews"]), 1)
+        self.assertEqual(course["lecture_reviews"][0]["content"], "Great!")
+
     @patch("apps.lectures.management.commands.crawler_v2.logger")
-    async def test_page_crawling_error_logged(self, mock_logger: MagicMock) -> None:
-        cmd: Command = Command()
+    def test_prepare_sync_data(self, mock_logger: MagicMock) -> None:
+        """_prepare_sync_data가 동기화할 데이터를 정확히 준비하는지 테스트합니다."""
+        # given
+        courses_data = [
+            {"title": "New Lecture 1"},
+            {"title": "Existing Lecture"},
+        ]
+        Lecture.objects.create(title="Existing Lecture", platform=PlatformChoices.INFLEARN, url_link="", duration=0)
+        Lecture.objects.create(title="Old Lecture", platform=PlatformChoices.INFLEARN, url_link="", duration=0)
 
-        async def fake_fetch_page(client: Any, url: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
-            if params.get("pageNumber") == 2:
-                raise ValueError("테스트 오류")
-            return [
-                {
-                    "course": {
-                        "id": params.get("pageNumber"),
-                        "title": f"강의 {params.get('pageNumber')}",
-                        "slug": f"slug-{params.get('pageNumber')}",
-                        "thumbnailUrl": "https://example.com/image.png",
-                        "runtimeSecond": 3600,
-                        "star": 4.5,
-                        "description": "테스트 강의",
-                        "metadata": {"level": "초급", "categories": [{"title": "테스트"}]},
-                    },
-                    "instructor": {"name": "강사"},
-                    "listPrice": {"regularPrice": 100000, "payPrice": 50000},
-                }
-            ]
+        # when
+        api_data_map, titles_to_add, titles_to_delete = self.command._prepare_sync_data(courses_data)
 
-        with patch.object(cmd, "_fetch_page", side_effect=fake_fetch_page):
-            await cmd._get_all_processed_data_from_api()
+        # then
+        self.assertIn("New Lecture 1", titles_to_add)
+        self.assertNotIn("Existing Lecture", titles_to_add)
+        self.assertIn("Old Lecture", titles_to_delete)
+        self.assertIn("New Lecture 1", api_data_map)
 
-        found: bool = any(
-            "페이지 크롤링 중 오류 발생: 테스트 오류" in str(call.args[0])
-            for call in mock_logger.warning.call_args_list
-        )
-        assert found, "페이지 크롤링 중 오류 발생 로그가 호출되지 않음"
+    def test_delete_lectures(self) -> None:
+        """_delete_lectures가 지정된 강의를 삭제하는지 테스트합니다."""
+        # given
+        Lecture.objects.create(title="Lecture to Delete", platform=PlatformChoices.INFLEARN, url_link="", duration=0)
+        titles_to_delete = {"Lecture to Delete"}
 
-        async def fake_fetch_reviews(client: Any, course_id: int) -> List[Dict[str, Any]]:
-            if course_id == 1:
-                raise ValueError("리뷰 테스트 오류")
-            return [{"course_id": course_id, "reviews": [{"rating": "5_OUT_OF_5_STARS", "content": "좋아요"}]}]
+        # when
+        self.command._delete_lectures(titles_to_delete)
 
-        with (
-            patch.object(cmd, "_fetch_page", side_effect=fake_fetch_page),
-            patch.object(cmd, "_fetch_reviews", side_effect=fake_fetch_reviews),
-        ):
-            await cmd._get_all_processed_data_from_api()
-
-        found = any(
-            isinstance(call.args[0], str)
-            and "리뷰 크롤링 중 오류 발생" in call.args[0]
-            and "리뷰 테스트 오류" in call.args[0]
-            for call in mock_logger.warning.call_args_list
-        )
-        assert found, "리뷰 크롤링 중 오류 발생 로그가 호출되지 않음 또는 예외가 포함되지 않음"
-
-    async def test_fetch_page_http_status_error_logged(self) -> None:
-        cmd: Command = Command()
-        mock_client: AsyncMock = AsyncMock()
-        response_mock: AsyncMock = AsyncMock()
-        response_mock.status_code = 404
-        exc: httpx.HTTPStatusError = httpx.HTTPStatusError("Not Found", request=AsyncMock(), response=response_mock)
-        mock_client.get.side_effect = exc
-
-        with patch("apps.lectures.management.commands.crawler_v2.logger") as mock_logger:
-            result: List[Dict[str, Any]] = await cmd._fetch_page(mock_client, "https://example.com", {"pageNumber": 1})
-
-        assert result == []
-        mock_logger.error.assert_any_call("페이지 1 로드 실패: 404")
-
-    async def test_fetch_page_general_exception_logged(self) -> None:
-        cmd: Command = Command()
-        mock_client: AsyncMock = AsyncMock()
-        mock_client.get.side_effect = ValueError("테스트 예외")
-
-        with patch("apps.lectures.management.commands.crawler_v2.logger") as mock_logger:
-            result: List[Dict[str, Any]] = await cmd._fetch_page(mock_client, "https://example.com", {"pageNumber": 2})
-
-        assert result == []
-        mock_logger.error.assert_any_call("페이지 2 처리 중 예외 발생: 테스트 예외")
+        # then
+        self.assertFalse(Lecture.objects.filter(title="Lecture to Delete").exists())
