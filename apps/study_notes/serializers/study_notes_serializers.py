@@ -39,12 +39,23 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
     author = UserInfoSerializer(read_only=True)
     images = StudyNoteImageSerializer(many=True, read_only=True)
     attachments = StudyNoteAttachmentSerializer(many=True, read_only=True)
-    image_files: serializers.ListField = serializers.ListField(
-        child=serializers.ImageField(), write_only=True, required=False
+
+    # 생성 시 업로드용 (write_only)
+    title = serializers.CharField(required=True, max_length=50)
+    content = serializers.CharField(required=True)
+    image_files = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+        required=False,
+        default=list
     )
-    attachment_files: serializers.ListField = serializers.ListField(
-        child=serializers.FileField(), write_only=True, required=False
+    attachment_files = serializers.ListField(
+        child=serializers.FileField(),
+        write_only=True,
+        required=False,
+        default=list
     )
+
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
 
@@ -64,7 +75,7 @@ class StudyNoteSerializer(serializers.ModelSerializer[StudyNote]):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "study_group", "ai_summary"]
+        read_only_fields = ["id", "study_group", "author", "images", "attachments", "ai_summary", "created_at", "updated_at"]
 
     # 이미지 유효성 검사
     def validate_image_files(self, files: Sequence[UploadedFile]) -> Sequence[UploadedFile]:
