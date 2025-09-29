@@ -70,6 +70,4 @@ class AdminRecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment])
     def get_expected_payment_cost(self, obj: Recruitment) -> int:
         if not hasattr(obj.study_group, "lectures"):
             return 0
-        return sum(
-            (lecture.original_price - (lecture.discount_price or 0)) for lecture in obj.study_group.lectures.all()
-        )
+        return sum(lecture.discount_price for lecture in obj.study_group.lectures.all())
