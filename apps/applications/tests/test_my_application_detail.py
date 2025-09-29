@@ -13,16 +13,21 @@ from apps.users.models.user import User
 
 class MyApplicationDetailTestCase(APITestCase):
     def setUp(self) -> None:
-        self.user = User.objects.create_user(
-            email="testuser@test.com",
-            password="itspassword",
-            name="test",
-            nickname="testuser",
-            phone_number="010-0000-0000",
-            gender="male",
-            birthday=timezone.make_aware(datetime(2025, 9, 9)),
-        )
-        self.client.force_authenticate(user=self.user)
+        users = []
+        for i in range(2):
+            users.append(
+                User(
+                    email=f"testuser{i}@test.com",
+                    password="itspassword",
+                    name="test",
+                    nickname="testuser",
+                    phone_number=f"010-0000-000{i}",
+                    gender="male",
+                    birthday=timezone.make_aware(datetime(2025, 9, 9)),
+                )
+            )
+        self.users = User.objects.bulk_create(users)
+        self.client.force_authenticate(user=self.users[0])
 
         self.study_group = StudyGroup.objects.create(
             name="test group", max_headcount=5, start_at=timezone.now(), end_at=timezone.now() + timedelta(days=1)
@@ -33,7 +38,7 @@ class MyApplicationDetailTestCase(APITestCase):
             recruitments.append(
                 Recruitment(
                     study_group=self.study_group,
-                    author=self.user,
+                    author=self.users[0],
                     title=f"test recruitment{i+1}",
                     content="test content",
                     estimated_fee=50000,
@@ -46,7 +51,7 @@ class MyApplicationDetailTestCase(APITestCase):
         applications.append(
             Application(
                 recruitment=self.recruitments[0],
-                user=self.user,
+                user=self.users[0],
                 objective="test objective",
                 motivation="test motivation",
                 self_introduction="대기중 지원",
@@ -57,7 +62,7 @@ class MyApplicationDetailTestCase(APITestCase):
         applications.append(
             Application(
                 recruitment=self.recruitments[1],
-                user=self.user,
+                user=self.users[0],
                 objective="test objective",
                 motivation="test motivation",
                 self_introduction="거절된 지원",
@@ -72,6 +77,12 @@ class MyApplicationDetailTestCase(APITestCase):
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["self_introduction"], "대기중 지원")
+
+    def test_permission_denied(self) -> None:
+        self.client.force_authenticate(user=self.users[1])
+        url = reverse("my-aply-detail-cancel", kwargs={"application_id": self.applications[0].id})
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_cancel_my_application(self) -> None:
         url = reverse("my-aply-detail-cancel", kwargs={"application_id": self.applications[0].id})
