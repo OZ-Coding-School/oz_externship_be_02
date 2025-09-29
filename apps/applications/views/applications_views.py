@@ -12,12 +12,8 @@ from rest_framework.views import APIView
 from apps.applications.models import Application
 from apps.applications.serializers.application_serializers import (
     ApplicationCreateResponseSerializer,
-)
-from apps.applications.serializers.application_serializers import (
-    ErrorResponseSerializer,
-)
-from apps.applications.serializers.application_serializers import (
     ApplicationCreateSerializer,
+    ErrorResponseSerializer,
 )
 from apps.applications.serializers.applications_list_serializers import (
     RecruitmentApplicationListSerializer,
