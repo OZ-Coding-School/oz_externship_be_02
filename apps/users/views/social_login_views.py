@@ -18,4 +18,7 @@ class KakaoLoginCallbackView(APIView):
         serializer.is_valid(raise_exception=True)
 
         tokens = KakaoService.kakao_login(serializer.validated_data["code"])
-        return Response(data=tokens, status=status.HTTP_200_OK)
+        rt = tokens.pop("refresh_token")
+        response = Response(data=tokens, status=status.HTTP_200_OK)
+        response.set_cookie("refresh_token", rt, httponly=True, domain=".ozcoding.site", samesite="None", secure=True)
+        return response
