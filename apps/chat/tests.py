@@ -1,9 +1,10 @@
 from datetime import timedelta
+
 from django.urls import reverse
 from django.utils import timezone
 from google.auth import message
 from rest_framework import status
-from rest_framework.test import APITestCase,APIClient
+from rest_framework.test import APIClient, APITestCase
 
 from apps.chat.models import ChatMessage, LastReadMessage
 from apps.studies.models import GroupMember, StudyGroup
@@ -99,10 +100,10 @@ class ChatAPITestCase(APITestCase):
             last_message_content_in_first_chatroom, f"{self.other_users[1].name}의 3번째 test message 입니다."
         )
 
+
 class ChatMessageListViewTestCase(APITestCase):
     # 채팅 메시지 목록 조회 API 테스트
     # 테스트 사용자들 생성
-
 
     def setUp(self) -> None:
         self.user1 = User.objects.create_user(
@@ -112,7 +113,7 @@ class ChatMessageListViewTestCase(APITestCase):
             nickname="사용자1",
             phone_number="010-2212-3524",
             gender="여자",
-            birthday="2002-03-17"
+            birthday="2002-03-17",
         )
         self.user2 = User.objects.create_user(
             email="user2@test.com",
@@ -121,7 +122,7 @@ class ChatMessageListViewTestCase(APITestCase):
             nickname="사용자2",
             phone_number="010-7228-7873",
             gender="남자",
-            birthday="2017-03-27"
+            birthday="2017-03-27",
         )
         self.user3 = User.objects.create_user(
             email="user3@test.com",
@@ -130,7 +131,7 @@ class ChatMessageListViewTestCase(APITestCase):
             nickname="사용자3",
             phone_number="010-6258-3502",
             gender="여자",
-            birthday="2003-06-25"
+            birthday="2003-06-25",
         )
 
         # 테스트 스터디 그룹 생성
@@ -150,17 +151,12 @@ class ChatMessageListViewTestCase(APITestCase):
         for i in range(50):
             sender = self.user1 if i % 2 == 0 else self.user2
             message = ChatMessage.objects.create(
-                sender=sender,
-                study_group=self.study_group,
-                content=f"테스트 메시지 {i+1}"
+                sender=sender, study_group=self.study_group, content=f"테스트 메시지 {i+1}"
             )
             self.messages.append(message)
 
         # URL 설정 (새로운 API URL)
-        self.url = reverse(
-            'chat-messages-by-room',
-            kwargs={'study_group_uuid': str(self.study_group.uuid)}
-        )
+        self.url = reverse("chat-messages-by-room", kwargs={"study_group_uuid": str(self.study_group.uuid)})
         # 클라이언트 설정
         self.client = APIClient()
 
@@ -230,11 +226,7 @@ class ChatMessageListViewTestCase(APITestCase):
         # 무한 스크롤(커서 기반) 테스트 - 요구사항: 최초 300개, 이후 100개
         for i in range(50, 350):
             sender = self.user1 if i % 2 == 0 else self.user2
-            ChatMessage.objects.create(
-                sender=sender,
-                study_group=self.study_group,
-                content=f"테스트 메시지 {i+1}"
-                )
+            ChatMessage.objects.create(sender=sender, study_group=self.study_group, content=f"테스트 메시지 {i+1}")
         self.client.force_authenticate(user=self.user1)
 
         # 첫번째 요청 (최초 300개)
@@ -255,9 +247,9 @@ class ChatMessageListViewTestCase(APITestCase):
         self.assertEqual(response2.status_code, status.HTTP_200_OK)
 
         fetch_info2 = response2.data["fetch_info"]
-        self.assertEqual(fetch_info2["is_initial_load"], False) # 무한 스크롤 (300개씩 조회)
-        self.assertEqual(fetch_info2["fetch_limit"], 100) # 110개씩 조회
-        self.assertEqual(fetch_info2["fetched_count"], 50) # 남은 메시지
+        self.assertEqual(fetch_info2["is_initial_load"], False)  # 무한 스크롤 (300개씩 조회)
+        self.assertEqual(fetch_info2["fetch_limit"], 100)  # 110개씩 조회
+        self.assertEqual(fetch_info2["fetched_count"], 50)  # 남은 메시지
 
         # next_cursor가 있어야 함 (더 이상 메시지 없음)
         self.assertNotIn("next_cursor", response2.data)
@@ -274,10 +266,7 @@ class ChatMessageListViewTestCase(APITestCase):
         chatrooms = chatroom_response.data
 
         # 테스트 채팅방이 목록에 있는지 확인
-        test_chatroom = next(
-            (room for room in chatrooms if room["name"] == "테스트 채팅방"),
-            None
-        )
+        test_chatroom = next((room for room in chatrooms if room["name"] == "테스트 채팅방"), None)
         self.assertIsNotNone(test_chatroom)
 
         if test_chatroom is None:
@@ -293,6 +282,6 @@ class ChatMessageListViewTestCase(APITestCase):
 
         # 채팅방 목록의 last_message와 메시지 목록의 마지막 메시지 비교
         last_message_from_list = test_chatroom["lest_message"]["content"]
-        last_message_from_messages = messages[-1]["content"] # 가장 최신 메시지
+        last_message_from_messages = messages[-1]["content"]  # 가장 최신 메시지
 
         self.assertEqual(last_message_from_list, last_message_from_messages)
