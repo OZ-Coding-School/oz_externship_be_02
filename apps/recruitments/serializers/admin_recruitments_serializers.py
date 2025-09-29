@@ -38,7 +38,7 @@ class AdminRecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment])
     expected_payment_cost = serializers.SerializerMethodField()
 
     # 모델 필드와 JSON 필드 이름이 다른 경우
-    view_count: serializers.IntegerField = serializers.IntegerField(source="views_count")
+    views_count = serializers.IntegerField()
 
     class Meta:
         model = Recruitment
@@ -56,10 +56,13 @@ class AdminRecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment])
             "status",
             "created_at",
             "updated_at",
-            "view_count",
+            "views_count",
             "bookmark_count",
             "applications",
         ]
+        extra_kwargs = {
+            "views_count": {"read_only": True},
+        }
 
     def get_status(self, obj: Recruitment) -> str:
         return "closed" if obj.is_closed else "recruiting"

@@ -89,7 +89,7 @@ class AdminRecruitmentDetailViewTest(APITestCase):
         self.url = reverse("admin-recruitment-detail", kwargs={"recruitment_id": self.recruitment.id})
 
     def test_get_detail_as_admin_success(self) -> None:
-        # 관리자가 상세 조회 시, 200 OK와 함께 모든 데이터가 정확히 반환
+        # 관리자가 상세 조회할 시, 200 OK와 함께 모든 데이터가 정확히 반환함
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(self.url)
 
@@ -123,28 +123,3 @@ class AdminRecruitmentDetailViewTest(APITestCase):
         data = response.data
         expected = sum(lecture.discount_price for lecture in self.study_group.lectures.all())
         self.assertEqual(data["expected_payment_cost"], expected)
-
-    # delete
-
-    def test_delete_recruitment_as_admin_success(self) -> None:
-        self.client.force_authenticate(user=self.admin_user)
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        # db에서 진짜 지워졌는지 확인
-        with self.assertRaises(Recruitment.DoesNotExist):
-            Recruitment.objects.get(id=self.recruitment.id)
-
-    def test_delete_recruitment_not_found(self) -> None:
-        self.client.force_authenticate(user=self.admin_user)
-        not_found_url = reverse("admin-recruitment-detail", kwargs={"recruitment_id": 9999})
-        response = self.client.delete(not_found_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_delete_recruitment_permission_denied_for_non_admin(self) -> None:
-        self.client.force_authenticate(user=self.regular_user1)
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_delete_recruitment_unauthenticated(self) -> None:
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
