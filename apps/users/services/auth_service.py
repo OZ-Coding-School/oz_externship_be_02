@@ -22,7 +22,6 @@ class AuthService:
         except User.DoesNotExist:
             raise AuthenticationFailed("존재하지 않는 이메일입니다")
 
-
         # is_active 체크 및 비밀번호 검증
         if user and not user.is_active:
             if check_password(password, user.password):
