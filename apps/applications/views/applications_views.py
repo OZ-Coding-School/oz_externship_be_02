@@ -11,6 +11,12 @@ from rest_framework.views import APIView
 
 from apps.applications.models import Application
 from apps.applications.serializers.application_serializers import (
+    ApplicationCreateResponseSerializer,
+)
+from apps.applications.serializers.application_serializers import (
+    ErrorResponseSerializer,
+)
+from apps.applications.serializers.application_serializers import (
     ApplicationCreateSerializer,
 )
 from apps.applications.serializers.applications_list_serializers import (
@@ -21,16 +27,6 @@ from apps.core.paginators import DefaultCursorPagination
 from apps.recruitments.models import Recruitment
 from apps.recruitments.recruitments_permissions import IsRecruitmentAuthor
 from apps.users.models import User
-
-
-# extend_schema에 사용하기 위한 Serializer 클래스 (mypy 오류 수정)
-class _ApplicationCreateResponseSerializer(serializers.Serializer[dict[str, Any]]):
-    application_id = serializers.IntegerField()
-    message = serializers.CharField()
-
-
-class _ErrorResponseSerializer(serializers.Serializer[dict[str, Any]]):
-    error = serializers.CharField()
 
 
 class ApplicationAPIView(APIView):
@@ -65,11 +61,11 @@ class ApplicationAPIView(APIView):
     @extend_schema(
         summary="REQ-APLY-001: 스터디 공고 참여 신청",
         tags=["스터디 공고 지원"],
-        request={'application/json': ApplicationCreateSerializer},
+        request={"application/json": ApplicationCreateSerializer},
         responses={
-            status.HTTP_201_CREATED: _ApplicationCreateResponseSerializer,
-            status.HTTP_404_NOT_FOUND: _ErrorResponseSerializer,
-            status.HTTP_409_CONFLICT: _ErrorResponseSerializer,
+            status.HTTP_201_CREATED: ApplicationCreateResponseSerializer,
+            status.HTTP_404_NOT_FOUND: ErrorResponseSerializer,
+            status.HTTP_409_CONFLICT: ErrorResponseSerializer,
         },
     )
     def post(self, request: Request, recruitment_uuid: UUID) -> Response:
