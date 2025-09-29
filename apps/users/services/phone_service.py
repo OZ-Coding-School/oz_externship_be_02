@@ -32,11 +32,14 @@ class TwilioAuthService:
             response = self.verify_service.verification_checks.create(to=phone_number, code=verification_code)
         except TwilioRestException as e:
             raise PhoneVerificationCodeFailedError(f"휴대폰 인증에 실패했습니다 {e}")
+
         if response.status != "approved":
             raise PhoneVerificationCodeFailedError("휴대폰 인증번호가 일치하지 않습니다")
 
         verified_key = f"{purpose.value}-verified-{phone_number}"
         cache.set(verified_key, verification_code, timeout=600)
+
+        print(verified_key)
 
 
 class PhoneVerificationService:
