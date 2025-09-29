@@ -6,6 +6,7 @@ from django.conf import settings
 from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
+from apps.users.models import Withdrawals
 from apps.users.models.user import User
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.services.phone_service import PhoneVerificationService
@@ -92,3 +93,5 @@ class VerificationMixin(TestUserMixin, IsolatedCacheTestMixin):
     revoke_url: ClassVar[str]
     email_service: ClassVar[EmailVerificationService]
     phone_service: ClassVar[PhoneVerificationService]
+    withdrawal: ClassVar[Withdrawals]
+    login_user: ClassVar[str]
