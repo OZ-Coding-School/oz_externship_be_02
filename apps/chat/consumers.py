@@ -1,7 +1,7 @@
 # oz_externship_be/apps/chat/consumers.py
 import json
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -39,12 +39,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.user
             and self.user.is_authenticated
             and study_group
-            and await self._is_member(self.user, study_group)
+            and await self._is_member(cast(User, self.user), study_group)
         ):
             self.study_group = study_group
-            await self.channel_layer.group_add(
-                self.room_group_name, self.channel_name
-            )
+            await self.channel_layer.group_add(self.room_group_name, self.channel_name)
             await self.accept()
         else:
             await self.close()
@@ -54,10 +52,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         클라이언트의 WebSocket 연결이 끊어졌을 때 호출
         """
         if self.room_group_name:
-            await self.channel_layer.group_discard(
-                self.room_group_name, self.channel_name
-            )
-        # '읽음 처리' 및 '온라인 상태' 업데이트 로직은 다음 이슈에서 이 메서드에 추가됩니다. 
+            await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        # '읽음 처리' 및 '온라인 상태' 업데이트 로직은 다음 이슈에서 이 메서드에 추가됩니다.
 
     async def receive(self, text_data: Optional[str] = None, bytes_data: Optional[bytes] = None) -> None:
         """
@@ -65,7 +61,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """
         if not text_data:
             return
-        
+
         try:
             message = json.loads(text_data)
             handler_name = f"_handle_{message.get('type')}"
@@ -78,33 +74,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def _handle_send_message(self, data: Dict[str, Any]) -> None:
         content = data.get("content")
-        if content and self.user and self.study_group:
+        if content and self.user and self.user.is_authenticated and self.study_group:
             new_message = await self._create_chat_message(
-                sender=self.user,
-                study_group=self.study_group,
-                content=content,
+                sender=cast(User, self.user), study_group=self.study_group, content=content
             )
 
-            created_at_kst = localtime(new_message.created_at).isoformat()
+            if new_message.sender:
+                message_data_to_broadcast = {
+                    "message_id": new_message.id,
+                    "sender": {
+                        "user_uuid": str(new_message.sender.uuid),
+                        "nickname": new_message.sender.nickname,
+                        "profile_img_url": new_message.sender.profile_img_url,
+                    },
+                    "content": new_message.content,
+                    "created_at": localtime(new_message.created_at).isoformat(),
+                }
 
-            message_data_to_broadcast = {
-                "message_id": new_message.id,
-                "sender": {
-                    "user_uuid": str(new_message.sender.uuid),
-                    "nickname": new_message.sender.nickname,
-                    "profile_img_url": new_message.sender.profile_img_url,
-                },
-                "content": new_message.content,
-                "created_at": created_at_kst,
-            }
-
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    "type": "chat.message",
-                    "data": message_data_to_broadcast,
-                },
-            )
+                if self.room_group_name:
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {"type": "chat.message", "data": message_data_to_broadcast},
+                    )
 
     async def _handle_unknown_type(self, data: Dict[str, Any]) -> None:
         await self._send_error_message(f"Unknown message type received.")
@@ -116,10 +107,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         'chat.message' 타입의 이벤트를 Channel Group으로부터 수신하여 클라이언트에게 전송
         """
         message_data = event["data"]
-        await self.send(
-            text_data=json.dumps({"type": "chat.message", "data": message_data})
-        )
+        await self.send(text_data=json.dumps({"type": "chat.message", "data": message_data}))
 
+    # -- Helper methods --
+    async def _send_error_message(self, message: str, code: int = 4000) -> None:
+        await self.send(text_data=json.dumps({"type": "error.message", "data": {"code": code, "message": message}}))
 
     @database_sync_to_async
     def _get_study_group(self, study_group_uuid: uuid.UUID) -> Optional[StudyGroup]:
@@ -133,10 +125,5 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return GroupMember.objects.filter(study_group=study_group, user=user).exists()
 
     @database_sync_to_async
-    def _create_chat_message(
-        self, sender: User, study_group: StudyGroup, content: str
-    ) -> ChatMessage:
-        return ChatMessage.objects.create(
-            sender=sender, study_group=study_group, content=content
-        )
-
+    def _create_chat_message(self, sender: User, study_group: StudyGroup, content: str) -> ChatMessage:
+        return ChatMessage.objects.create(sender=sender, study_group=study_group, content=content)

@@ -22,9 +22,6 @@ django_asgi_app = get_asgi_application()
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        # WebSocket 요청은 Channels의 인증 미들웨어와 URL 라우터를 통해 처리
-        "websocket": AuthMiddlewareStack(
-            URLRouter(apps.chat.routing.websocket_urlpatterns)
-        ),
+        "websocket": AuthMiddlewareStack(URLRouter(apps.chat.routing.websocket_urlpatterns)),  # type: ignore
     }
 )
