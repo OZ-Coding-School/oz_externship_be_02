@@ -40,3 +40,35 @@ class KakaoAccountSerializer(serializers.Serializer[dict[str, Any]]):
 class KakaoUserSerializer(serializers.Serializer[dict[str, Any]]):
     id = serializers.IntegerField()
     kakao_account = KakaoAccountSerializer()
+
+
+class NaverUserCreateSerializer(serializers.ModelSerializer[User]):
+    class Meta:
+        model = User
+        fields = ["email", "nickname", "profile_img_url", "name", "gender", "phone_number", "birthday"]
+
+    def create(self, validated_data: dict[str, Any]) -> User:
+        user = User(**validated_data)
+        user.is_active = True
+        user.set_unusable_password()
+        user.save()
+        return user
+
+
+class NaverProfileSerializer(serializers.Serializer[dict[str, Any]]):
+    nickname = serializers.CharField()
+    profile_image_url = serializers.URLField(required=False, allow_null=True)
+
+
+class NaverAccountSerializer(serializers.Serializer[dict[str, Any]]):
+    email = serializers.EmailField()
+    name = serializers.CharField(required=False, default="이름없음")
+    birthday = serializers.RegexField(regex=r"^\d{2}-\d{2}$", required=False, default="01-01")
+    birthyear = serializers.RegexField(regex=r"^\d{4}$", required=False, default=str(timezone.now().year))
+    profile = NaverProfileSerializer()
+    gender = serializers.CharField(required=False, default="알수없음")
+
+
+class NaverUserSerializer(serializers.Serializer[dict[str, Any]]):
+    id = serializers.CharField()
+    naver_account = NaverAccountSerializer()

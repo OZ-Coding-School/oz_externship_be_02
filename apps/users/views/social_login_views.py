@@ -8,6 +8,7 @@ from apps.users.serializers.social_login_serializers import (
     SocialLoginCallbackRequestSerializer,
 )
 from apps.users.services.kakao_login_service import KakaoService
+from apps.users.services.naver_login_service import NaverService
 
 
 class KakaoLoginCallbackView(APIView):
@@ -22,3 +23,14 @@ class KakaoLoginCallbackView(APIView):
         response = Response(data=tokens, status=status.HTTP_200_OK)
         response.set_cookie("refresh_token", rt, httponly=True, domain=".ozcoding.site", samesite="None", secure=True)
         return response
+
+
+class NaverLoginCallbackView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request) -> Response:
+        serializer = SocialLoginCallbackRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        tokens = NaverService.naver_login(serializer.validated_data["code"])
+        return Response(data=tokens, status=status.HTTP_200_OK)
