@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.tests.mixins.test_user_mixins import VerificationMixin
-from apps.users.models import Withdrawals, User
+from apps.users.models import User, Withdrawals
 
 
 class AuthTokenViewsTests(APITestCase, VerificationMixin):
@@ -100,6 +100,7 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("리프레시 토큰이 유효하지 않습니다", response.data["error"])
 
+
 class InactiveUserLoginTestCase(APITestCase, VerificationMixin):
 
     @classmethod
@@ -110,19 +111,15 @@ class InactiveUserLoginTestCase(APITestCase, VerificationMixin):
             email="inactive@example.com",
             password="testpassword",
             is_active=False,  # 탈퇴 상태
-
-            name= "테스트유저",
-            nickname= "tester",
-            phone_number= "01012345678",
-            gender= "M",
-            birthday= "2000-01-01",
-            )
+            name="테스트유저",
+            nickname="tester",
+            phone_number="01012345678",
+            gender="M",
+            birthday="2000-01-01",
+        )
 
         # 2) 탈퇴 요청 생성 + due_date 지정
-        cls.withdrawal = Withdrawals.objects.create(
-            user=cls.user,
-            due_date=date.today() + timedelta(days=14)
-        )
+        cls.withdrawal = Withdrawals.objects.create(user=cls.user, due_date=date.today() + timedelta(days=14))
 
         cls.login_url = reverse("email_login")
 
@@ -131,9 +128,7 @@ class InactiveUserLoginTestCase(APITestCase, VerificationMixin):
         탈퇴 계정 로그인 시 due_date가 반환되는지 확인
         """
         response = self.client.post(
-            self.login_url,
-            {"email": self.user.email, "password": "testpassword"},
-            format="json"
+            self.login_url, {"email": self.user.email, "password": "testpassword"}, format="json"
         )
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -143,13 +138,7 @@ class InactiveUserLoginTestCase(APITestCase, VerificationMixin):
         error_detail = response.data["error"]
         self.assertIsInstance(error_detail, dict)
         self.assertIn("due_date", error_detail)
-        self.assertEqual(
-            error_detail["due_date"],
-            self.withdrawal.due_date.isoformat()
-        )
+        self.assertEqual(error_detail["due_date"], self.withdrawal.due_date.isoformat())
 
         self.assertIn("detail", error_detail)
-        self.assertEqual(
-            error_detail["detail"],
-            "탈퇴 계정입니다. 복구 가능 기간 확인 바랍니다."
-        )
+        self.assertEqual(error_detail["detail"], "탈퇴 계정입니다. 복구 가능 기간 확인 바랍니다.")
