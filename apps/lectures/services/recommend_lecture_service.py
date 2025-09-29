@@ -1,79 +1,80 @@
-
-def preferred_lectures(self, request, lectures):
-    # Get Search Contents
-    search = request.query_params.get("search")
-    search = search.lower()
-    # ORM Logic, Preprocessing
-    self.save_search_history(search, request)
-    # Algorithm
-    var1 = self.extract_keywords_from_search_history()
-    var2 = self.extract_preferred_categories()
-    three_preferred_lectures = self.cbf_algorithm(var1, var2, lectures)
-
-    return three_preferred_lectures
+from rest_framework.permissions import AllowAny
+from rest_framework.request import Request
+from rest_framework.response import Response
+from apps.lectures.models.crawled_lectures import Lecture
+from apps.lectures.models.lecture_search_logs import LectureSearchLog
+from apps.lectures.models.user_prefer_categories import UserPreferCategory
+from apps.lectures.serializers.crawled_lecture import LectureSerializer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
-def save_search_history(self, search, request):
-    if not request.user.is_authenticated:
-        return
-    keyword = f"filtered{search}"  # 단순 전처리 예시
-    try:
-        LectureSearchLog.objects.create(
-            user=request.user,
-            keyword=keyword
+class RecommendLectureService:
+    page_size = 3
+    serializer_class = LectureSerializer
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request) -> Response:
+        # 전체 강의 조회 및 직렬화
+        lectures = Lecture.objects.all()
+        serializer = self.serializer_class(lectures, many=True)
+        lectures_data = serializer.data
+
+        # 유저 기반 추천
+        if request.user.is_authenticated:
+            recommended = self.preferred_lectures(request, lectures_data)
+        else:
+            recommended = lectures_data[:self.page_size]
+
+        return Response({"results": recommended})
+
+    # 추천 강의 추출
+    def preferred_lectures(self, request, lectures):
+        serializer = self.serializer_class(lectures, many=True)
+        lectures_data = serializer.data  # dict list
+
+        search_keywords = self.extract_keywords_from_search_history(request.user)
+        preferred_categories = self.extract_preferred_categories(request.user)
+
+        return self.cbf_algorithm(search_keywords, preferred_categories, lectures_data)
+    # 최근 검색 기록
+    def extract_keywords_from_search_history(self, user):
+        recent_keywords = (
+            LectureSearchLog.objects
+            .filter(user=user)
+            .order_by("-created_at")[:10]
+            .values_list("keyword", flat=True)
         )
-        logger.info("LectureLog: Saved keyword='%s' for user=%s", keyword, request.user.id)
-    except Exception as e:
-        logger.error("LectureLog: Failed to save search for user=%s, reason=%s", request.user.id, str(e))
+        return list(recent_keywords)
 
+    # 선호 카테고리
+    def extract_preferred_categories(self, user):
+        preferred_categories = (
+            UserPreferCategory.objects
+            .filter(user=user)
+            .select_related("category")
+            .values_list("category__name", flat=True)
+        )
+        return list(preferred_categories)
 
-def extract_preferred_categories(self):
-    user = request.user
-    if not user.is_authenticated:
-        return []
-    preferred_categories = (
-        UserPreferCategory.objects
-        .filter(user=user)
-        .select_related("category")  # category 객체 접근 효율화
-        .values_list("category__name", flat=True)
-    )
+    # CBF 알고리즘
+    def cbf_algorithm(self, search_keywords, preferred_categories, lectures):
+        if not lectures:
+            return []
 
-    return list(preferred_categories)
+        lecture_texts = [
+            f"{lecture['title']} {lecture.get('categories', '')}" for lecture in lectures
+        ]
+        user_profile_text = " ".join(search_keywords + preferred_categories)
 
+        vectorizer = TfidfVectorizer()
+        tfidf_matrix = vectorizer.fit_transform(lecture_texts + [user_profile_text])
 
-def extract_keywords_from_search_history(self):
-    user = request.user
-    if not user.is_authenticated:
-        return []
+        user_vector = tfidf_matrix[-1]
+        lecture_vectors = tfidf_matrix[:-1]
+        similarities = cosine_similarity(user_vector, lecture_vectors).flatten()
 
-    recent_keywords = (
-        LectureSearchLog.objects
-        .filter(user=user)
-        .order_by("-searched_at")[:10]
-        .values_list("keyword", flat=True)
-    )
-    return list(recent_keywords)
+        top_indices = similarities.argsort()[::-1][:self.page_size]
+        recommended = [lectures[i] for i in top_indices]
 
-
-def cbf_algorithm(self, search_keywords, preferred_categories, lectures):
-    lecture_texts = [
-        f"{lecture['title']} {lecture['category']}" for lecture in lectures
-    ]
-
-    # 3️⃣ 유저 프로필 텍스트 생성 (검색 키워드 + 선호 카테고리)
-    user_profile_text = "".join(search_keywords + preferred_categories)
-
-    # 4️⃣ TF-IDF 벡터화
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(lecture_texts + [user_profile_text])
-
-    # 5️⃣ 코사인 유사도 계산 (마지막 벡터가 유저)
-    user_vector = tfidf_matrix[-1]
-    lecture_vectors = tfidf_matrix[:-1]
-    similarities = cosine_similarity(user_vector, lecture_vectors).flatten()
-
-    # 6️⃣ 유사도 기준 정렬 후 상위 3개 추천
-    top_indices = similarities.argsort()[::-1][:3]
-    recommended = [lectures[i]["title"] for i in top_indices]
-
-    return recommended
+        return recommended
