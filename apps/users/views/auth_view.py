@@ -77,9 +77,9 @@ class EmailLoginAPIView(APIView):
 
         # 로그인 분기 처리
 
-        response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
+        response = Response({"access_token": tokens["access"]}, status=status.HTTP_200_OK)
         response.set_cookie(
-            "refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
+            "refresh_token", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
         )
 
         return response
