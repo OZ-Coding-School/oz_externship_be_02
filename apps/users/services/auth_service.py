@@ -35,8 +35,8 @@ class AuthService:
             else:
                 raise AuthenticationFailed("탈퇴계정, 비밀번호가 틀립니다")
 
-        user_obj: Union[User, None] = authenticate(email=email, password=password)
-        if user is None:
+        authenticate_user = authenticate(email=email, password=password)
+        if authenticate_user is None:
             raise AuthenticationFailed("정상계정, 비밀번호가 틀립니다")
 
         refresh = RefreshToken.for_user(user)

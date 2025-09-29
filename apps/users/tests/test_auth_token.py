@@ -31,7 +31,7 @@ class AuthTokenViewsTests(APITestCase, VerificationMixin):
         """
         로그인 실패 케이스
         """
-        response = self.client.post(self.login_url, {"email": self.email, "password": "wrongpassword"})
+        response = self.client.post(self.login_url, {"email": self.email, "password": "wrossngpassword1"})
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("error", response.data)
