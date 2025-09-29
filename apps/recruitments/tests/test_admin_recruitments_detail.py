@@ -70,8 +70,9 @@ class AdminRecruitmentDetailViewTest(APITestCase):
             expected_headcount=5,
             close_at=timezone.now() + timedelta(days=7),
         )
-        tag1 = Tag.objects.create(name="Python")
+        tag1, _ = Tag.objects.get_or_create(name="Python")
         self.recruitment.tags.add(tag1)
+
         RecruitmentAttachment.objects.create(recruitment=self.recruitment, file_name="자료.pdf", file_url="http://a.b")
         self.recruitment.bookmark_users.add(self.regular_user1, self.regular_user2)
 
@@ -120,7 +121,7 @@ class AdminRecruitmentDetailViewTest(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.data
-        expected = (self.lecture1.original_price + self.lecture2.original_price) - (
-            (self.lecture1.discount_price or 0) + (self.lecture2.discount_price or 0)
+        expected = sum(
+            (lecture.original_price - (lecture.discount_price or 0)) for lecture in self.study_group.lectures.all()
         )
         self.assertEqual(data["expected_payment_cost"], expected)

@@ -25,19 +25,17 @@ class ApplicationSerializer(serializers.ModelSerializer[Application]):
 
 class AdminRecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment]):
     # 재사용 시리얼라이저
-    tags: TagSerializer = TagSerializer(many=True, read_only=True)
-    attachments: RecruitmentAttachmentSerializer = RecruitmentAttachmentSerializer(many=True, read_only=True)
-    lectures: LectureSerializer = LectureSerializer(many=True, read_only=True, source="study_group.lectures.all")
+    tags = TagSerializer(many=True, read_only=True)
+    attachments = RecruitmentAttachmentSerializer(many=True, read_only=True)
+    lectures = LectureSerializer(many=True, read_only=True, source="study_group.lectures.all")
 
     # 이 파일에서 새로 정의한 시리얼라이저
-    applications: ApplicationSerializer = ApplicationSerializer(many=True, read_only=True)
+    applications = ApplicationSerializer(many=True, read_only=True)
 
     # 데이터 가공 및 계산이 필요한 필드
-    status: serializers.SerializerMethodField = serializers.SerializerMethodField()
-    bookmark_count: serializers.SerializerMethodField = serializers.SerializerMethodField()
-    original_price: serializers.SerializerMethodField = serializers.SerializerMethodField()
-    discount_price: serializers.SerializerMethodField = serializers.SerializerMethodField()
-    expected_payment_cost: serializers.SerializerMethodField = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    bookmark_count = serializers.SerializerMethodField()
+    expected_payment_cost = serializers.SerializerMethodField()
 
     # 모델 필드와 JSON 필드 이름이 다른 경우
     view_count: serializers.IntegerField = serializers.IntegerField(source="views_count")
@@ -51,8 +49,6 @@ class AdminRecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment])
             "content",
             "attachments",
             "estimated_fee",
-            "original_price",
-            "discount_price",
             "expected_payment_cost",
             "lectures",
             "tags",
@@ -71,15 +67,9 @@ class AdminRecruitmentDetailSerializer(serializers.ModelSerializer[Recruitment])
     def get_bookmark_count(self, obj: Recruitment) -> int:
         return obj.bookmark_users.count()
 
-    def get_original_price(self, obj: Recruitment) -> int:
-        if not hasattr(obj.study_group, "lectures"):
-            return 0
-        return sum(lecture.original_price for lecture in obj.study_group.lectures.all())
-
-    def get_discount_price(self, obj: Recruitment) -> int:
-        if not hasattr(obj.study_group, "lectures"):
-            return 0
-        return sum(lecture.discount_price or 0 for lecture in obj.study_group.lectures.all())
-
     def get_expected_payment_cost(self, obj: Recruitment) -> int:
-        return self.get_original_price(obj) - self.get_discount_price(obj)
+        if not hasattr(obj.study_group, "lectures"):
+            return 0
+        return sum(
+            (lecture.original_price - (lecture.discount_price or 0)) for lecture in obj.study_group.lectures.all()
+        )
