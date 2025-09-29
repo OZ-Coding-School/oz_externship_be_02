@@ -85,7 +85,15 @@ class TestNaverLogin(APITestCase):
         resp = self.client.post(self.url, {"code": "d"})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn("access_token", resp.data)
-        self.assertIn("refresh_token", resp.data)
+        self.assertNotIn("refresh_token", resp.data)
+
+        self.assertIn("refresh_token", resp.cookies)
+        rt_cookie = resp.cookies["refresh_token"]
+
+        self.assertTrue(rt_cookie["httponly"])
+        self.assertEqual(rt_cookie["samesite"], "None")
+        self.assertEqual(rt_cookie["domain"], ".ozcoding.site")
+        self.assertTrue(rt_cookie["secure"])
 
 
 class TestNaverLoginServiceCoverage(APITestCase):
@@ -192,9 +200,13 @@ class TestNaverLoginServiceCoverage(APITestCase):
         self.assertEqual(SocialUser.objects.count(), 0)
 
         resp = self.client.post(self.url, {"code": "ok"})
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertIn("access_token", resp.data)
-        self.assertIn("refresh_token", resp.data)
+        self.assertNotIn("refresh_token", resp.data)
+        self.assertIn("refresh_token", resp.cookies)
+        rt_cookie = resp.cookies["refresh_token"]
+        self.assertTrue(rt_cookie["httponly"])
+        self.assertEqual(rt_cookie["samesite"], "None")
+        self.assertEqual(rt_cookie["domain"], ".ozcoding.site")
+        self.assertTrue(rt_cookie["secure"])
 
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(SocialUser.objects.count(), 1)
