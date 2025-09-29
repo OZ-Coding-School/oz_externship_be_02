@@ -55,5 +55,5 @@ class AdminLectureDetailView(RetrieveAPIView[Lecture]):
     permission_classes = [permissions.IsAuthenticated, AdminOnly]
     serializer_class = AdminLectureDetailSerializer
     queryset = Lecture.objects.all()
-    lookup_field = "uuid"
-    lookup_url_kwarg = "lecture_uuid"
+    lookup_field = "id"
+    lookup_url_kwarg = "lecture_id"

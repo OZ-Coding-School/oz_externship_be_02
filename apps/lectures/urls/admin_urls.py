@@ -7,5 +7,5 @@ from apps.lectures.views.admin_lecture_views import (
 
 urlpatterns = [
     path("", AdminLectureListView.as_view(), name="admin-lecture-list"),
-    path("<uuid:lecture_uuid>", AdminLectureDetailView.as_view(), name="admin-lecture-detail"),
+    path("<int:lecture_id>", AdminLectureDetailView.as_view(), name="admin-lecture-detail"),
 ]
