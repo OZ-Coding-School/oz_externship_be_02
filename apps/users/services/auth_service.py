@@ -31,7 +31,7 @@ class AuthService:
                 }
             )
         # 비밀번호 인증
-        user: Union[User, None] = authenticate(email=email, password=password)
+        user = authenticate(email=email, password=password)
         if user is None:
             raise AuthenticationFailed("이메일 또는 비밀번호가 틀립니다")
 
