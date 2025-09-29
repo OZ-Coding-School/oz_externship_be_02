@@ -231,5 +231,5 @@ class NotificationOnApplicationCreateTests(TransactionTestCase):
         assert n_old is not None  # mypy
         self.assertIn(self.recruitment.study_group.name, n_old.content)
         self.assertIn(self.applicant.nickname, n_old.content)
-        group_id = self.recruitment.study_group_id
-        self.assertEqual(n_old.back_url_link, f"/study-group/{group_id}/chat")
+        group_uuid = self.recruitment.study_group.uuid
+        self.assertEqual(n_old.back_url_link, f"/study-group/{group_uuid}/chat")
