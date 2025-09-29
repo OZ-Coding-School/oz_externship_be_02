@@ -6,7 +6,7 @@ from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken, Token
 
-from apps.users.models import User
+from apps.users.models import User, Withdrawals
 
 
 class AuthService:
@@ -25,11 +25,11 @@ class AuthService:
         # is_active 체크 및 비밀번호 검증
         if user and not user.is_active:
             if check_password(password, user.password):
-                withdrawal = getattr(user, "withdrawal", None)
+                withdrawal = Withdrawals.objects.filter(user=user).first()
                 raise AuthenticationFailed(
                     detail={
                         "detail": "탈퇴 계정입니다. 복구 가능 기간 확인 바랍니다.",
-                        "due_date": withdrawal.due_date if withdrawal else None,
+                        "due_date": withdrawal.due_date.isoformat() if withdrawal else None,
                     }
                 )
             else:
