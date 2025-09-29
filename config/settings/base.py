@@ -34,6 +34,7 @@ THIRD_PARTY_APPS = [
     "django_celery_beat",
     "rest_framework_simplejwt.token_blacklist",
     "django_eventstream",
+    "channels",
 ]
 
 CUSTOM_APPS = [
