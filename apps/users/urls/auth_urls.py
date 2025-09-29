@@ -15,10 +15,10 @@ from apps.users.views.email_verification_view import (
     SignUpEmailVerifiCationVerifyAPIView,
 )
 from apps.users.views.phone_verification_view import (
-    SendVerificationCodeAPIView,
-    VerifyCodeAPIView,
     FindEmailSendCodeAPIView,
     FindEmailVerifyCodeAPIView,
+    SendVerificationCodeAPIView,
+    VerifyCodeAPIView,
 )
 from apps.users.views.social_login_views import (
     KakaoLoginCallbackView,
