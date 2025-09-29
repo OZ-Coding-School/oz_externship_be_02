@@ -99,7 +99,7 @@ class TestKakaoLogin(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("access_token", response.data)
-        self.assertIn("refresh_token", response.data)
+        self.assertIn("refresh_token", response.cookies)
 
 
 class TestKakaoLoginServiceCoverage(APITestCase):
@@ -210,7 +210,7 @@ class TestKakaoLoginServiceCoverage(APITestCase):
         resp = self.client.post(self.url, {"code": "ok"})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn("access_token", resp.data)
-        self.assertIn("refresh_token", resp.data)
+        self.assertIn("refresh_token", resp.cookies)
 
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(SocialUser.objects.count(), 1)
