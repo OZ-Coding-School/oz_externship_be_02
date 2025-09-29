@@ -9,7 +9,17 @@ services:
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             gunicorn --workers 3 --bind 0.0.0.0:8000 config.wsgi:application --reload"
+             gunicorn config.asgi:application
+                       -k uvicorn.workers.UvicornWorker
+                       -w 3
+                       -b 0.0.0.0:8000
+                       --timeout 90
+                       --graceful-timeout 90
+                       --keep-alive 75
+                       --worker-tmp-dir /dev/shm
+                       --access-logfile -
+                       --error-logfile -
+                   "
     ports:
       - "8000:8000"
     volumes:
