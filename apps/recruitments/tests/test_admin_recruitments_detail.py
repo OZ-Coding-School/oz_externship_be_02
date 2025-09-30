@@ -124,7 +124,7 @@ class AdminRecruitmentDetailViewTest(APITestCase):
         expected = sum(lecture.discount_price for lecture in self.study_group.lectures.all())
         self.assertEqual(data["expected_payment_cost"], expected)
 
-    # delete
+    # 삭제
     def test_delete_recruitment_as_admin_success(self) -> None:
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.delete(self.url)

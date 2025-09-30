@@ -39,6 +39,7 @@ class AdminRecruitmentDetailView(APIView):
         serializer = AdminRecruitmentDetailSerializer(recruitment)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # 삭제
     def delete(self, request: Request, recruitment_id: int) -> Response:
         try:
             recruitment = Recruitment.objects.get(id=recruitment_id)
