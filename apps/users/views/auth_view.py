@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from apps.users.models import User, user
 from apps.users.serializers.auth_serializers import (
-    EmailLoginSerializer,
+    EmailLoginRequestSerializer,
 )
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.auth_service import AuthService, JWTService
@@ -52,7 +52,7 @@ class EmailLoginAPIView(APIView):
         tags=["auth"],
         summary="이메일 로그인",
         description="이메일과 비밀번호로 로그인하여 액세스 토큰 발급",
-        request=EmailLoginSerializer,
+        request=EmailLoginRequestSerializer,
         responses={
             200: OpenApiResponse(
                 description="로그인 성공",
@@ -66,7 +66,7 @@ class EmailLoginAPIView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        serializer = EmailLoginSerializer(data=request.data)
+        serializer = EmailLoginRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
             user, tokens = AuthService.email_login(**serializer.validated_data)
@@ -75,11 +75,19 @@ class EmailLoginAPIView(APIView):
                 return Response({"error": e.detail}, status=status.HTTP_401_UNAUTHORIZED)
             return Response({"error": str(e.detail)}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # 로그인 분기 처리
+        user_data = LoginResponseSerializer(user).data
+        # 유저 응답
+        response = Response(
+            {
+                "user" : user_data,
+                "access" : tokens["access"],
+            }
+            , status=status.HTTP_200_OK
+        )
 
-        response = Response({"access_token": tokens["access"]}, status=status.HTTP_200_OK)
+        response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
         response.set_cookie(
-            "refresh_token", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
+            "refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
         )
 
         return response
@@ -104,7 +112,7 @@ class LogoutAPIView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        refresh = request.COOKIES.get("refresh_token")
+        refresh = request.COOKIES.get("refresh")
 
         if not refresh:
             return Response({"error": "refresh 토큰이 필요합니다"}, status=status.HTTP_400_BAD_REQUEST)
@@ -114,7 +122,7 @@ class LogoutAPIView(APIView):
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
 
         response = Response({"detail": "로그아웃이 완료되었습니다"}, status=status.HTTP_200_OK)
-        response.delete_cookie("refresh_token")
+        response.delete_cookie("refresh")
         return response
 
 
@@ -143,7 +151,7 @@ class CookieTokenRefreshAPIView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        refresh_token = request.COOKIES.get("refresh_token")
+        refresh_token = request.COOKIES.get("refresh")
 
         try:
             access_token = JWTService.refresh_access_token(refresh_token)
