@@ -20,6 +20,7 @@ from apps.users.views.phone_verification_view import (
     SendVerificationCodeAPIView,
     VerifyCodeAPIView,
 )
+from apps.users.views.reset_password_view import ResetPasswordAPIView
 from apps.users.views.social_login_views import (
     KakaoLoginCallbackView,
     NaverLoginCallbackView,
@@ -60,6 +61,8 @@ urlpatterns = [
     path("auth/naver/callback", NaverLoginCallbackView.as_view(), name="naver_callback"),
     # 로그아웃
     path("auth/logout", LogoutAPIView.as_view(), name="logout"),
+    # 비밀번호 재설정
+    path("auth/reset-password", ResetPasswordAPIView.as_view(), name="reset_password"),
     # 토큰 재발급
     path("auth/refresh", CookieTokenRefreshAPIView.as_view(), name="token_refresh"),
 ]
