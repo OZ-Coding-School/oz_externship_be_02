@@ -227,18 +227,17 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         )
         data = {"email": (email := self.test_email)}
         self.client.post(self.send_url, data)
-        verification_code = self.email_service.send_verification_email(email, VerificationPurpose.RECOVER_ACCOUNT)
 
-        # 캐시에 저장된 값 확인
-        cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{email}-{verification_code}"
+        cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{email}"
+        verification_code = cache.get(cache_key)
         self.assertIsNotNone(verification_code)
 
         response = self.client.post(self.verify_url, {"email": email, "verification_code": verification_code})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("detail", response.data)
         self.assertEqual(response.data["detail"], "인증에 성공했습니다")
-        self.assertIsNone(cache.get(cache_key))
 
+        self.assertIsNone(cache.get(cache_key))
         verified_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-verified-{email}"
         self.assertEqual(cache.get(verified_key), verification_code)
 
