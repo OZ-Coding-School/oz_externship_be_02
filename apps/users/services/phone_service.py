@@ -39,8 +39,6 @@ class TwilioAuthService:
         verified_key = f"{purpose.value}-verified-{phone_number}"
         cache.set(verified_key, verification_code, timeout=600)
 
-        print(verified_key)
-
 
 class PhoneVerificationService:
     @staticmethod
