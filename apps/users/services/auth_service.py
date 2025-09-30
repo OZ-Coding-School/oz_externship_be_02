@@ -21,7 +21,8 @@ class AuthService:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             raise AuthenticationFailed("존재하지 않는 이메일입니다")
-
+        if not check_password(password, user.password):
+            raise AuthenticationFailed("비밀번호가 틀립니다")
         # is_active 체크 및 비밀번호 검증
         if not user.is_active:
             if check_password(password, user.password):
@@ -32,12 +33,7 @@ class AuthService:
                         "due_date": withdrawal.due_date.isoformat() if withdrawal else None,
                     }
                 )
-            else:
-                raise AuthenticationFailed("탈퇴계정, 비밀번호가 틀립니다")
-
-        authenticate_user = authenticate(email=email, password=password)
-        if authenticate_user is None:
-            raise AuthenticationFailed("정상계정, 비밀번호가 틀립니다")
+            raise AuthenticationFailed("비밀번호가 틀렸습니다")
 
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)

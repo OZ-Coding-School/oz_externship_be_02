@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import IntegrityError
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
@@ -9,7 +10,8 @@ from rest_framework.views import APIView
 
 from apps.users.models import User, user
 from apps.users.serializers.auth_serializers import (
-    EmailLoginSerializer,
+    EmailLoginRequestSerializer,
+    LoginResponseSerializer,
 )
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.auth_service import AuthService, JWTService
@@ -52,21 +54,18 @@ class EmailLoginAPIView(APIView):
         tags=["auth"],
         summary="이메일 로그인",
         description="이메일과 비밀번호로 로그인하여 액세스 토큰 발급",
-        request=EmailLoginSerializer,
+        request=EmailLoginRequestSerializer,
         responses={
             200: OpenApiResponse(
                 description="로그인 성공",
-                response={
-                    "type": "object",
-                    "properties": {"access": {"type": "string", "example": "jwt.access.token.value"}},
-                },
+                response=LoginResponseSerializer,
             ),
             401: OpenApiResponse(description="인증 실패"),
             400: OpenApiResponse(description="잘못된 요청"),
         },
     )
     def post(self, request: Request) -> Response:
-        serializer = EmailLoginSerializer(data=request.data)
+        serializer = EmailLoginRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
             user, tokens = AuthService.email_login(**serializer.validated_data)
@@ -75,9 +74,17 @@ class EmailLoginAPIView(APIView):
                 return Response({"error": e.detail}, status=status.HTTP_401_UNAUTHORIZED)
             return Response({"error": str(e.detail)}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # 로그인 분기 처리
+        # 유저 응답
+        user_data = LoginResponseSerializer(user, context={"access_token": tokens["access"]}).data
 
-        response = Response({"access_token": tokens["access"]}, status=status.HTTP_200_OK)
+        response = Response(
+            {
+                "user": user_data,
+                "access_token": tokens["access"],
+            },
+            status=status.HTTP_200_OK,
+        )
+
         response.set_cookie(
             "refresh_token", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
         )
