@@ -20,7 +20,7 @@ def get_user_from_token(token_string: str) -> Union[AbstractBaseUser, AnonymousU
     전달된 액세스 토큰 문자열을 검증하고, 유효할 경우 사용자 객체를 반환
     """
     try:
-        access_token = AccessToken(token_string) # type: ignore
+        access_token = AccessToken(token_string)  # type: ignore
 
         user_id = access_token.get(api_settings.USER_ID_CLAIM)
 
@@ -42,6 +42,7 @@ class JWTAuthMiddleware:
     """
     WebSocket 연결 시 쿼리 파라미터로 전달된 JWT를 인증하는 Channels 미들웨어
     """
+
     def __init__(self, app: Callable[..., Any]):
         self.app = app
 

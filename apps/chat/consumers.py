@@ -113,7 +113,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if len(content) > 500:
             await self._send_error_message("메시지 내용은 500자를 초과할 수 없습니다.")
             return
-        
+
         if self.study_group and self.user and self.user.is_authenticated:
             new_message = await self._create_chat_message(
                 sender=cast(User, self.user),
@@ -172,4 +172,3 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def _create_chat_message(self, sender: User, study_group: StudyGroup, content: str) -> ChatMessage:
         return ChatMessage.objects.create(sender=sender, study_group=study_group, content=content)
-
