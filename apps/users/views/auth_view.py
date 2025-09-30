@@ -57,10 +57,7 @@ class EmailLoginAPIView(APIView):
         responses={
             200: OpenApiResponse(
                 description="로그인 성공",
-                response={
-                    "type": "object",
-                    "properties": {"access": {"type": "string", "example": "jwt.access.token.value"}},
-                },
+                response=LoginResponseSerializer,
             ),
             401: OpenApiResponse(description="인증 실패"),
             400: OpenApiResponse(description="잘못된 요청"),
