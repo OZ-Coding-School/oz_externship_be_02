@@ -7,6 +7,7 @@ from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 
+from apps.core.tests.mixins.test_user_mixins import IsolatedCacheTestMixin
 from apps.core.utils import RedisTestClient
 from apps.users.models import User
 from apps.users.serializers import find_email_serializer
@@ -14,7 +15,7 @@ from apps.users.services.exceptions import PhoneVerificationCodeFailedError
 from apps.users.utils.enums import VerificationPurpose
 
 
-class EmailRecoveryTestCase(RedisTestClient):
+class EmailRecoveryTestCase(RedisTestClient, IsolatedCacheTestMixin):
     user: User
     find_email_url: str
     send_code_url: str

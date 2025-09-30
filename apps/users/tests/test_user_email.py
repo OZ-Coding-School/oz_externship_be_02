@@ -5,14 +5,14 @@ from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 
-from apps.core.tests.mixins.test_user_mixins import VerificationMixin
+from apps.core.tests.mixins.test_user_mixins import VerificationMixin, IsolatedCacheTestMixin
 from apps.core.utils.test_clients import RedisTestClient
 from apps.users.models import Withdrawals, WithdrawalsReasonChoices
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.utils.enums import VerificationPurpose
 
 
-class EmailVerificationServicesUnitTests(RedisTestClient):
+class EmailVerificationServicesUnitTests(RedisTestClient, IsolatedCacheTestMixin):
     def setUp(self) -> None:
         self.service = EmailVerificationService()
 
