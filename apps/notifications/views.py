@@ -6,6 +6,7 @@ from django.http import HttpRequest, StreamingHttpResponse
 from django_eventstream.views import events  # type: ignore[import-untyped]
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -118,9 +119,11 @@ class UnreadCountView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class EventStreamView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request: HttpRequest) -> StreamingHttpResponse:
-        # 로그인된 유저의 개인 채널로 바로 구독
-        return cast(StreamingHttpResponse, events(request, channels=[f"user-{request.user.id}"]))
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def events_me(request: HttpRequest) -> StreamingHttpResponse:
+    """
+    로그인된 유저의 개인 채널(user-{user.id})로 SSE 구독
+    """
+    # StreamingHttpResponse 타입으로 캐스트
+    return cast(StreamingHttpResponse, events(request, channels=[f"user-{request.user.id}"]))
