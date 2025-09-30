@@ -5,14 +5,17 @@ from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 
-from apps.core.tests.mixins.test_user_mixins import VerificationMixin
-from apps.core.utils.test_clients import RedisTestClient
+from apps.core.tests.mixins.test_user_mixins import (
+    IsolatedCacheTestMixin,
+    VerificationMixin,
+)
+from apps.core.tests.test_clients import RedisTestClient
 from apps.users.models import Withdrawals, WithdrawalsReasonChoices
 from apps.users.services.email_service import EmailVerificationService
 from apps.users.utils.enums import VerificationPurpose
 
 
-class EmailVerificationServicesUnitTests(RedisTestClient):
+class EmailVerificationServicesUnitTests(RedisTestClient, IsolatedCacheTestMixin):
     def setUp(self) -> None:
         self.service = EmailVerificationService()
 
@@ -56,7 +59,7 @@ class EmailVerificationServicesUnitTests(RedisTestClient):
         self.assertEqual(response.data, {"error": "이메일 인증 코드가 일치하지 않습니다"})
 
 
-class EmailVerificationServiceUnitTests(RedisTestClient, VerificationMixin):
+class EmailVerificationAPITests(RedisTestClient, VerificationMixin):
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -79,7 +82,7 @@ class EmailVerificationServiceUnitTests(RedisTestClient, VerificationMixin):
         self.assertEqual(mail.outbox[0].subject, "회원가입 이메일 인증")
 
         # 이메일 발송 시 사용한 인증번호를 캐시로 부터 가져오기
-        verification_code = cache.get(f"{VerificationPurpose.SIGNUP}-{email}")
+        verification_code = cache.get(f"{VerificationPurpose.SIGNUP.value}-{email}")
 
         # 인증번호가 캐시에 올바르게 저장되어 있었는지 검증
         self.assertIsNotNone(verification_code)
@@ -224,18 +227,17 @@ class AccountRecoveryEmailVerificationAPITest(RedisTestClient, VerificationMixin
         )
         data = {"email": (email := self.test_email)}
         self.client.post(self.send_url, data)
-        verification_code = self.email_service.send_verification_email(email, VerificationPurpose.RECOVER_ACCOUNT)
 
-        # 캐시에 저장된 값 확인
-        cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{email}-{verification_code}"
+        cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{email}"
+        verification_code = cache.get(cache_key)
         self.assertIsNotNone(verification_code)
 
         response = self.client.post(self.verify_url, {"email": email, "verification_code": verification_code})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("detail", response.data)
         self.assertEqual(response.data["detail"], "인증에 성공했습니다")
-        self.assertIsNone(cache.get(cache_key))
 
+        self.assertIsNone(cache.get(cache_key))
         verified_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-verified-{email}"
         self.assertEqual(cache.get(verified_key), verification_code)
 
