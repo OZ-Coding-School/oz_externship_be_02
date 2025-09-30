@@ -8,10 +8,7 @@ from apps.users.models.user import User
 
 
 def check_permission(user: User) -> bool:
-    if user.is_staff or user.is_superuser:
-        return True
-    else:
-        return False
+    return user.is_staff or user.is_superuser
 
 
 def get_admin_application_list() -> QuerySet[Application]:
