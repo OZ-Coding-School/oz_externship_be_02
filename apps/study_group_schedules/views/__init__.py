@@ -4,4 +4,8 @@ from .views import (
     StudyGroupScheduleListView,
 )
 
-__all__ = ["StudyGroupScheduleCreateView", "StudyGroupScheduleListView", "StudyGroupScheduleDetailView"]
+__all__ = [
+    "StudyGroupScheduleCreateView",
+    "StudyGroupScheduleListView",
+    "StudyGroupScheduleDetailView",
+]

@@ -69,7 +69,7 @@ class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
 
     def filter_by_user_access(self, user_id: int) -> "StudyGroupScheduleQuerySet":
         """사용자가 접근 가능한 스케줄만 필터링"""
-        return self.filter(study_group__members__id=user_id)
+        return self.filter(study_group__members=user_id)
 
     def get_schedule_for_user_detail(self, schedule_id: int, user_id: int) -> "StudyGroupScheduleQuerySet":
         """상세조회용 스케줄 쿼리셋"""
@@ -102,7 +102,19 @@ class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
         Returns:
             필터링된 QuerySet
         """
-        return self.filter(study_group__members__id=user_id, study_group__uuid=study_group_uuid)
+        return self.filter(study_group__members=user_id, study_group__uuid=study_group_uuid)
+
+    def get_for_update(
+        self, schedule_id: int, user_id: int, study_group_uuid: str | UUID
+    ) -> "StudyGroupScheduleQuerySet":
+        """수정을 위한 스케줄 조회"""
+        return self.filter(
+            id=schedule_id, study_group__uuid=study_group_uuid, study_group__members=user_id
+        ).select_related("study_group")
+
+    def filter_editable_by_user(self, user_id: int) -> "StudyGroupScheduleQuerySet":
+        """사용자가 수정 가능한 스케줄 목록 조회"""
+        return self.filter(study_group__members=user_id)
 
 
 StudyGroupScheduleManager = models.Manager.from_queryset(StudyGroupScheduleQuerySet)

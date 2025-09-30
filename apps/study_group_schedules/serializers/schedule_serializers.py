@@ -1,11 +1,12 @@
 from datetime import date, datetime, time, timedelta
-from typing import Any
+from typing import Any, Dict
 
+from django.db import transaction
 from rest_framework import serializers
 
 from apps.studies.models import GroupMember, StudyGroup
 from apps.study_group_schedules.enums import ScheduleOrdering
-from apps.study_group_schedules.models import GroupSchedule
+from apps.study_group_schedules.models import GroupSchedule, ScheduleParticipant
 
 
 class StudyGroupScheduleResponseSerializer(serializers.ModelSerializer[GroupSchedule]):
@@ -33,7 +34,7 @@ class StudyGroupScheduleResponseSerializer(serializers.ModelSerializer[GroupSche
 class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedule]):
     """스터디 그룹 일정 생성 시리얼라이저 - 검증 로직 포함"""
 
-    study_group = serializers.SlugRelatedField(queryset=StudyGroup.objects.all(), slug_field="uuid", required=True)
+    study_group = serializers.SlugRelatedField(slug_field="uuid", queryset=StudyGroup.objects.all())
 
     class Meta:
         model = GroupSchedule
@@ -69,7 +70,7 @@ class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedu
         return data
 
 
-class StudyGroupScheduleListQueryParamsSerializer(serializers.Serializer[GroupSchedule]):
+class StudyGroupScheduleListQueryParamsSerializer(serializers.Serializer[None]):
     """스터디 그룹 스케줄 목록 조회 쿼리 파라미터 시리얼라이저"""
 
     start_date = serializers.DateField(required=False, help_text="조회 시작 날짜 (YYYY-MM-DD)")
@@ -164,3 +165,127 @@ class StudyGroupScheduleDetailSerializer(serializers.ModelSerializer[GroupSchedu
             "created_at",
             "updated_at",
         ]
+
+
+class StudyGroupScheduleUpdateSerializer(serializers.ModelSerializer[GroupSchedule]):
+    """스터디 그룹 스케줄 수정용 시리얼라이저"""
+
+    study_group_uuid = serializers.UUIDField(write_only=True, required=False)
+    participant_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+        help_text="참여자 멤버 ID 목록",
+    )
+
+    class Meta:
+        model = GroupSchedule
+        fields = [
+            "id",
+            "title",
+            "objective",
+            "session_date",
+            "start_time",
+            "end_time",
+            "study_group_uuid",
+            "participant_ids",
+        ]
+        read_only_fields = ["id"]
+
+    def validate_session_date(self, value: date) -> date:
+        """스터디 진행일 유효성 검증"""
+        if value and value < datetime.now().date():
+            raise serializers.ValidationError("과거 날짜로는 스케줄을 설정할 수 없습니다.")
+        return value
+
+    def validate(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
+        """전체 데이터 유효성 검증"""
+        start_time = attrs.get("start_time")
+        end_time = attrs.get("end_time")
+
+        # 기존 인스턴스의 값과 새로운 값을 비교
+        if self.instance and isinstance(self.instance, GroupSchedule):
+            start_time = start_time or self.instance.start_time
+            end_time = end_time or self.instance.end_time
+
+        # 시간 유효성 검증
+        if start_time and end_time:
+            if start_time >= end_time:
+                raise serializers.ValidationError({"end_time": "종료 시간은 시작 시간보다 늦어야 합니다."})
+
+            # 스터디 시간이 너무 긴지 검증 (최대 8시간)
+            start_datetime = datetime.combine(datetime.today(), start_time)
+            end_datetime = datetime.combine(datetime.today(), end_time)
+            duration = end_datetime - start_datetime
+
+            if duration.total_seconds() > 8 * 3600:  # 8시간
+                raise serializers.ValidationError({"end_time": "스터디 시간은 최대 8시간까지 가능합니다."})
+
+            if duration.total_seconds() < 30 * 60:  # 30분
+                raise serializers.ValidationError({"end_time": "스터디 시간은 최소 30분 이상이어야 합니다."})
+
+        return attrs
+
+    def validate_participant_ids(self, value: list[int]) -> list[int]:
+        """참여자 ID 유효성 검증"""
+        if not value:  # 빈 리스트는 허용
+            return value
+
+        if self.instance and isinstance(self.instance, GroupSchedule):
+            study_group = self.instance.study_group
+
+            # 해당 스터디 그룹의 멤버인지 확인
+            valid_member_ids = set(GroupMember.objects.filter(study_group=study_group).values_list("id", flat=True))
+
+            invalid_ids = set(value) - valid_member_ids
+            if invalid_ids:
+                raise serializers.ValidationError(
+                    f"스터디 그룹에 속하지 않은 멤버 ID가 포함되어 있습니다: {list(invalid_ids)}"
+                )
+
+        return value
+
+    @transaction.atomic
+    def update(self, instance: GroupSchedule, validated_data: Dict[str, Any]) -> GroupSchedule:
+        """스케줄 업데이트"""
+        participant_ids = validated_data.pop("participant_ids", None)
+        study_group_uuid = validated_data.pop("study_group_uuid", None)
+
+        # 기본 필드 업데이트
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        # 참여자 업데이트 (participant_ids가 제공된 경우에만)
+        if participant_ids is not None:
+            self._update_participants(instance, participant_ids)
+
+        return instance
+
+    def _update_participants(self, schedule: GroupSchedule, participant_ids: list[int]) -> None:
+        """스케줄 참여자 업데이트"""
+        # 기존 참여자 삭제
+        ScheduleParticipant.objects.filter(schedule=schedule).delete()
+
+        # 새로운 참여자 추가
+        if participant_ids:
+            participants_to_create = [
+                ScheduleParticipant(schedule=schedule, member_id=member_id) for member_id in participant_ids
+            ]
+            ScheduleParticipant.objects.bulk_create(participants_to_create)
+
+
+class StudyGroupSchedulePartialUpdateSerializer(StudyGroupScheduleUpdateSerializer):
+    """스터디 그룹 스케줄 부분 수정용 시리얼라이저 (PATCH)"""
+
+    class Meta(StudyGroupScheduleUpdateSerializer.Meta):
+        # 모든 필드를 선택사항으로 만듦
+        extra_kwargs = {
+            "title": {"required": False},
+            "objective": {"required": False},
+            "session_date": {"required": False},
+            "start_time": {"required": False},
+            "end_time": {"required": False},
+        }
