@@ -24,8 +24,10 @@ from apps.study_group_schedules.serializers.schedule_serializers import (
 )
 from apps.study_group_schedules.services.schedule_services import (
     get_schedule_by_id_for_user,
+    get_schedule_for_delete,
     get_schedule_for_update,
     get_user_accessible_schedules,
+    validate_user_can_delete_schedule,
     validate_user_can_edit_schedule,
 )
 from apps.users.models import User
@@ -224,3 +226,42 @@ class StudyGroupScheduleDetailView(APIView):
             return Response(response_serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        responses={
+            204: {"description": "스케줄이 성공적으로 삭제되었습니다."},
+            401: {"description": "인증되지 않은 사용자입니다."},
+            403: {"description": "해당 스케줄을 삭제할 권한이 없습니다."},
+            404: {"description": "해당 스케줄을 찾을 수 없습니다."},
+        },
+        summary="스터디 그룹 스케줄 삭제",
+        description="""
+        특정 스터디 그룹의 스케줄을 삭제합니다.
+
+        권한:
+        - 스터디 그룹의 모든 멤버가 삭제 가능
+
+        삭제 시:
+        - 스케줄과 관련된 참여자 정보도 함께 삭제됩니다.
+        """,
+        tags=["Study Group Schedules"],
+    )
+    @transaction.atomic
+    def delete(self, request: Request, study_group_uuid: UUID, schedule_id: int) -> Response:
+        """스케줄 삭제"""
+        user = cast(User, request.user)
+
+        # 스케줄 조회 및 권한 확인
+        schedule = get_schedule_for_delete(schedule_id=schedule_id, user_id=user.id, study_group_uuid=study_group_uuid)
+
+        if not schedule:
+            return Response({"detail": "해당 스케줄을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+        # 삭제 권한 확인
+        if not validate_user_can_delete_schedule(user, schedule):
+            return Response({"detail": "해당 스케줄을 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        # 스케줄 삭제 (CASCADE로 참여자 정보도 함께 삭제됨)
+        schedule.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
