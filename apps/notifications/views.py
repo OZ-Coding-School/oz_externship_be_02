@@ -1,18 +1,17 @@
 from typing import Any, cast
 
-from django.contrib.auth.decorators import login_required
 from django.db.models import QuerySet
 from django.http import HttpRequest, StreamingHttpResponse
 from django_eventstream.views import events  # type: ignore[import-untyped]
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.notifications.decorators import jwt_required
 from apps.notifications.models import Notification
 from apps.notifications.pagination import NotificationLimitOffsetPagination
 from apps.notifications.serializers import (
@@ -119,11 +118,7 @@ class UnreadCountView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@jwt_required
 def events_me(request: HttpRequest) -> StreamingHttpResponse:
-    """
-    로그인된 유저의 개인 채널(user-{user.id})로 SSE 구독
-    """
-    # StreamingHttpResponse 타입으로 캐스트
+    # 로그인된 유저의 개인 채널로 바로 구독
     return cast(StreamingHttpResponse, events(request, channels=[f"user-{request.user.id}"]))
