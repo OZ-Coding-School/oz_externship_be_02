@@ -67,7 +67,7 @@ class TestNaverLogin(APITestCase):
         }
         resp = self.client.post(self.url, {"code": "dummy"})
         self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertIn("네이버 로그인에 실패", resp.data["error"])
+        self.assertEqual(resp.data.get("error"), "네이버 사용자 정보 스키마가 올바르지 않습니다.")
 
     @patch("apps.users.services.naver_login_service.requests.get")
     @patch("apps.users.services.naver_login_service.requests.post")
@@ -143,8 +143,8 @@ class TestNaverLoginServiceCoverage(APITestCase):
         self._mock_naver(mock_post, mock_get, post_status=502)
         mock_post.return_value.text = "Bad Gateway"
         resp = self.client.post(self.url, {"code": "c"})
-        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertIn("네이버 로그인에 실패", resp.data["error"])
+        self.assertEqual(resp.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertEqual(resp.data.get("error"), "네이버 토큰 발급 요청이 실패했습니다.")
 
     @patch("apps.users.services.naver_login_service.requests.get")
     @patch("apps.users.services.naver_login_service.requests.post")
@@ -152,9 +152,8 @@ class TestNaverLoginServiceCoverage(APITestCase):
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.side_effect = json.JSONDecodeError("x", "x", 0)
         resp = self.client.post(self.url, {"code": "c"})
-        we = resp
-        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertIn("네이버 로그인에 실패", resp.data["error"])
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp.data.get("error"), "네이버 토큰 응답 파싱에 실패했습니다.")
 
     @patch("apps.users.services.naver_login_service.requests.get")
     @patch("apps.users.services.naver_login_service.requests.post")
@@ -162,8 +161,8 @@ class TestNaverLoginServiceCoverage(APITestCase):
         self._mock_naver(mock_post, mock_get, get_status=500)
         mock_get.return_value.text = "Internal Server Error"
         resp = self.client.post(self.url, {"code": "c"})
-        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertIn("네이버 로그인에 실패", resp.data["error"])
+        self.assertEqual(resp.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertEqual(resp.data.get("error"), "네이버 사용자 정보 조회에 실패했습니다.")
 
     @patch("apps.users.services.naver_login_service.requests.get")
     @patch("apps.users.services.naver_login_service.requests.post")
@@ -171,8 +170,8 @@ class TestNaverLoginServiceCoverage(APITestCase):
         self._mock_naver(mock_post, mock_get)
         mock_get.return_value.json.side_effect = json.JSONDecodeError("x", "x", 0)
         resp = self.client.post(self.url, {"code": "c"})
-        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertIn("네이버 로그인에 실패", resp.data["error"])
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(resp.data.get("error"), "네이버 사용자 정보 응답 파싱에 실패했습니다.")
 
     @patch("apps.users.services.naver_login_service.logger")
     @patch("apps.users.services.naver_login_service.requests.get")
@@ -182,15 +181,16 @@ class TestNaverLoginServiceCoverage(APITestCase):
         self._mock_naver(mock_post, mock_get, get_json=bad_body)
         resp = self.client.post(self.url, {"code": "c"})
         self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertTrue(mock_logger.error.called)
+        self.assertTrue(mock_logger.warning.called)
+        self.assertEqual(resp.data.get("error"), "네이버 사용자 정보 스키마가 올바르지 않습니다.")
 
     @patch("apps.users.services.naver_login_service.requests.get")
     @patch("apps.users.services.naver_login_service.requests.post")
     def test_access_token_missing_leads_to_500(self, mock_post: Mock, mock_get: Mock) -> None:
         self._mock_naver(mock_post, mock_get, post_json={"refresh_token": "rt"})
         resp = self.client.post(self.url, {"code": "c"})
-        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertIn("네이버 로그인에 실패", resp.data["error"])
+        self.assertEqual(resp.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertEqual(resp.data.get("error"), "네이버 토큰 응답에 access_token이 없습니다.")
 
     @patch("apps.users.services.naver_login_service.requests.get")
     @patch("apps.users.services.naver_login_service.requests.post")

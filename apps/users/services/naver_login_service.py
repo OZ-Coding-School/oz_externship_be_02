@@ -1,11 +1,11 @@
 import json
 from datetime import date, datetime
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import requests
 from django.conf import settings
 from django.db import transaction
-from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.exceptions import APIException, ParseError, ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.logger import logger
@@ -26,33 +26,40 @@ class NaverService:  # 네이버 로그인 로직 담당 (카카오와 동일한
     NAVER_REDIRECT_URI = settings.NAVER_REDIRECT_URI
 
     @classmethod
-    def get_access_token(cls, code: str) -> Optional[str]:
+    def get_access_token(cls, code: str) -> str:
         """
         프론트에서 넘겨받은 네이버 인가 코드로 access_token 요청
         """
+        res = requests.post(
+            url=cls.TOKEN_URL,
+            params={
+                "grant_type": "authorization_code",
+                "client_id": cls.NAVER_CLIENT_ID,
+                "client_secret": cls.NAVER_CLIENT_SECRET,
+                "redirect_uri": cls.NAVER_REDIRECT_URI,
+                "code": code,
+            },
+            timeout=5,
+        )
+
+        if res.status_code == 400 and "invalid" in res.text.lower():
+            raise ValidationError("네이버 인가 코드가 유효하지 않습니다.")
+
+        if not (200 <= res.status_code < 300):
+            ex = APIException("네이버 토큰 발급 요청이 실패했습니다.")
+            ex.status_code = 502
+            raise ex
         try:
-            res = requests.post(
-                url=cls.TOKEN_URL,
-                params={
-                    "grant_type": "authorization_code",
-                    "client_id": cls.NAVER_CLIENT_ID,
-                    "client_secret": cls.NAVER_CLIENT_SECRET,
-                    "redirect_uri": cls.NAVER_REDIRECT_URI,
-                    "code": code,
-                },
-                timeout=5,
-            )
-
-            if res.status_code == 400 and "invalid" in res.text.lower():
-                raise ValidationError("invalid code")
-
-            if not (200 <= res.status_code < 300):
-                raise APIException("네이버 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.")
-
             body: dict[str, Any] = res.json()
-            return body.get("access_token")
-        except json.JSONDecodeError:
-            raise APIException("네이버 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.")
+        except ValueError:
+            raise ParseError("네이버 토큰 응답 파싱에 실패했습니다.")
+        token_raw: Any = body.get("access_token")
+        if not isinstance(token_raw, str) or not token_raw:
+            ex = APIException("네이버 토큰 응답에 access_token이 없습니다.")
+            ex.status_code = 502
+            raise ex
+        token: str = token_raw
+        return token
 
     @classmethod
     def _map_naver_payload_for_serializer(cls, raw: dict[str, Any]) -> dict[str, Any]:
@@ -81,25 +88,31 @@ class NaverService:  # 네이버 로그인 로직 담당 (카카오와 동일한
         """
         access_token으로 사용자 정보 조회 → (카카오와 동일하게) serializer 검증 통과한 dict 반환
         """
+        res = requests.get(
+            url=cls.USER_INFO_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=5,
+        )
+        if not (200 <= res.status_code < 300):
+            ex = APIException("네이버 사용자 정보 조회에 실패했습니다.")
+            ex.status_code = 502
+            raise ex
+
         try:
-            res = requests.get(
-                url=cls.USER_INFO_URL,
-                headers={"Authorization": f"Bearer {access_token}"},
-                timeout=5,
-            )
-            if not (200 <= res.status_code < 300):
-                raise APIException("네이버 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.")
-
             raw: dict[str, Any] = res.json()
-            mapped = cls._map_naver_payload_for_serializer(raw)
+        except ValueError:
+            raise ParseError("네이버 사용자 정보 응답 파싱에 실패했습니다.")
 
-            serializer = NaverUserSerializer(data=mapped)
-            if not serializer.is_valid():
-                logger.error("네이버 사용자 정보 검증 실패 | errors=%s | payload=%s", serializer.errors, raw)
-                raise APIException("네이버 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.")
-            return cast(dict[str, Any], serializer.validated_data)
-        except json.JSONDecodeError:
-            raise APIException("네이버 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.")
+        mapped = cls._map_naver_payload_for_serializer(raw)
+
+        serializer = NaverUserSerializer(data=mapped)
+        if not serializer.is_valid():
+            ex = APIException("네이버 사용자 정보 스키마가 올바르지 않습니다.")
+            ex.status_code = 500
+            logger.warning("NAVER_SCHEMA_INVALID errors=%s payload=%s", serializer.errors, raw)
+            raise ex
+
+        return cast(dict[str, Any], serializer.validated_data)
 
     @classmethod
     def parse_naver_birth_date(cls, birthday_mmdd: str, birthyear: str) -> date:
