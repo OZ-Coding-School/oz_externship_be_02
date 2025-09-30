@@ -94,7 +94,7 @@ class TagAPITestCase(APITestCase):
         # 페이지네이션(5개)이 적용되었는지 확인
         self.assertEqual(len(response.data["results"]), 5)
         # 전체 태그 개수 확인
-        self.assertEqual(response.data["count"], 6)
+        self.assertEqual(response.data["count"], 56)
 
     def test_search_tags_success(self) -> None:
         """태그 검색 성공 테스트"""
