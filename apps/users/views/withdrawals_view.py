@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from werkzeug.exceptions import BadRequest
 
 from apps.users.models.withdrawals import Withdrawals
 from apps.users.serializers.email_verification_serializers import (
@@ -93,28 +94,15 @@ class AccountRecoveryAPIView(APIView):
         purpose = VerificationPurpose.RECOVER_ACCOUNT
 
         try:
-            # 3) 인증 코드 검증
-            email_service.verify_code(purpose, **serializer.validated_data)  # 검증 코드 호출
-
             # 4) 계정 복구
             recover_account(**serializer.validated_data)
 
-            # 5) 성공 응답
-            return Response({"detail": "계정이 복구되었습니다. 이제 로그인할 수 있습니다."}, status=status.HTTP_200_OK)
-
-        # 6) 실패 응답
-        # 6-1) 이메일 발송 시스템에 문제가 발생하였습니다.
-        except EmailSendingFailedError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # 6-2) 이메일 인증 코드가 일치하지 않습니다.
-        except EmailVerificationCodeFailedError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 6-3) 해당 이메일로 탈퇴 요청이 존재하지 않습니다.
+            # 6-3) 해당 이메일로 탈퇴 요청이 존재하지 않습니다.
         except Withdrawals.DoesNotExist as e:
             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except BadRequest as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception:
             logger.exception("계정 복구 처리 중 알 수 없는 오류 발생.")  # 로그 기록
-            return Response({"detail": "알 수 없는 오류가 발생했습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"detail": "알 수 없는 오류 발생"}, status=500)

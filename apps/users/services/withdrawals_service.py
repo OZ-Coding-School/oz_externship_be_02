@@ -5,6 +5,7 @@ from typing import cast
 from django.db import transaction
 from rest_framework import status
 from rest_framework.exceptions import APIException, NotFound, ValidationError
+from werkzeug.exceptions import BadRequest
 
 from apps.users.models.user import User
 from apps.users.models.withdrawals import Withdrawals
