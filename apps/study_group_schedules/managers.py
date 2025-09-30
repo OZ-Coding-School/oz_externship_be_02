@@ -116,5 +116,13 @@ class StudyGroupScheduleQuerySet(models.QuerySet["GroupSchedule"]):
         """사용자가 수정 가능한 스케줄 목록 조회"""
         return self.filter(study_group__members=user_id)
 
+    def get_for_delete(
+        self, schedule_id: int, user_id: int, study_group_uuid: str | UUID
+    ) -> "StudyGroupScheduleQuerySet":
+        """삭제를 위한 스케줄 조회"""
+        return self.filter(
+            id=schedule_id, study_group__uuid=study_group_uuid, study_group__members=user_id
+        ).select_related("study_group")
+
 
 StudyGroupScheduleManager = models.Manager.from_queryset(StudyGroupScheduleQuerySet)
