@@ -8,6 +8,8 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.notifications.views import events_me
+
 urlpatterns: list[URLPattern | URLResolver] = [
     path("api/v1/", include("apps.users.urls")),
     path("api/v1/admin/", include("apps.users.urls.admin_urls")),
@@ -23,6 +25,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("api/v1/study-notes", include("apps.study_notes.urls.study_note_urls")),
     path("api/v1/applications", include("apps.applications.urls")),
     path("api/v1/chat", include("apps.chat.urls")),
+    path("events/me", events_me, name="events-me"),
     path("events/", include("django_eventstream.urls")),
 ]
 

@@ -1,6 +1,9 @@
 from typing import Any, cast
 
+from django.contrib.auth.decorators import login_required
 from django.db.models import QuerySet
+from django.http import HttpRequest, StreamingHttpResponse
+from django_eventstream.views import events  # type: ignore[import-untyped]
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import ListAPIView
@@ -113,3 +116,9 @@ class UnreadCountView(APIView):
         payload: UnreadCountOut = {"unread_count": count}
         serializer = UnreadCountSerializer(instance=payload)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@login_required
+def events_me(request: HttpRequest) -> StreamingHttpResponse:
+    # 로그인된 유저의 개인 채널로 바로 구독
+    return cast(StreamingHttpResponse, events(request, channels=[f"user-{request.user.id}"]))
