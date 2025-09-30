@@ -1,6 +1,6 @@
 from typing import cast
 
-from rest_framework import filters
+from rest_framework import filters, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
@@ -10,11 +10,13 @@ from rest_framework.views import APIView
 
 from apps.applications.serializers.admin_application_serializers import (
     ApplicationAdminSerializer,
+    ApplicationAdminDetailSerializer
 )
 from apps.applications.services.admin_application_services import (
     check_permission,
     filter_status,
     get_admin_application_list,
+    get_admin_application_detail,
 )
 from apps.users.models.user import User
 
@@ -54,3 +56,18 @@ class AdminApplicationsAPIView(APIView):
 
         serializer = ApplicationAdminSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+class AdminApplicationsDetailAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request: Request, application_id:int) -> Response:
+        request.user = cast(User, request.user)
+        if not check_permission(request.user):
+            raise PermissionDenied
+
+        get_detail_aply, headcount=get_admin_application_detail(application_id)
+        serializer = ApplicationAdminDetailSerializer(
+            get_detail_aply,
+            context={"headcount": headcount},
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
