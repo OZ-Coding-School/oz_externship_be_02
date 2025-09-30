@@ -19,6 +19,23 @@ from apps.recruitments.services.recruitments_services import (
 )
 
 
+@extend_schema(
+    summary="[어드민] 구인 공고 목록 조회",
+    tags=["어드민/구인 공고"],
+    parameters=[
+        OpenApiParameter(name="search", description="공고 제목 키워드", type=str),
+        OpenApiParameter(name="status", description="공고 상태 필터링 (recruiting, closed)", type=str),
+        OpenApiParameter(name="tags", description="필터링할 태그 ID (쉼표로 구분, 예: 1,5,10)", type=str),
+        OpenApiParameter(
+            name="ordering",
+            description="정렬 기준 (created_at, -created_at, views_count, -views_count, bookmark_count, -bookmark_count)",
+            type=str,
+        ),
+        OpenApiParameter(name="limit", description="한 페이지에 표시할 항목의 수", type=int),
+        OpenApiParameter(name="offset", description="시작 위치 (0부터 시작)", type=int),
+    ],
+    responses={status.HTTP_200_OK: AdminRecruitmentListSerializer(many=True)},
+)
 class AdminRecruitmentListView(generics.ListAPIView[Recruitment]):
     serializer_class = AdminRecruitmentListSerializer
     permission_classes = [IsAdminUser]
