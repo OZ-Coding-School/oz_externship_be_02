@@ -1,14 +1,18 @@
 from rest_framework import serializers
 
 from apps.applications.models.applications import Application
+from apps.recruitments.serializers.serializers_list import (
+    RecruitmentApplicationSerializer,
+)
 from apps.users.models.user import User
-from apps.recruitments.serializers.serializers_list import RecruitmentApplicationSerializer
+
 
 # 리스트 조회 사용 시리얼라이저
 class ApplicationUserSerializer(serializers.ModelSerializer[User]):
     class Meta:
         model = User
         fields = ("nickname", "email")
+
 
 class ApplicationAdminSerializer(serializers.ModelSerializer[Application]):
     recruitment_title = serializers.CharField(source="recruitment")
@@ -26,15 +30,18 @@ class ApplicationAdminSerializer(serializers.ModelSerializer[Application]):
         )
         read_only_fields = fields
 
+
 # 상세 조회 사용 시리얼라이저
 class ApplicationDetailUserSerializer(serializers.ModelSerializer[User]):
     class Meta:
         model = User
-        fields = ("nickname", "email","profile_img_url")
+        fields = ("nickname", "gender", "profile_img_url")
+
 
 class ApplicationAdminDetailSerializer(serializers.ModelSerializer[Application]):
-    recruitment=RecruitmentApplicationSerializer()
+    recruitment = RecruitmentApplicationSerializer()
     user = ApplicationDetailUserSerializer()
+
     class Meta:
         model = Application
         fields = (
@@ -49,5 +56,5 @@ class ApplicationAdminDetailSerializer(serializers.ModelSerializer[Application])
             "study_experience",
             "status",
             "created_at",
-            "updated_at"
+            "updated_at",
         )

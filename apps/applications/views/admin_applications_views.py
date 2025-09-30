@@ -9,14 +9,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.applications.serializers.admin_application_serializers import (
+    ApplicationAdminDetailSerializer,
     ApplicationAdminSerializer,
-    ApplicationAdminDetailSerializer
 )
 from apps.applications.services.admin_application_services import (
     check_permission,
     filter_status,
-    get_admin_application_list,
     get_admin_application_detail,
+    get_admin_application_list,
 )
 from apps.users.models.user import User
 
@@ -57,15 +57,16 @@ class AdminApplicationsAPIView(APIView):
         serializer = ApplicationAdminSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+
 class AdminApplicationsDetailAPIView(APIView):
     permission_classes = (IsAuthenticated,)
 
-    def get(self, request: Request, application_id:int) -> Response:
+    def get(self, request: Request, application_id: int) -> Response:
         request.user = cast(User, request.user)
         if not check_permission(request.user):
             raise PermissionDenied
 
-        get_detail_aply, headcount=get_admin_application_detail(application_id)
+        get_detail_aply, headcount = get_admin_application_detail(application_id)
         serializer = ApplicationAdminDetailSerializer(
             get_detail_aply,
             context={"headcount": headcount},

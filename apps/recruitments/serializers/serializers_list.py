@@ -58,9 +58,10 @@ class RecruitmentApplicationSerializer(serializers.ModelSerializer[Recruitment])
             "title",
             "headcount",
             "lectures",
+            "tags",
             "close_at",
         )
         read_only_fields = fields
 
-    def get_headcount(self, obj):
-        return self.context.get("headcount",0)
+    def get_headcount(self, obj: Recruitment)->int:
+        return int(self.context.get("headcount",0))
