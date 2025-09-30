@@ -1,17 +1,23 @@
 from typing import Any, cast
 
 from django.db.models import QuerySet
-from django.http import HttpRequest, StreamingHttpResponse
+from django.http import StreamingHttpResponse
+from django_eventstream.renderers import (  # type: ignore[import-untyped]
+    BrowsableAPIEventStreamRenderer,
+    SSEEventRenderer,
+)
 from django_eventstream.views import events  # type: ignore[import-untyped]
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.notifications.decorators import jwt_required
 from apps.notifications.models import Notification
 from apps.notifications.pagination import NotificationLimitOffsetPagination
 from apps.notifications.serializers import (
@@ -118,7 +124,24 @@ class UnreadCountView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@jwt_required
-def events_me(request: HttpRequest) -> StreamingHttpResponse:
-    # 로그인된 유저의 개인 채널로 바로 구독
-    return cast(StreamingHttpResponse, events(request, channels=[f"user-{request.user.id}"]))
+class EventStreamView(APIView):
+    renderer_classes = [SSEEventRenderer, BrowsableAPIEventStreamRenderer]
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request: Request) -> StreamingHttpResponse:
+        rt = request.COOKIES.get("refresh_token")
+        if rt is None:
+            raise AuthenticationFailed
+
+        try:
+            rt = RefreshToken(rt)  # type: ignore
+            user_id = rt["user_id"]  # type: ignore
+            user = User.objects.get(id=user_id)
+        except (InvalidToken, TokenError, User.DoesNotExist):
+            raise AuthenticationFailed
+
+        setattr(request, "user", user)
+
+        # 로그인된 유저의 개인 채널로 바로 구독
+        return cast(StreamingHttpResponse, events(request, channels=[f"user-{request.user.id}"]))
