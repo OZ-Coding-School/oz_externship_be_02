@@ -165,7 +165,6 @@ class StudyGroupScheduleDetailView(APIView):
         except ValueError:
             return Response({"detail": "잘못된 요청입니다."}, status=status.HTTP_400_BAD_REQUEST)
 
-
     @extend_schema(
         request=StudyGroupSchedulePartialUpdateSerializer,
         responses={
