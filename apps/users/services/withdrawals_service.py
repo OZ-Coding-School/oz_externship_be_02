@@ -8,6 +8,10 @@ from rest_framework.exceptions import APIException, NotFound, ValidationError
 
 from apps.users.models.user import User
 from apps.users.models.withdrawals import Withdrawals
+from apps.users.services.email_service import EmailVerificationService
+from apps.users.utils.enums import VerificationPurpose
+
+email_verified = EmailVerificationService
 
 
 def create_withdrawal(user: User, reason: str, reason_detail: str) -> Withdrawals:
@@ -32,7 +36,9 @@ def recover_account(email: str, verification_code: str) -> None:
     """
     인증 코드 검증 후 유저 계정을 복구하고 탈퇴 요청을 삭제.
     """
-
+    # 이메일 검증된 데이터인지 확인
+    if not email_verified.is_verified(email=email, verification_code=verification_code, purpose=VerificationPurpose.RECOVER_ACCOUNT):
+        raise BadRequest("이메일 인증이 완료되지 않았습니다")
     # 1) 탈퇴 요청한 유저 조회: user(id)로 user의 email 찾기
     try:
         withdrawal = Withdrawals.objects.select_related("user").get(user__email=email)
