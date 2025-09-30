@@ -5,7 +5,8 @@ import socket
 import threading
 import time
 from datetime import date
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, cast
+from importlib import reload
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, Optional, Union, cast
 
 import httpx
 import uvicorn
@@ -61,6 +62,10 @@ class EventStreamHTTPXTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        import django_eventstream.eventstream as es  # type: ignore[import-untyped]
+
+        es._backend = None  # 캐시 클리어
+        reload(es)
         # 빈 포트 할당
         port = get_free_port()
         cls.base_url = f"http://127.0.0.1:{port}"
@@ -107,13 +112,43 @@ class EventStreamHTTPXTests(TestCase):
         # mypy가 Optional로 보지 않도록 미리 정수화
         self._uid: int = int(type(self).user.id)
 
+    def _wait_subscription_ready(self, resp: httpx.Response, timeout_sec: float = 2.0) -> None:
+        """
+        SSE 구독이 실제로 붙어서 한 줄이라도 들어오기 시작했는지 짧게 확인.
+        (빈 줄/코멘트여도 OK)
+        """
+        deadline = time.time() + timeout_sec
+        it = resp.iter_lines()
+
+        while time.time() < deadline:
+            try:
+                line = next(it)
+            except StopIteration:
+                # 스트림이 조기에 닫힌 경우
+                break
+
+            # 어떤 내용이든 한 줄이라도 받았으면 구독 준비 완료
+            return
+
     # SSE 한 이벤트만 파싱
-    def _read_one_event(self, resp: httpx.Response, timeout_sec: float = 10.0) -> Optional[Dict[str, Any]]:
+    def _read_one_event_from_lines(
+        self,
+        lines: Iterable[Union[str, bytes]],
+        timeout_sec: float = 10.0,
+    ) -> Optional[Dict[str, Any]]:
         deadline = time.time() + timeout_sec
         buf: list[str] = []
-        for line in resp.iter_lines():
+        it = iter(lines)
+
+        while time.time() <= deadline:
+            try:
+                line = next(it)
+            except StopIteration:
+                break
+
             s = line.decode() if isinstance(line, (bytes, bytearray)) else str(line)
             s = s.rstrip("\r\n")
+
             if not s:
                 etype: Optional[str] = None
                 data_raw: Optional[str] = None
@@ -123,6 +158,7 @@ class EventStreamHTTPXTests(TestCase):
                     elif row.startswith("data:"):
                         data_raw = row[5:].strip()
                 buf.clear()
+
                 if data_raw:
                     payload: Dict[str, Any] = json.loads(data_raw)
                     if etype:
@@ -130,19 +166,20 @@ class EventStreamHTTPXTests(TestCase):
                     return payload
             else:
                 buf.append(s)
-            if time.time() > deadline:
-                break
+
         return None
 
     def test_client_receives_streamed_notification(self) -> None:
         url = f"{type(self).base_url}/events/?channel=user-{self._uid}"
         with httpx.Client(timeout=None, cookies=self.cookies) as client:
-            # 1) SSE 스트림 연결
             with client.stream("GET", url, headers={"Accept": "text/event-stream"}) as resp:
                 self.assertEqual(resp.status_code, 200)
                 self.assertTrue(resp.headers["content-type"].startswith("text/event-stream"))
 
-                # 2) 알림 생성 → post_save 신호에서 send_event
+                # 한 번만 만들고 끝까지 공유할 이터레이터
+                lines = resp.iter_lines()
+
+                # 스트림 오픈 후에 이벤트를 발생시켜야 소비 타이밍이 맞습니다
                 Notification.objects.create(
                     user_id=self._uid,
                     content="hello via sse",
@@ -150,8 +187,8 @@ class EventStreamHTTPXTests(TestCase):
                     back_url_link="/x",
                 )
 
-                # 3) 이벤트 수신
-                evt = self._read_one_event(resp, timeout_sec=10.0)
+                # 이터레이터를 넘겨서 ‘한 번만’ 순회
+                evt = self._read_one_event_from_lines(lines, timeout_sec=10.0)
                 if evt is None:
                     self.fail("SSE 이벤트를 받지 못했습니다(타임아웃).")
 
