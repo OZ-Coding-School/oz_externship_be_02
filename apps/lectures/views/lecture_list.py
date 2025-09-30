@@ -15,6 +15,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.lectures.models.crawled_lectures import Lecture
+from apps.lectures.models.lecture_search_logs import LectureSearchLog
 from apps.lectures.serializers.crawled_lecture import LectureSerializer
 
 logger = logging.getLogger(__name__)
@@ -58,5 +59,12 @@ class LectureListView(ListAPIView[Lecture]):
     def get_queryset(self) -> QuerySet[Lecture]:
         search_keyword: str = self.request.query_params.get("search") or ""
         category_param = self.request.query_params.get("category")
+
+        if self.request.user.is_authenticated and search_keyword:
+            try:
+                LectureSearchLog.objects.create(user=self.request.user, keyword=search_keyword.lower())
+            except Exception as e:
+                logger.error("Failed to save search log for user %s: %s", self.request.user.id, str(e))
+
         queryset: QuerySet[Lecture] = Lecture.objects.search(search_keyword).filter_by_categories(category_param)
         return queryset

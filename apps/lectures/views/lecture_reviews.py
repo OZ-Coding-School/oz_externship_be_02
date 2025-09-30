@@ -25,7 +25,6 @@ class LectureReviewsView(APIView):
         serializer = self.serializer_class(queryset, many=True)
         lecture_reviews = serializer.data
 
-
         # 리뷰 없으면 빈 결과 반환
         if not lecture_reviews:
             return Response({"results": [], "next": None, "previous": None})
