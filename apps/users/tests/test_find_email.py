@@ -92,7 +92,7 @@ class EmailRecoveryTestCase(RedisTestClient, IsolatedCacheTestMixin):
         data = {"name": "Nobody", "phone_number": "01099999999", "code": "123456"}
         response = self.client.post(self.find_email_url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn("detail", response.data)
+        self.assertIn("error", response.data)
 
     @patch.object(find_email_serializer.phone_service, "check_verification_code")
     def test_email_recovery_missing_fields(self, mock_check: MagicMock) -> None:
