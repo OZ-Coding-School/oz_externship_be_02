@@ -1,39 +1,6 @@
-# apps/users/services/find_email_service.py
-
 from rest_framework.exceptions import NotFound
 
 from apps.users.models.user import User
-from apps.users.services.phone_service import (  # type: ignore
-    PhoneSendingFailedError,
-    PhoneVerificationCodeFailedError,
-    PhoneVerificationService,
-    TwilioAuthService,
-)
-from apps.users.utils.enums import VerificationPurpose
-
-phone_service = TwilioAuthService()
-
-
-class FindEmailPhoneVerificationService:
-    @staticmethod
-    def send_code_for_find_email(phone_number: str, purpose: VerificationPurpose) -> None:
-        """
-        휴대폰 인증 코드 전송
-        """
-        try:
-            phone_service.send_verification_code(phone_number, purpose)
-        except PhoneSendingFailedError as e:
-            raise PhoneSendingFailedError("휴대폰 인증 번호 전송에 실패했습니다.") from e
-
-    @staticmethod
-    def verify_code(phone_number: str, verification_code: str, purpose: VerificationPurpose) -> None:
-        """
-        휴대폰 인증 코드 검증
-        """
-        if not PhoneVerificationService.is_verified(
-            phone_number=phone_number, verification_code=verification_code, purpose=purpose
-        ):
-            raise PhoneVerificationCodeFailedError("인증 정보가 일치하지 않습니다.")
 
 
 class FindEmailService:
