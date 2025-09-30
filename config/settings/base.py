@@ -277,4 +277,6 @@ EVENTSTREAM_REDIS = {
     "db": 5,
 }
 
+EVENTSTREAM_BACKEND = "django_eventstream.backends.redisbackend.RedisBackend"
+
 EVENTSTREAM_CHANNELMANAGER_CLASS = "apps.notifications.channelmanager.NotificationChannelManager"
