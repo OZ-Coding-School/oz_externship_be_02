@@ -21,7 +21,7 @@ class MyApplicationDetailTestCase(APITestCase):
                     password="itspassword",
                     name="test",
                     nickname="testuser",
-                    phone_number=f"010-0000-000{i}",
+                    phone_number=f"010-0000-{i:04d}",
                     gender="male",
                     birthday=timezone.make_aware(datetime(2025, 9, 9)),
                 )
