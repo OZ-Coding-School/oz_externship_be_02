@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Dict, Iterable, Optional, Union
 import httpx
 import uvicorn
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase, override_settings
+from django.test import Client, TransactionTestCase, override_settings
 
 from apps.notifications.models import Notification
 
@@ -39,7 +39,7 @@ def get_free_port() -> int:
     # 혹시 호스트 제한 있으면 넉넉히
     ALLOWED_HOSTS=["testserver", "127.0.0.1", "localhost"],
 )
-class EventStreamHTTPXTests(TestCase):
+class EventStreamHTTPXTests(TransactionTestCase):
     """Uvicorn으로 실제 ASGI 서버를 띄워 /events/?channel=user-<id> SSE를 통합 테스트"""
 
     server: ClassVar[uvicorn.Server | None] = None
@@ -48,7 +48,8 @@ class EventStreamHTTPXTests(TestCase):
     user: ClassVar["DjangoUser"]  # ← 문자열 타입 힌트로 선언
 
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls) -> None:
+        super().setUpClass()
         cls.user = User.objects.create_user(
             email="sse@test.com",
             password="Pw123456!",
@@ -58,10 +59,6 @@ class EventStreamHTTPXTests(TestCase):
             gender="male",
             birthday=date(1990, 1, 1),
         )
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
         import django_eventstream.eventstream as es  # type: ignore[import-untyped]
 
         es._backend = None  # 캐시 클리어
