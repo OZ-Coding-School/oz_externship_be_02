@@ -5,7 +5,12 @@ from typing import Any, cast
 import requests
 from django.conf import settings
 from django.db import transaction
-from rest_framework.exceptions import APIException, ParseError, ValidationError
+from rest_framework.exceptions import (
+    APIException,
+    AuthenticationFailed,
+    ParseError,
+    ValidationError,
+)
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.logger import logger
@@ -42,12 +47,20 @@ class NaverService:  # 네이버 로그인 로직 담당 (카카오와 동일한
             timeout=5,
         )
 
-        if res.status_code == 400 and "invalid" in res.text.lower():
-            raise ValidationError("네이버 인가 코드가 유효하지 않습니다.")
-
-        if not (200 <= res.status_code < 300):
+        if res.status_code == 400:
+            try:
+                err = res.json().get("error", "")
+            except ValueError:
+                raise ParseError("네이버 토큰 응답 파싱에 실패했습니다.")  # 400
+            if err == "invalid_grant":
+                raise ValidationError("네이버 인가 코드가 유효하지 않습니다.")  # 400
+            raise ValidationError("네이버 토큰 발급 요청이 잘못되었습니다.")  # 400
+        if res.status_code == 401:
+            # invalid_client 등 클라이언트 인증 실패
+            raise AuthenticationFailed("네이버 클라이언트 인증에 실패했습니다.")  # 401
+        if not (res.status_code == 200):
             ex = APIException("네이버 토큰 발급 요청이 실패했습니다.")
-            ex.status_code = 502
+            ex.status_code = 502  # 업스트림/게이트웨이 오류
             raise ex
         try:
             body: dict[str, Any] = res.json()
@@ -55,6 +68,7 @@ class NaverService:  # 네이버 로그인 로직 담당 (카카오와 동일한
             raise ParseError("네이버 토큰 응답 파싱에 실패했습니다.")
         token_raw: Any = body.get("access_token")
         if not isinstance(token_raw, str) or not token_raw:
+            # 200인데 필수 필드 누락 → 업스트림 계약 위반
             ex = APIException("네이버 토큰 응답에 access_token이 없습니다.")
             ex.status_code = 502
             raise ex
@@ -93,9 +107,13 @@ class NaverService:  # 네이버 로그인 로직 담당 (카카오와 동일한
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=5,
         )
-        if not (200 <= res.status_code < 300):
+        if res.status_code in (401, 403, 404):
             ex = APIException("네이버 사용자 정보 조회에 실패했습니다.")
-            ex.status_code = 502
+            ex.status_code = res.status_code
+            raise ex
+        if not res.status_code == 200:
+            ex = APIException("네이버 사용자 정보 조회에 실패했습니다.")
+            ex.status_code = 502  # 업스트림/게이트웨이 오류
             raise ex
 
         try:
@@ -107,8 +125,9 @@ class NaverService:  # 네이버 로그인 로직 담당 (카카오와 동일한
 
         serializer = NaverUserSerializer(data=mapped)
         if not serializer.is_valid():
+            missing_id = not bool(mapped.get("id"))
             ex = APIException("네이버 사용자 정보 스키마가 올바르지 않습니다.")
-            ex.status_code = 500
+            ex.status_code = 502 if missing_id else 500
             logger.warning("NAVER_SCHEMA_INVALID errors=%s payload=%s", serializer.errors, raw)
             raise ex
 

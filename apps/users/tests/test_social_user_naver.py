@@ -66,7 +66,7 @@ class TestNaverLogin(APITestCase):
             },
         }
         resp = self.client.post(self.url, {"code": "dummy"})
-        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(resp.status_code, status.HTTP_502_BAD_GATEWAY)
         self.assertEqual(resp.data.get("error"), "네이버 사용자 정보 스키마가 올바르지 않습니다.")
 
     @patch("apps.users.services.naver_login_service.requests.get")
@@ -180,13 +180,13 @@ class TestNaverLoginServiceCoverage(APITestCase):
         bad_body: dict[str, Any] = {"resultcode": "00", "message": "success", "response": {}}  # id 누락
         self._mock_naver(mock_post, mock_get, get_json=bad_body)
         resp = self.client.post(self.url, {"code": "c"})
-        self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(resp.status_code, status.HTTP_502_BAD_GATEWAY)
         self.assertTrue(mock_logger.warning.called)
         self.assertEqual(resp.data.get("error"), "네이버 사용자 정보 스키마가 올바르지 않습니다.")
 
     @patch("apps.users.services.naver_login_service.requests.get")
     @patch("apps.users.services.naver_login_service.requests.post")
-    def test_access_token_missing_leads_to_500(self, mock_post: Mock, mock_get: Mock) -> None:
+    def test_access_token_missing_leads_to_502(self, mock_post: Mock, mock_get: Mock) -> None:
         self._mock_naver(mock_post, mock_get, post_json={"refresh_token": "rt"})
         resp = self.client.post(self.url, {"code": "c"})
         self.assertEqual(resp.status_code, status.HTTP_502_BAD_GATEWAY)
