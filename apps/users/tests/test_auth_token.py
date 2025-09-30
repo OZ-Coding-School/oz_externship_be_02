@@ -131,7 +131,6 @@ class InactiveUserLoginTestCase(APITestCase, VerificationMixin):
             self.login_url, {"email": self.user.email, "password": "testpassword"}, format="json"
         )
 
-
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("error", response.data)
 

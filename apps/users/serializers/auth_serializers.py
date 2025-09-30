@@ -9,6 +9,7 @@ class EmailLoginRequestSerializer(serializers.Serializer[dict[str, Any]]):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
+
 class LoginResponseSerializer(serializers.ModelSerializer[User]):
     class Meta:
         model = User
@@ -25,9 +26,4 @@ class LoginResponseSerializer(serializers.ModelSerializer[User]):
             "created_at",
             "updated_at",
         ]
-        extra_kwargs = {
-            "password": {"write_only": True}
-        }
-
-
-
+        extra_kwargs = {"password": {"write_only": True}}

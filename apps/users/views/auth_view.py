@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from apps.users.models import User, user
 from apps.users.serializers.auth_serializers import (
-    EmailLoginRequestSerializer,
+    EmailLoginRequestSerializer, LoginResponseSerializer,
 )
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.auth_service import AuthService, JWTService
@@ -79,13 +79,12 @@ class EmailLoginAPIView(APIView):
         # 유저 응답
         response = Response(
             {
-                "user" : user_data,
-                "access" : tokens["access"],
-            }
-            , status=status.HTTP_200_OK
+                "user": user_data,
+                "access": tokens["access"],
+            },
+            status=status.HTTP_200_OK,
         )
 
-        response = Response({"access": tokens["access"]}, status=status.HTTP_200_OK)
         response.set_cookie(
             "refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
         )
