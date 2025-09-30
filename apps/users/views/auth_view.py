@@ -9,7 +9,8 @@ from rest_framework.views import APIView
 
 from apps.users.models import User, user
 from apps.users.serializers.auth_serializers import (
-    EmailLoginRequestSerializer, LoginResponseSerializer,
+    EmailLoginRequestSerializer,
+    LoginResponseSerializer,
 )
 from apps.users.serializers.signup_serializers import UserSignupSerializer
 from apps.users.services.auth_service import AuthService, JWTService
@@ -80,13 +81,13 @@ class EmailLoginAPIView(APIView):
         response = Response(
             {
                 "user": user_data,
-                "access": tokens["access"],
+                "access_token": tokens["access"],
             },
             status=status.HTTP_200_OK,
         )
 
         response.set_cookie(
-            "refresh", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
+            "refresh_token", tokens["refresh"], httponly=True, domain=".ozcoding.site", secure=True, samesite="None"
         )
 
         return response
@@ -111,7 +112,7 @@ class LogoutAPIView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        refresh = request.COOKIES.get("refresh")
+        refresh = request.COOKIES.get("refresh_token")
 
         if not refresh:
             return Response({"error": "refresh 토큰이 필요합니다"}, status=status.HTTP_400_BAD_REQUEST)
@@ -121,7 +122,7 @@ class LogoutAPIView(APIView):
             return Response({"error": str(e)}, status.HTTP_401_UNAUTHORIZED)
 
         response = Response({"detail": "로그아웃이 완료되었습니다"}, status=status.HTTP_200_OK)
-        response.delete_cookie("refresh")
+        response.delete_cookie("refresh_token")
         return response
 
 
@@ -150,7 +151,7 @@ class CookieTokenRefreshAPIView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        refresh_token = request.COOKIES.get("refresh")
+        refresh_token = request.COOKIES.get("refresh_token")
 
         try:
             access_token = JWTService.refresh_access_token(refresh_token)
