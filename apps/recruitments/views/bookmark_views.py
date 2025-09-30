@@ -1,7 +1,7 @@
 from typing import Any, cast
 from uuid import UUID
 
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
@@ -63,6 +63,15 @@ class BookmarkToggleView(APIView):
 class MyBookmarkedRecruitmentListView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="북마크한 공고 목록 조회",
+        tags=["스터디 구인 공고/북마크"],
+        parameters=[
+            OpenApiParameter(name="cursor", description="다음 페이지를 가리키는 커서 값", type=str),
+            OpenApiParameter(name="limit", description="한 페이지에 표시할 항목의 수", type=int),
+        ],
+        responses={status.HTTP_200_OK: MyBookmarkedRecruitmentListSerializer(many=True)},
+    )
     def get(self, request: Request) -> Response:
         service = BookmarkService()
         queryset = service.get_bookmarked_list(user=cast(User, request.user))

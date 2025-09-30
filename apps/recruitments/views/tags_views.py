@@ -1,4 +1,5 @@
-from rest_framework import filters, status
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import filters, serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -26,6 +27,16 @@ class TagAPIView(APIView):
     filter_backends = [filters.SearchFilter]
     search_fields = ["name"]
 
+    @extend_schema(
+        summary="태그 검색",
+        tags=["스터디 구인 공고/태그"],
+        parameters=[
+            OpenApiParameter(name="search", description="검색할 태그 키워드", type=str),
+            OpenApiParameter(name="page", description="페이지 번호", type=int),
+            OpenApiParameter(name="size", description="페이지 당 항목 수", type=int),
+        ],
+        responses={status.HTTP_200_OK: TagSerializer(many=True)},
+    )
     def get(self, request: Request) -> Response:
         """
         GET 요청을 처리하여 태그 목록을 반환한다.
@@ -58,6 +69,20 @@ class TagAPIView(APIView):
         # 5. 생성된 응답 객체를 반환한다.
         return response
 
+    @extend_schema(
+        summary="신규 태그 등록",
+        tags=["스터디 구인 공고/태그"],
+        request=inline_serializer(name="TagCreateRequest", fields={"name": serializers.CharField()}),
+        responses={
+            status.HTTP_201_CREATED: TagSerializer,
+            status.HTTP_400_BAD_REQUEST: inline_serializer(
+                name="TagCreateError", fields={"detail": serializers.CharField()}
+            ),
+            status.HTTP_409_CONFLICT: inline_serializer(
+                name="TagConflictError", fields={"detail": serializers.CharField()}
+            ),
+        },
+    )
     def post(self, request: Request) -> Response:
         """
         POST 요청을 처리하여 새로운 태그를 생성합니다.
