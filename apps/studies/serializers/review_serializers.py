@@ -1,10 +1,4 @@
-from time import localtime
-from typing import Any, Dict
-
-from django.db.models import QuerySet
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.validators import UniqueTogetherValidator
 
 from apps.studies.models.study_groups import StudyGroup
 from apps.studies.models.study_reviews import StudyReview
@@ -87,21 +81,43 @@ class ReviewUpdateResponseSerializer(serializers.ModelSerializer[StudyReview]):
         ]
 
 
+# Admin
+
+
+class AdminReviewUserSerializer(serializers.ModelSerializer[User]):
+    class Meta:
+        model = User
+        fields = ["nickname", "email"]
+
+
+class AdminReviewStudyGroupDetailSerializer(serializers.ModelSerializer[StudyGroup]):
+    class Meta:
+        model = StudyGroup
+        fields = ["name", "start_at", "end_at", "introduction"]
+
+
 class AdminReviewListSerializer(serializers.ModelSerializer[StudyReview]):
 
     study_group_name = serializers.CharField(source="study_group.name", read_only=True)
-    user_nickname = serializers.CharField(source="user.nickname", read_only=True)
-    user_email = serializers.CharField(source="user.email", read_only=True)
+    user_info = AdminReviewUserSerializer(source="user", read_only=True)
 
     class Meta:
         model = StudyReview
         fields = [
             "id",
             "study_group_name",
-            "user_nickname",
-            "user_email",
+            "user_info",
             "content",
             "star_rating",
             "created_at",
             "updated_at",
         ]
+
+
+class AdminReviewDetailSerializer(serializers.ModelSerializer[StudyReview]):
+    study_group_info = AdminReviewStudyGroupDetailSerializer(source="study_group", read_only=True)
+    user_info = AdminReviewUserSerializer(source="user", read_only=True)
+
+    class Meta:
+        model = StudyReview
+        fields = ["id", "study_group_info", "user_info", "content", "star_rating", "created_at", "updated_at"]

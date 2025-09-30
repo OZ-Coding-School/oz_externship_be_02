@@ -1,11 +1,30 @@
+import django_filters
 from django.db.models import QuerySet
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
-from rest_framework.generics import ListAPIView
+from rest_framework.filters import OrderingFilter
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 
 from apps.studies.models import StudyReview
 from apps.studies.pagination import ReviewLimitOffsetPagination
-from apps.studies.serializers.review_serializers import AdminReviewListSerializer
+from apps.studies.serializers.review_serializers import (
+    AdminReviewDetailSerializer,
+    AdminReviewListSerializer,
+)
+
+
+class AdminReviewFilter(django_filters.FilterSet):
+    """관리자 리뷰 목록 필터셋"""
+
+    user_nickname = django_filters.CharFilter(
+        field_name="user__nickname", lookup_expr="iexact"
+    )  # 정확 매칭 (대소문자 무시)
+    user_email = django_filters.CharFilter(field_name="user__email", lookup_expr="iexact")  # 정확 매칭 (대소문자 무시)
+
+    class Meta:
+        model = StudyReview
+        fields = ["user_nickname", "user_email"]  # 추가 필터 필요 시 확장
 
 
 @extend_schema(
@@ -22,6 +41,8 @@ class AdminReviewListView(ListAPIView[StudyReview]):
     serializer_class: type[AdminReviewListSerializer] = AdminReviewListSerializer
     pagination_class = ReviewLimitOffsetPagination
     permission_classes = [IsAuthenticated, IsAdminUser]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]  # 필터링 + 정렬 백엔드
+    filterset_class = AdminReviewFilter
     allowed_ordering_fields = ["created_at", "-created_at"]
 
     def get_queryset(self) -> QuerySet[StudyReview]:
@@ -43,3 +64,20 @@ class AdminReviewListView(ListAPIView[StudyReview]):
         queryset = queryset.order_by(ordering)
 
         return queryset
+
+
+@extend_schema(
+    tags=["Admin Reviews"],
+    summary="관리자 리뷰 상세 조회 API",
+    description="관리자 권한 유저가 특정 리뷰 고유 ID로 상세 조회. 조회 가능한 항목: ID, 스터디 그룹 정보(이름, 시작/종료일, 소개), 작성자 닉네임/이메일, 리뷰 내용, 별점, 생성/수정 일시.",
+    responses={200: AdminReviewDetailSerializer},
+)
+class AdminReviewDetailView(RetrieveAPIView[StudyReview]):
+    """
+    관리자 리뷰 상세 조회 뷰
+    """
+
+    serializer_class = AdminReviewDetailSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    queryset = StudyReview.objects.select_related("study_group", "user").all()
+    lookup_field = "pk"
