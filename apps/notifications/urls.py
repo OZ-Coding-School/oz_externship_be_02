@@ -19,4 +19,5 @@ urlpatterns: List[URLPattern] = [
     path("/read-all", views.NotificationReadAllView.as_view(), name="notification-read-all"),
     # GET /api/v1/notifications/unread-count
     path("/unread-count", views.UnreadCountView.as_view(), name="notification-unread-count"),
+    path("/event-stream", views.EventStreamView.as_view(), name="notification-event-stream"),
 ]
