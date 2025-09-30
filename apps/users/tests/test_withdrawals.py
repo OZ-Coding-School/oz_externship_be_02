@@ -109,7 +109,6 @@ class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
         }
 
         response = self.client.post(self.recovery_url, data)
-        print(response.data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["detail"], "계정이 복구되었습니다. 이제 로그인할 수 있습니다.")
