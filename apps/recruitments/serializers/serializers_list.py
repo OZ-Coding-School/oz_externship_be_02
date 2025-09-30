@@ -46,3 +46,24 @@ class RecruitmentListSerializer(serializers.ModelSerializer[Recruitment]):
             "updated_at",
         )
         read_only_fields = fields
+
+
+# admin-application-detail시리얼라이저에서 활용
+class RecruitmentApplicationSerializer(serializers.ModelSerializer[Recruitment]):
+    lectures = LectureListSerializer(source="study_group.lectures", many=True)
+    tags: StringRelatedField[Tag] = serializers.StringRelatedField(many=True)
+    headcount = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Recruitment
+        fields = (
+            "title",
+            "headcount",
+            "lectures",
+            "tags",
+            "close_at",
+        )
+        read_only_fields = fields
+
+    def get_headcount(self, obj: Recruitment) -> int:
+        return int(self.context.get("headcount", 0))

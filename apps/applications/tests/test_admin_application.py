@@ -16,9 +16,21 @@ class AdminApplicationTestCase(APITestCase):
     RECRUITMENT_COUNT: Final = 2
     APPLICATION_COUNT: Final = USER_COUNT * RECRUITMENT_COUNT
 
-    def setUp(self) -> None:
+    users: list[User]
+    recruitments: list[Recruitment]
+    study_group: StudyGroup
+    applications: list[Application]
+    status = [
+        Application.ApplicationStatus.PENDING,
+        Application.ApplicationStatus.CANCELED,
+        Application.ApplicationStatus.ACCEPTED,
+        Application.ApplicationStatus.REJECTED,
+    ]
+
+    @classmethod
+    def setUpTestData(cls) -> None:
         users = []
-        for i in range(self.USER_COUNT - 1):
+        for i in range(cls.USER_COUNT - 1):
             users.append(
                 User(
                     email=f"testuser{i}@test.com",
@@ -36,43 +48,36 @@ class AdminApplicationTestCase(APITestCase):
                 password="itspassword",
                 name="test",
                 nickname="superuser",
-                phone_number=f"010-0000-{self.USER_COUNT-1:04d}",
+                phone_number=f"010-0000-{cls.USER_COUNT - 1:04d}",
                 gender="male",
                 birthday=timezone.make_aware(datetime(2025, 9, 9)),
                 is_superuser=True,
             )
         )
-        self.users: list[User] = User.objects.bulk_create(users)
-        self.client.force_authenticate(user=self.users[self.USER_COUNT - 1])
+        cls.users = User.objects.bulk_create(users)
 
-        self.study_group = StudyGroup.objects.create(
+        cls.study_group = StudyGroup.objects.create(
             name="test group", max_headcount=5, start_at=timezone.now(), end_at=timezone.now() + timedelta(days=1)
         )
 
         recruitments = []
-        for i in range(self.RECRUITMENT_COUNT):
+        for i in range(cls.RECRUITMENT_COUNT):
             recruitments.append(
                 Recruitment(
-                    study_group=self.study_group,
-                    author=self.users[0],
+                    study_group=cls.study_group,
+                    author=cls.users[0],
                     title=f"test recruitment{i+1}",
                     content="test content",
                     estimated_fee=50000,
                     expected_headcount=5,
                 )
             )
-        self.recruitments: list[Recruitment] = Recruitment.objects.bulk_create(recruitments)
+        cls.recruitments = Recruitment.objects.bulk_create(recruitments)
 
         applications = []
-        self.status = [
-            Application.ApplicationStatus.PENDING,
-            Application.ApplicationStatus.CANCELED,
-            Application.ApplicationStatus.ACCEPTED,
-            Application.ApplicationStatus.REJECTED,
-        ]
         status_count = 0
-        for recm in self.recruitments:
-            for user in self.users:
+        for recm in cls.recruitments:
+            for user in cls.users:
                 applications.append(
                     Application(
                         recruitment=recm,
@@ -81,11 +86,14 @@ class AdminApplicationTestCase(APITestCase):
                         motivation="test motivation",
                         self_introduction="test self introduction",
                         available_time="test available time",
-                        status=self.status[status_count],
+                        status=cls.status[status_count],
                     )
                 )
                 status_count = (status_count + 1) % 4
-        self.applications = Application.objects.bulk_create(applications)
+        cls.applications = Application.objects.bulk_create(applications)
+
+    def setUp(self) -> None:
+        self.client.force_authenticate(user=self.users[self.USER_COUNT - 1])
 
     def test_admin_aply_list(self) -> None:
         url = reverse("admin-application-list")
@@ -133,3 +141,10 @@ class AdminApplicationTestCase(APITestCase):
         res = self.client.get(url, query_params_email)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["count"], self.RECRUITMENT_COUNT)
+
+    def test_admin_detail(self) -> None:
+        url = reverse("admin-application-detail", kwargs={"application_id": self.applications[0].id})
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["id"], self.applications[0].id)
+        self.assertEqual(res.data["recruitment"]["headcount"], 2)
