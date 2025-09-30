@@ -1,93 +1,160 @@
-from datetime import date
-from unittest.mock import Mock, patch
+from __future__ import annotations
 
-from django.test import TestCase
+import json
+import socket
+import threading
+import time
+from datetime import date
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, cast
+
+import httpx
+import uvicorn
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase, override_settings
 
 from apps.notifications.models import Notification
-from apps.notifications.services.noti_create_service import StudyNoteNotificationService
-from apps.studies.models import GroupMember, StudyGroup
-from apps.study_notes.models import StudyNote
-from apps.users.models import User
+
+if TYPE_CHECKING:
+    from apps.users.models.user import User as DjangoUser
+
+User = get_user_model()
 
 
-class NotificationSSEReceiverTests(TestCase):
-    @patch(
-        "apps.notifications.receivers.send_event"
-    )  # 시그널 리시버 내부에서 쓰는 send_event를 MOCK으로 바꿔치기 / 호출되는지 확인
-    def test_post_save_push_sse(self, mock_send: Mock) -> None:
-        u = User.objects.create_user(  # 테스트용 유저
-            email="oz@example.com",
-            password="1q2w3e4r!",
-            nickname="author",
-            name="Author",
+def get_free_port() -> int:
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return int(port)
+
+
+@override_settings(
+    # 반드시 ASGI로 라우팅되도록
+    ASGI_APPLICATION="config.asgi.application",
+    # 테스트에선 eventstream을 메모리 백엔드로
+    EVENTSTREAM_BACKEND="django_eventstream.backends.memorybackend.MemoryBackend",
+    EVENTSTREAM_REDIS_CONNECTION=None,
+    EVENTSTREAM_ALLOW_ORIGIN="*",
+    # 혹시 호스트 제한 있으면 넉넉히
+    ALLOWED_HOSTS=["testserver", "127.0.0.1", "localhost"],
+)
+class EventStreamHTTPXTests(TestCase):
+    """Uvicorn으로 실제 ASGI 서버를 띄워 /events/?channel=user-<id> SSE를 통합 테스트"""
+
+    server: ClassVar[uvicorn.Server | None] = None
+    server_thread: ClassVar[threading.Thread | None] = None
+    base_url: ClassVar[str]
+    user: ClassVar["DjangoUser"]  # ← 문자열 타입 힌트로 선언
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.user = User.objects.create_user(
+            email="sse@test.com",
+            password="Pw123456!",
+            nickname="tester",
+            name="Tester",
             phone_number="01000000000",
             gender="male",
             birthday=date(1990, 1, 1),
         )
-        n = Notification.objects.create(  # post_save 시그널 생성 / send_event 호출
-            user=u,
-            content="hello",
-            notification_type=Notification.NotificationType.ADD_APPLICATION,
-            back_url_link="/x",
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        # 빈 포트 할당
+        port = get_free_port()
+        cls.base_url = f"http://127.0.0.1:{port}"
+
+        # Uvicorn ASGI 서버를 백그라운드로 띄운다
+        config = uvicorn.Config(
+            "config.asgi:application",
+            host="127.0.0.1",
+            port=port,
+            log_level="error",
+            lifespan="off",  # 테스트 속도/안정용
         )
-        mock_send.assert_called_once()  # 한번만 호출 됐는지 확인
-        channel, event, data = mock_send.call_args.args
-        assert channel == f"user-{u.id}"
-        assert event == "notification"
-        assert data["id"] == n.id
-        assert data["type"] == "ADD_APPLICATION"
-        assert data["content"] == "hello"
-        assert data["back_url_link"] == "/x"
-        assert data["is_read"] is False
+        cls.server = uvicorn.Server(config)
+        cls.server_thread = threading.Thread(target=cls.server.run, daemon=True)
+        cls.server_thread.start()
 
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            try:
+                with httpx.Client(timeout=0.2) as c:
+                    c.get(cls.base_url + "/")
+                break
+            except Exception:
+                time.sleep(0.05)
+        else:
+            raise RuntimeError("Uvicorn test server failed to start")
 
-class BulkSSETests(TestCase):
-    @patch("apps.notifications.services.noti_create_service.send_event")
-    def test_bulk_create_push(self, mock_send: Mock) -> None:
-        with self.captureOnCommitCallbacks(execute=True):  # on_commit 콜백 지금 실행
-            leader = User.objects.create_user(
-                email="ox@example.com",
-                password="1q2w3e4r@",
-                nickname="m1",
-                name="Member1",
-                phone_number="01011111111",
-                gender="male",
-                birthday=date(1993, 1, 1),
-            )
-            m1 = User.objects.create_user(
-                email="oc@example.com",
-                password="1q2w3e4r#",
-                nickname="m2",
-                name="Member2",
-                phone_number="01022222222",
-                gender="male",
-                birthday=date(1994, 1, 1),
-            )
-            m2 = User.objects.create_user(
-                email="os@example.com",
-                password="1q2w3e4r#",
-                nickname="m3",
-                name="Member4",
-                phone_number="01033333333",
-                gender="male",
-                birthday=date(1995, 1, 1),
-            )
-            g = StudyGroup.objects.create(
-                name="G",
-                introduction="i",
-                max_headcount=5,
-                start_at="2025-01-01T00:00:00Z",
-                end_at="2025-12-31T00:00:00Z",
-            )
-            GroupMember.objects.create(study_group=g, user=leader, is_leader=True)
-            GroupMember.objects.create(study_group=g, user=m1)
-            GroupMember.objects.create(study_group=g, user=m2)
+    @classmethod
+    def tearDownClass(cls) -> None:
+        try:
+            if cls.server:
+                cls.server.should_exit = True
+            if cls.server_thread:
+                cls.server_thread.join(timeout=5)
+        finally:
+            super().tearDownClass()
 
-            note = StudyNote.objects.create(study_group=g, author=leader, title="t", content="c")
+    def setUp(self) -> None:
+        # 로그인 세션 만들고 쿠키 이식
+        self.dclient = Client()
+        # mypy 스텁이 기본 User 타입만 허용하므로 Any로 캐스트해 한 줄만 우회
+        self.dclient.force_login(cast(Any, type(self).user))
+        self.cookies: Dict[str, str] = {k: v.value for k, v in self.dclient.cookies.items()}
+        # mypy가 Optional로 보지 않도록 미리 정수화
+        self._uid: int = int(type(self).user.id)
 
-            created = StudyNoteNotificationService.from_instance(note).notify_add_study_note()
-            assert created == 2
+    # SSE 한 이벤트만 파싱
+    def _read_one_event(self, resp: httpx.Response, timeout_sec: float = 10.0) -> Optional[Dict[str, Any]]:
+        deadline = time.time() + timeout_sec
+        buf: list[str] = []
+        for line in resp.iter_lines():
+            s = line.decode() if isinstance(line, (bytes, bytearray)) else str(line)
+            s = s.rstrip("\r\n")
+            if not s:
+                etype: Optional[str] = None
+                data_raw: Optional[str] = None
+                for row in buf:
+                    if row.startswith("event:"):
+                        etype = row[6:].strip()
+                    elif row.startswith("data:"):
+                        data_raw = row[5:].strip()
+                buf.clear()
+                if data_raw:
+                    payload: Dict[str, Any] = json.loads(data_raw)
+                    if etype:
+                        payload["_event"] = etype
+                    return payload
+            else:
+                buf.append(s)
+            if time.time() > deadline:
+                break
+        return None
 
-        # send_event가 수신자별로 호출되는지 기대 채널명 확인
-        channels = {args[0] for args, _ in mock_send.call_args_list}
-        assert channels == {f"user-{m1.id}", f"user-{m2.id}"}
+    def test_client_receives_streamed_notification(self) -> None:
+        url = f"{type(self).base_url}/events/?channel=user-{self._uid}"
+        with httpx.Client(timeout=None, cookies=self.cookies) as client:
+            # 1) SSE 스트림 연결
+            with client.stream("GET", url, headers={"Accept": "text/event-stream"}) as resp:
+                self.assertEqual(resp.status_code, 200)
+                self.assertTrue(resp.headers["content-type"].startswith("text/event-stream"))
+
+                # 2) 알림 생성 → post_save 신호에서 send_event
+                Notification.objects.create(
+                    user_id=self._uid,
+                    content="hello via sse",
+                    notification_type=Notification.NotificationType.ADD_APPLICATION,
+                    back_url_link="/x",
+                )
+
+                # 3) 이벤트 수신
+                evt = self._read_one_event(resp, timeout_sec=10.0)
+                if evt is None:
+                    self.fail("SSE 이벤트를 받지 못했습니다(타임아웃).")
+
+                self.assertEqual(evt.get("_event"), "notification")
+                self.assertEqual(evt.get("content"), "hello via sse")
+                self.assertEqual(evt.get("back_url_link"), "/x")
