@@ -25,7 +25,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("api/v1/study-notes", include("apps.study_notes.urls.study_note_urls")),
     path("api/v1/applications", include("apps.applications.urls")),
     path("api/v1/chat", include("apps.chat.urls")),
-    path("/event-stream", views.EventStreamView.as_view(), name="notification-event-stream"),
+    path("/events/me", views.EventStreamView.as_view(), name="notification-event-stream"),
     path("events/", include("django_eventstream.urls")),
 ]
 
