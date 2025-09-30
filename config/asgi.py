@@ -22,8 +22,6 @@ django_asgi_app = get_asgi_application()
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": JWTAuthMiddleware(
-            URLRouter(apps.chat.routing.websocket_urlpatterns)
-        ), # type: ignore
+        "websocket": JWTAuthMiddleware(URLRouter(apps.chat.routing.websocket_urlpatterns)),  # type: ignore
     }
 )
