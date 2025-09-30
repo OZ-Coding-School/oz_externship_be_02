@@ -33,15 +33,13 @@ class ResetPasswordSerializer(serializers.Serializer[Dict[str, Any]]):
 
         # 이메일 인증 코드 검증
         try:
-            valid = email_verify.verify_code(
+            email_verify.verify_code(
                 purpose=VerificationPurpose.RESET_PASSWORD,
                 email=str(email),
                 verification_code=str(verification_code),
             )
         except EmailVerificationCodeFailedError:
             raise ValidationError({"verification_code": "이메일 인증 코드가 유효하지 않거나 만료되었습니다."})
-        if not valid:
-            raise ValidationError({"verification_code": "이메일 인증 코드가 유효하지 않습니다 "})
 
         return attrs
 
