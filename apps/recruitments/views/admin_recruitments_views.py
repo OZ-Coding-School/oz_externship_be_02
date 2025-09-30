@@ -51,12 +51,31 @@ class AdminRecruitmentListView(generics.ListAPIView[Recruitment]):
 class AdminRecruitmentDetailView(APIView):
     permission_classes = [IsAdminUser]
 
+    @extend_schema(
+        summary="[어드민] 구인 공고 상세 조회",
+        tags=["어드민/구인 공고"],
+        parameters=[
+            OpenApiParameter(name="recruitment_id", description="구인 공고 ID", type=int),
+        ],
+        responses={status.HTTP_200_OK: AdminRecruitmentDetailSerializer(many=True)},
+    )
     def get(self, request: Request, recruitment_id: int) -> Response:
         recruitment = get_recruitment_detail_for_admin(recruitment_id=recruitment_id)
         serializer = AdminRecruitmentDetailSerializer(recruitment)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     # 삭제
+    @extend_schema(
+        summary="[어드민] 구인 공고 삭제",
+        tags=["어드민/구인 공고"],
+        parameters=[
+            OpenApiParameter(name="recruitment_id", description="구인 공고 ID", type=int),
+        ],
+        responses={
+            status.HTTP_204_NO_CONTENT: OpenApiResponse(description="삭제 성공"),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description="존재하지 않는 공고"),
+        },
+    )
     def delete(self, request: Request, recruitment_id: int) -> Response:
         try:
             recruitment = Recruitment.objects.get(id=recruitment_id)
