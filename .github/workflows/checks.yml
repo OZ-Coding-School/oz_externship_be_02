@@ -275,7 +275,7 @@ jobs:
           
           # 최적화된 parallel 테스트 실행
           coverage run --parallel-mode --concurrency=multiprocessing \
-            manage.py test --parallel 4 --keepdb --verbosity=1 \
+            manage.py test --parallel 2 --keepdb --verbosity=1 \
             --debug-mode --no-input
           
           echo "📊 Coverage 데이터 결합 중..."
