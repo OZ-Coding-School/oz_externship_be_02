@@ -223,3 +223,23 @@ def check_schedule_edit_conflicts(
             }
 
     return None
+
+
+def get_schedule_for_delete(schedule_id: int, user_id: int, study_group_uuid: str | UUID) -> GroupSchedule | None:
+    """삭제를 위한 스케줄 조회"""
+    try:
+        return GroupSchedule.schedules.get_for_delete(
+            schedule_id=schedule_id, user_id=user_id, study_group_uuid=study_group_uuid
+        ).first()
+    except (ValueError, GroupSchedule.DoesNotExist):
+        return None
+
+
+def validate_user_can_delete_schedule(user: User, schedule: GroupSchedule) -> bool:
+    """사용자가 스케줄을 삭제할 수 있는지 확인"""
+    from apps.studies.models import GroupMember
+
+    # 스터디 그룹 멤버이면 삭제 가능
+    is_member = GroupMember.objects.filter(study_group=schedule.study_group, user=user).exists()
+
+    return is_member
