@@ -17,10 +17,4 @@ urlpatterns: List[URLPattern] = [
         views.StudyGroupScheduleDetailView.as_view(),
         name="schedule_detail",
     ),
-    # PATCH /api/v1/schedules/<uuid:study_group_id>/<int:schedule_id>
-    path(
-        "/<uuid:study_group_uuid>/<int:schedule_id>",
-        views.StudyGroupScheduleUpdateView.as_view(),
-        name="schedule_update",
-    ),
 ]

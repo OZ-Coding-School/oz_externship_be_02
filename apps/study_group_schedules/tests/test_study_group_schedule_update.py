@@ -115,7 +115,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -152,7 +153,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.member_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -167,7 +169,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.outsider_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -182,7 +185,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": 99999},
         )
 
@@ -197,7 +201,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.other_study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -210,7 +215,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
     def test_update_schedule_unauthenticated(self) -> None:
         """인증되지 않은 사용자의 수정 시도 테스트"""
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -225,7 +231,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -242,7 +249,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -260,7 +268,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -277,7 +286,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -294,7 +304,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -311,7 +322,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -330,7 +342,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 
@@ -351,7 +364,8 @@ class StudyGroupScheduleUpdateAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.leader_user)
 
         url = reverse(
-            "schedule_update",
+            "schedule_detail"
+            "",
             kwargs={"study_group_uuid": self.study_group.uuid, "schedule_id": self.schedule.id},
         )
 

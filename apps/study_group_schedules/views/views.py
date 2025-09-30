@@ -166,44 +166,39 @@ class StudyGroupScheduleDetailView(APIView):
             return Response({"detail": "잘못된 요청입니다."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@extend_schema(
-    request=StudyGroupSchedulePartialUpdateSerializer,
-    responses={
-        200: StudyGroupScheduleDetailSerializer,
-        400: {"description": "잘못된 요청 데이터입니다."},
-        401: {"description": "인증되지 않은 사용자입니다."},
-        403: {"description": "해당 스케줄을 수정할 권한이 없습니다."},
-        404: {"description": "해당 스케줄을 찾을 수 없습니다."},
-    },
-    summary="스터디 그룹 스케줄 수정 (부분)",
-    description="""
-    특정 스터디 그룹의 스케줄을 부분 수정합니다.
-
-    수정 가능한 항목 (모두 선택사항):
-    - 스케줄 명 (title)
-    - 학습 목표 (objective)  
-    - 스터디 진행일 (session_date)
-    - 시작 시간 (start_time)
-    - 종료 시간 (end_time)
-    - 참여자 목록 (participant_ids)
-
-    권한:
-    - 스터디 그룹의 리더
-    - 스케줄을 생성한 사용자
-
-    제약사항:
-    - 과거 날짜로는 스케줄을 설정할 수 없습니다.
-    - 종료 시간은 시작 시간보다 늦어야 합니다.
-    - 스터디 시간은 최대 8시간까지 가능합니다.
-    - 참여자는 해당 스터디 그룹의 멤버여야 합니다.
-    """,
-    tags=["Study Group Schedules"],
-)
-class StudyGroupScheduleUpdateView(APIView):
-    """스터디 그룹 스케줄 부분 수정 (PATCH)"""
-
-    permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+        request=StudyGroupSchedulePartialUpdateSerializer,
+        responses={
+            200: StudyGroupScheduleDetailSerializer,
+            400: {"description": "잘못된 요청 데이터입니다."},
+            401: {"description": "인증되지 않은 사용자입니다."},
+            403: {"description": "해당 스케줄을 수정할 권한이 없습니다."},
+            404: {"description": "해당 스케줄을 찾을 수 없습니다."},
+        },
+        summary="스터디 그룹 스케줄 수정 (부분)",
+        description="""
+        특정 스터디 그룹의 스케줄을 부분 수정합니다.
+    
+        수정 가능한 항목 (모두 선택사항):
+        - 스케줄 명 (title)
+        - 학습 목표 (objective)  
+        - 스터디 진행일 (session_date)
+        - 시작 시간 (start_time)
+        - 종료 시간 (end_time)
+        - 참여자 목록 (participant_ids)
+    
+        권한:
+        - 스터디 그룹의 리더
+        - 스케줄을 생성한 사용자
+    
+        제약사항:
+        - 과거 날짜로는 스케줄을 설정할 수 없습니다.
+        - 종료 시간은 시작 시간보다 늦어야 합니다.
+        - 스터디 시간은 최대 8시간까지 가능합니다.
+        - 참여자는 해당 스터디 그룹의 멤버여야 합니다.
+        """,
+        tags=["Study Group Schedules"],
+    )
     @transaction.atomic
     def patch(self, request: Request, study_group_uuid: UUID, schedule_id: int) -> Response:
         """스케줄 부분 수정"""
