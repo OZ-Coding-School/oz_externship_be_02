@@ -11,7 +11,7 @@ class EmailLoginRequestSerializer(serializers.Serializer[dict[str, Any]]):
 
 
 class LoginResponseSerializer(serializers.ModelSerializer[User]):
-    access = serializers.CharField(read_only=True)
+    access_token = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
@@ -26,4 +26,5 @@ class LoginResponseSerializer(serializers.ModelSerializer[User]):
             "is_superuser",
             "created_at",
             "updated_at",
+            "access_token",
         ]

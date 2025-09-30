@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import IntegrityError
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
@@ -73,8 +74,9 @@ class EmailLoginAPIView(APIView):
                 return Response({"error": e.detail}, status=status.HTTP_401_UNAUTHORIZED)
             return Response({"error": str(e.detail)}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user_data = LoginResponseSerializer(user).data
         # 유저 응답
+        user_data = LoginResponseSerializer(user, context={"access_token": tokens["access"]}).data
+
         response = Response(
             {
                 "user": user_data,
