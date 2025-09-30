@@ -92,17 +92,12 @@ class AccountRecoveryAPIView(APIView):
         # 2) 이 인증의 목적을 설정
         purpose = VerificationPurpose.RECOVER_ACCOUNT
 
-        try:
-            # 3) 인증 코드 검증
-            if not email_service.is_verified(purpose, **serializer.validated_data):
-                return Response({"error": "입력하신 인증정보가 유효하지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
+        # 3) 인증 코드 검증
+        if not email_service.is_verified(purpose=purpose, **serializer.validated_data):
+            return Response({"error": "입력하신 인증정보가 유효하지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # 4) 계정 복구
-            recover_account(**serializer.validated_data)
+        # 4) 계정 복구
+        recover_account(**serializer.validated_data)
 
-            # 5) 성공 응답
-            return Response({"detail": "계정이 복구되었습니다. 이제 로그인할 수 있습니다."}, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            logger.exception(f"계정 복구 처리 중 알 수 없는 오류 발생. {str(e)}")  # 로그 기록
-            return Response({"detail": "알 수 없는 오류가 발생했습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # 5) 성공 응답
+        return Response({"detail": "계정이 복구되었습니다. 이제 로그인할 수 있습니다."}, status=status.HTTP_200_OK)
