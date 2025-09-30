@@ -32,12 +32,7 @@ class AuthService:
                         "due_date": withdrawal.due_date.isoformat() if withdrawal else None,
                     }
                 )
-            else:
-                raise AuthenticationFailed("탈퇴계정, 비밀번호가 틀립니다")
-
-        authenticate_user = authenticate(email=email, password=password)
-        if authenticate_user is None:
-            raise AuthenticationFailed("정상계정, 비밀번호가 틀립니다")
+            raise AuthenticationFailed("비밀번호가 틀렸습니다")
 
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
