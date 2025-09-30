@@ -5,7 +5,10 @@ from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 
-from apps.core.tests.mixins.test_user_mixins import VerificationMixin, IsolatedCacheTestMixin
+from apps.core.tests.mixins.test_user_mixins import (
+    IsolatedCacheTestMixin,
+    VerificationMixin,
+)
 from apps.core.utils.test_clients import RedisTestClient
 from apps.users.models import Withdrawals, WithdrawalsReasonChoices
 from apps.users.services.email_service import EmailVerificationService
