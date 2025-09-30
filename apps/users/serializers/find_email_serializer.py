@@ -2,16 +2,9 @@
 
 from typing import Any, Dict
 
-from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
-from apps.users.services.phone_service import (
-    PhoneVerificationCodeFailedError,
-    PhoneVerificationService,
-    TwilioAuthService,
-)
-from apps.users.utils.enums import VerificationPurpose
+from apps.users.services.phone_service import TwilioAuthService
 
 phone_service = TwilioAuthService()
 
