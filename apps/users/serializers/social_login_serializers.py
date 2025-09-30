@@ -8,6 +8,7 @@ from apps.users.models import User
 
 class SocialLoginCallbackRequestSerializer(serializers.Serializer[dict[str, str]]):
     code = serializers.CharField(help_text="인가 코드")
+    state = serializers.CharField(help_text="CSRF 방지 state 코드", required=False)
 
 
 class KakaoUserCreateSerializer(serializers.ModelSerializer[User]):
@@ -55,20 +56,13 @@ class NaverUserCreateSerializer(serializers.ModelSerializer[User]):
         return user
 
 
-class NaverProfileSerializer(serializers.Serializer[dict[str, Any]]):
-    nickname = serializers.CharField()
-    profile_image_url = serializers.URLField(required=False, allow_null=True)
-
-
-class NaverAccountSerializer(serializers.Serializer[dict[str, Any]]):
-    email = serializers.EmailField()
-    name = serializers.CharField(required=False, default="이름없음")
-    birthday = serializers.RegexField(regex=r"^\d{2}-\d{2}$", required=False, default="01-01")
-    birthyear = serializers.RegexField(regex=r"^\d{4}$", required=False, default=str(timezone.now().year))
-    profile = NaverProfileSerializer()
-    gender = serializers.CharField(required=False, default="알수없음")
-
-
-class NaverUserSerializer(serializers.Serializer[dict[str, Any]]):
+class NaverUserInfoSerializer(serializers.Serializer[dict[str, Any]]):
     id = serializers.CharField()
-    naver_account = NaverAccountSerializer()
+    email = serializers.EmailField()
+    name = serializers.CharField()
+    nickname = serializers.CharField()
+    profile_image = serializers.URLField()
+    birthday = serializers.RegexField(regex=r"^\d{2}-\d{2}$")
+    birthyear = serializers.RegexField(regex=r"^\d{4}$")
+    gender = serializers.CharField()
+    mobile = serializers.CharField()

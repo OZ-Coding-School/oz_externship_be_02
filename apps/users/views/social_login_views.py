@@ -32,7 +32,7 @@ class NaverLoginCallbackView(APIView):
         serializer = SocialLoginCallbackRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        tokens = NaverService.naver_login(serializer.validated_data["code"])
+        tokens = NaverService.naver_login(**serializer.validated_data)
         rt = tokens.pop("refresh_token")
         response = Response(data=tokens, status=status.HTTP_200_OK)
         response.set_cookie("refresh_token", rt, httponly=True, domain=".ozcoding.site", samesite="None", secure=True)

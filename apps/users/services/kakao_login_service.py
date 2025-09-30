@@ -150,7 +150,10 @@ class KakaoService:  # 카카오 로그인 로직 담당 클래스
             user_data["birthday"] = cls.parse_kakao_birth_date(birthday, birthyear)
 
             serializer = KakaoUserCreateSerializer(data=user_data)
-            serializer.is_valid(raise_exception=True)
+            if not serializer.is_valid():
+                logger.error(f"카카오 사용자 정보 포맷팅 오류\n\t- errors: {serializer.errors}")
+                raise APIException("카카오 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.")
+
             user = serializer.save()
 
             SocialUser.objects.create(
