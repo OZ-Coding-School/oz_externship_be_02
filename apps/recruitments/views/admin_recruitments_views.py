@@ -38,3 +38,13 @@ class AdminRecruitmentDetailView(APIView):
         recruitment = get_recruitment_detail_for_admin(recruitment_id=recruitment_id)
         serializer = AdminRecruitmentDetailSerializer(recruitment)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # 삭제
+    def delete(self, request: Request, recruitment_id: int) -> Response:
+        try:
+            recruitment = Recruitment.objects.get(id=recruitment_id)
+        except Recruitment.DoesNotExist:
+            return Response({"detail": "Recruitment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        recruitment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
