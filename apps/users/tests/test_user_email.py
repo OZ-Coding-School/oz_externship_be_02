@@ -59,7 +59,7 @@ class EmailVerificationServicesUnitTests(RedisTestClient, IsolatedCacheTestMixin
         self.assertEqual(response.data, {"error": "이메일 인증 코드가 일치하지 않습니다"})
 
 
-class EmailVerificationServiceUnitTests(RedisTestClient, VerificationMixin):
+class EmailVerificationAPITests(RedisTestClient, VerificationMixin):
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -82,7 +82,7 @@ class EmailVerificationServiceUnitTests(RedisTestClient, VerificationMixin):
         self.assertEqual(mail.outbox[0].subject, "회원가입 이메일 인증")
 
         # 이메일 발송 시 사용한 인증번호를 캐시로 부터 가져오기
-        verification_code = cache.get(f"{VerificationPurpose.SIGNUP}-{email}")
+        verification_code = cache.get(f"{VerificationPurpose.SIGNUP.value}-{email}")
 
         # 인증번호가 캐시에 올바르게 저장되어 있었는지 검증
         self.assertIsNotNone(verification_code)
