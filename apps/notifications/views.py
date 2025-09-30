@@ -118,7 +118,9 @@ class UnreadCountView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@login_required
-def events_me(request: HttpRequest) -> StreamingHttpResponse:
-    # 로그인된 유저의 개인 채널로 바로 구독
-    return cast(StreamingHttpResponse, events(request, channels=[f"user-{request.user.id}"]))
+class EventStreamView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: HttpRequest) -> StreamingHttpResponse:
+        # 로그인된 유저의 개인 채널로 바로 구독
+        return cast(StreamingHttpResponse, events(request, channels=[f"user-{request.user.id}"]))
