@@ -123,3 +123,25 @@ class AdminRecruitmentDetailViewTest(APITestCase):
         data = response.data
         expected = sum(lecture.discount_price for lecture in self.study_group.lectures.all())
         self.assertEqual(data["expected_payment_cost"], expected)
+
+    # delete
+    def test_delete_recruitment_as_admin_success(self) -> None:
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(RecruitmentAttachment.objects.filter(id=self.recruitment.id).exists())
+
+    def test_delete_recruitment_not_found(self) -> None:
+        self.client.force_authenticate(user=self.admin_user)
+        not_found_url = reverse("admin-recruitment-detail", kwargs={"recruitment_id": 9999})
+        response = self.client.delete(not_found_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_recruitment_permission_denied_for_non_admin(self) -> None:
+        self.client.force_authenticate(user=self.regular_user1)
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_recruitment_unauthenticated(self) -> None:
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
