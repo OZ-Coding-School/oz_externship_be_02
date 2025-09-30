@@ -91,6 +91,7 @@ class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
         return verification_code
 
     # * 탈퇴 복구
+
     @patch.object(EmailVerificationService, "is_verified", return_value=True)
     def test_account_recovery_request(self, mock_is_verified: MagicMock) -> None:
         # 1) 탈퇴 요청을 생성
@@ -101,18 +102,14 @@ class UserRecoveryJWTAPITest(APITestCase, VerificationMixin):
             due_date=date.today() + timedelta(days=14),
         )
 
-        # 이메일 발송 api 호출
-        self.client.post(path=reverse("recover_account_send"), data={"email": self.user.email})
-        cache_key = f"{VerificationPurpose.RECOVER_ACCOUNT.value}-{self.user.email}"
-        verification_code = cache.get(cache_key)
-
         # 3) 탈퇴 신청 번복 (계정 복구 요청)
         data = {
             "email": self.user.email,
-            "verification_code": verification_code,
+            "verification_code": "anycod",
         }
 
         response = self.client.post(self.recovery_url, data)
+        print(response.data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["detail"], "계정이 복구되었습니다. 이제 로그인할 수 있습니다.")

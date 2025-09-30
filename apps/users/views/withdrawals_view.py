@@ -96,7 +96,9 @@ class AccountRecoveryAPIView(APIView):
         try:
             # 4) 계정 복구
             recover_account(**serializer.validated_data)
-
+            return Response({
+                "detail" : "계정이 복구되었습니다. 이제 로그인할 수 있습니다."
+            }, status=status.HTTP_200_OK)
             # 6-3) 해당 이메일로 탈퇴 요청이 존재하지 않습니다.
         except Withdrawals.DoesNotExist as e:
             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
@@ -105,4 +107,4 @@ class AccountRecoveryAPIView(APIView):
 
         except Exception:
             logger.exception("계정 복구 처리 중 알 수 없는 오류 발생.")  # 로그 기록
-        return Response({"detail": "알 수 없는 오류 발생"}, status=500)
+            return Response({"detail": "알 수 없는 오류 발생"}, status=500)
