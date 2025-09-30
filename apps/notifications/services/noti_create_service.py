@@ -1,8 +1,11 @@
+from collections import Counter
 from datetime import date, datetime, time, timedelta
 from typing import Dict, Iterable, Tuple
 
+from django.db import transaction
 from django.db.models import Prefetch, QuerySet
 from django.utils import timezone
+from django_eventstream import send_event  # type: ignore[import-untyped]
 
 from apps.applications.models.applications import Application
 from apps.notifications.const import get_notification_back_url
@@ -137,9 +140,19 @@ class StudyNoteNotificationService:
             for uid in accepted_user_ids
         ]
 
-        Notification.objects.bulk_create(notifications)
+        created = Notification.objects.bulk_create(notifications)
+        counts = Counter(n.user_id for n in created)
 
-        return len(notifications)
+        def sse_push() -> None:  # bulk_create 신호는 signal이 감지하지 못하기에
+            for uid, count in counts.items():
+                send_event(
+                    f"user-{uid}",
+                    "summary",
+                    {"added": count, "type": "STUDY_NOTE_CREATED"},
+                )
+
+        transaction.on_commit(sse_push)
+        return len(created)
 
 
 class StudyReviewNotificationService:
@@ -185,6 +198,13 @@ class StudyReviewNotificationService:
         ]
 
         Notification.objects.bulk_create(notifications, batch_size=1000)
+        counts = Counter(n.user_id for n in notifications)
+        for uid, count in counts.items():
+            send_event(
+                f"user-{uid}",
+                "summary",
+                {"added": count, "type": "STUDY_REVIEW_REQUEST"},
+            )
         return len(notifications)
 
     @classmethod
@@ -266,6 +286,13 @@ class ScheduleTodayNotificationService:
             for uid in member_ids
         ]
         Notification.objects.bulk_create(notis, batch_size=1000)
+        counts = Counter(n.user_id for n in notis)
+        for uid, count in counts.items():
+            send_event(
+                f"user-{uid}",
+                "summary",
+                {"added": count, "type": "TODAY_SCHEDULE"},
+            )
         return len(notis)
 
     @classmethod
@@ -320,6 +347,13 @@ class ScheduleUpComingNotificationService:
             for uid in member_ids
         ]
         Notification.objects.bulk_create(notis, batch_size=1000)
+        counts = Counter(n.user_id for n in notis)
+        for uid, count in counts.items():
+            send_event(
+                f"user-{uid}",
+                "summary",
+                {"added": count, "type": "UPCOMING_SCHEDULE"},
+            )
         return len(notis)
 
     @classmethod

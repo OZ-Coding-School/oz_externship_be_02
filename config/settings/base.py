@@ -33,6 +33,7 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "django_celery_beat",
     "rest_framework_simplejwt.token_blacklist",
+    "django_eventstream",
 ]
 
 CUSTOM_APPS = [
@@ -269,3 +270,13 @@ CELERY_BEAT_SCHEDULE = {
 NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
 NAVER_REDIRECT_URI = os.getenv("NAVER_REDIRECT_URI")
+
+EVENTSTREAM_REDIS = {
+    "host": REDIS_HOST,
+    "port": REDIS_PORT,
+    "db": 5,
+}
+
+EVENTSTREAM_BACKEND = "django_eventstream.backends.redisbackend.RedisBackend"
+
+EVENTSTREAM_CHANNELMANAGER_CLASS = "apps.notifications.channelmanager.NotificationChannelManager"
