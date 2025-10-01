@@ -170,7 +170,11 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
         test_data = [
             {"name": "인원 수정", "max_headcount": 5},
             {"name": "프로필 사진 추가", "profile_img": create_temp_image()},
-            {"name": "스터디 일정 수정", "start_at": timezone.now() + timedelta(days=1), "end_at": "2025-10-31T00:00:00Z"},
+            {
+                "name": "스터디 일정 수정",
+                "start_at": timezone.now() + timedelta(days=1),
+                "end_at": "2025-10-31T00:00:00Z",
+            },
         ]
         for case in test_data:
             response = self.client.patch(self.url, data=case)
