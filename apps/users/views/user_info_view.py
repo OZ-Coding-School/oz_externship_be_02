@@ -109,7 +109,6 @@ class UserInfoView(AuthenticatedAPIview):
             name="여러 항목 동시 수정",
             value={
                 "nickname": "upuser",
-                "password": "strongpw-123",
                 "phone_number": "01011112222",
                 "verification_code": "112233",
             },
