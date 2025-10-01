@@ -38,7 +38,7 @@ class LectureReviewsViewTestCase(TestCase):
         )
 
         self.client = Client()
-        self.url = reverse("lectures:lecture_reviews", kwargs={"lecture_uuid": self.lecture.uuid})
+        self.url = reverse("lecture_reviews", kwargs={"lecture_uuid": self.lecture.uuid})
 
     def test_get_reviews_success(self) -> None:
         """리뷰가 있으면 정상적으로 반환된다."""
@@ -61,7 +61,7 @@ class LectureReviewsViewTestCase(TestCase):
 
     def test_invalid_uuid_returns_empty(self) -> None:
         """없는 강의 UUID로 요청하면 빈 리스트가 반환된다."""
-        url = reverse("lectures:lecture_reviews", kwargs={"lecture_uuid": uuid.uuid4()})
+        url = reverse("lecture_reviews", kwargs={"lecture_uuid": uuid.uuid4()})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
