@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 import boto3
@@ -7,6 +7,7 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from moto import mock_aws
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -169,7 +170,7 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
         test_data = [
             {"name": "인원 수정", "max_headcount": 5},
             {"name": "프로필 사진 추가", "profile_img": create_temp_image()},
-            {"name": "스터디 일정 수정", "start_at": "2025-10-01T00:00:00Z", "end_at": "2025-10-31T00:00:00Z"},
+            {"name": "스터디 일정 수정", "start_at": timezone.now() + timedelta(days=1), "end_at": "2025-10-31T00:00:00Z"},
         ]
         for case in test_data:
             response = self.client.patch(self.url, data=case)
