@@ -173,7 +173,7 @@ class UpdateStudyGroupAPITest(APITestCase, TestUserMixin):
             {
                 "name": "스터디 일정 수정",
                 "start_at": timezone.now() + timedelta(days=1),
-                "end_at": "2025-10-31T00:00:00Z",
+                "end_at": timezone.now() + timedelta(days=30),
             },
         ]
         for case in test_data:
