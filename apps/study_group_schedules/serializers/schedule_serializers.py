@@ -1,7 +1,8 @@
 from datetime import date, datetime, time, timedelta
 from typing import Any, Dict
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.studies.models import GroupMember, StudyGroup
@@ -35,14 +36,20 @@ class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedu
     """스터디 그룹 일정 생성 시리얼라이저 - 검증 로직 포함"""
 
     study_group = serializers.SlugRelatedField(slug_field="uuid", queryset=StudyGroup.objects.all())
+    participant_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+    )
 
     class Meta:
         model = GroupSchedule
-        fields = ["study_group", "title", "objective", "session_date", "start_time", "end_time"]
+        fields = ["study_group", "title", "objective", "session_date", "start_time", "end_time", "participant_ids"]
 
     def validate_session_date(self, value: date) -> date:
         """날짜 검증: 오늘 이후로만 가능"""
-        if value < date.today():
+        if value < timezone.localdate():
             raise serializers.ValidationError("스케줄 날짜는 오늘 이후로만 설정 가능합니다.")
         return value
 
@@ -54,7 +61,7 @@ class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedu
             raise serializers.ValidationError("시작 시간은 종료 시간보다 이전이어야 합니다.")
 
         # 최소 30분 간격 검증
-        base_date = date.today()
+        base_date = timezone.localdate()
         duration = datetime.combine(base_date, end_time) - datetime.combine(base_date, start_time)
         if duration < timedelta(minutes=30):
             raise serializers.ValidationError("스터디 시간은 최소 30분 이상이어야 합니다.")
@@ -68,6 +75,42 @@ class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedu
             self.validate_time_range(start_time, end_time)
 
         return data
+
+    def validate_participants_ids(self, schedule: GroupSchedule, raw_ids: list[int] | None) -> list[int]:
+        """해당 스터디 그룹의 GroupMember.id만 통과."""
+        if not raw_ids:
+            return []
+        valid_ids = set(
+            GroupMember.objects.filter(study_group=schedule.study_group, id__in=raw_ids).values_list("id", flat=True)
+        )
+        invalid = set(raw_ids) - valid_ids
+        if invalid:
+            raise serializers.ValidationError(
+                {"participant_ids": f"스터디 그룹에 속하지 않은 멤버가 포함되어 있습니다: {sorted(invalid)}"}
+            )
+        return list(valid_ids)
+
+    @transaction.atomic
+    def create(self, validated_data: dict[str, Any]) -> GroupSchedule:
+        # 꺼내고 없으면 None → 아래에서 아무 작업 안 함
+        raw_participant_ids = validated_data.pop("participant_ids", None)
+
+        schedule: GroupSchedule = super().create(validated_data)
+
+        # participant_ids가 요청에 포함된 경우에만 처리(없으면 건드리지 않음)
+        if raw_participant_ids is not None:
+            clean_ids = self.validate_participants_ids(schedule, raw_participant_ids)
+            if clean_ids:
+                try:
+                    ScheduleParticipant.objects.bulk_create(
+                        [ScheduleParticipant(schedule=schedule, member_id=mid) for mid in clean_ids],
+                        batch_size=1000,
+                    )
+                except IntegrityError as e:
+                    # DB 예외를 400으로 변환
+                    raise serializers.ValidationError({"participant_ids": "참여자 설정 중 오류가 발생했습니다."}) from e
+
+        return schedule
 
 
 class StudyGroupScheduleListQueryParamsSerializer(serializers.Serializer[None]):
