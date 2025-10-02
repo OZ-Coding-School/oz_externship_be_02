@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta
 from typing import Any, Dict
+from uuid import UUID
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -42,10 +43,25 @@ class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedu
         required=False,
         allow_empty=True,
     )
+    participant_user_uuids = serializers.ListField(
+        child=serializers.UUIDField(),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+    )
 
     class Meta:
         model = GroupSchedule
-        fields = ["study_group", "title", "objective", "session_date", "start_time", "end_time", "participant_ids"]
+        fields = [
+            "study_group",
+            "title",
+            "objective",
+            "session_date",
+            "start_time",
+            "end_time",
+            "participant_ids",
+            "participant_user_uuids",
+        ]
 
     def validate_session_date(self, value: date) -> date:
         """날짜 검증: 오늘 이후로만 가능"""
@@ -76,39 +92,62 @@ class StudyGroupScheduleCreateSerializer(serializers.ModelSerializer[GroupSchedu
 
         return data
 
-    def validate_participants_ids(self, schedule: GroupSchedule, raw_ids: list[int] | None) -> list[int]:
-        """해당 스터디 그룹의 GroupMember.id만 통과."""
-        if not raw_ids:
+    def resolve_member_ids_by_user_uuid(self, schedule: GroupSchedule, uuids: list[UUID]) -> list[int]:
+        if not uuids:
             return []
-        valid_ids = set(
-            GroupMember.objects.filter(study_group=schedule.study_group, id__in=raw_ids).values_list("id", flat=True)
-        )
-        invalid = set(raw_ids) - valid_ids
-        if invalid:
-            raise serializers.ValidationError(
-                {"participant_ids": f"스터디 그룹에 속하지 않은 멤버가 포함되어 있습니다: {sorted(invalid)}"}
+        return list(
+            GroupMember.objects.filter(study_group=schedule.study_group, user__uuid__in=uuids).values_list(
+                "id", flat=True
             )
-        return list(valid_ids)
+        )
 
     @transaction.atomic
     def create(self, validated_data: dict[str, Any]) -> GroupSchedule:
-        # 꺼내고 없으면 None → 아래에서 아무 작업 안 함
-        raw_participant_ids = validated_data.pop("participant_ids", None)
+        raw_member_ids = validated_data.pop("participant_ids", None)
+        raw_user_uuids = validated_data.pop("participant_user_uuids", None)
 
         schedule: GroupSchedule = super().create(validated_data)
 
-        # participant_ids가 요청에 포함된 경우에만 처리(없으면 건드리지 않음)
-        if raw_participant_ids is not None:
-            clean_ids = self.validate_participants_ids(schedule, raw_participant_ids)
-            if clean_ids:
-                try:
-                    ScheduleParticipant.objects.bulk_create(
-                        [ScheduleParticipant(schedule=schedule, member_id=mid) for mid in clean_ids],
-                        batch_size=1000,
-                    )
-                except IntegrityError as e:
-                    # DB 예외를 400으로 변환
-                    raise serializers.ValidationError({"participant_ids": "참여자 설정 중 오류가 발생했습니다."}) from e
+        # 두 입력 모두 허용: (member_ids ∪ resolved(user_uuids))
+        member_ids: set[int] = set()
+
+        # 1) GroupMember.id 직접 입력
+        if raw_member_ids:
+            direct_ids = set(
+                GroupMember.objects.filter(study_group=schedule.study_group, id__in=raw_member_ids).values_list(
+                    "id", flat=True
+                )
+            )
+            invalid = set(raw_member_ids) - direct_ids
+            if invalid:
+                raise serializers.ValidationError(
+                    {"participant_ids": f"스터디 그룹에 속하지 않은 멤버 ID 포함: {sorted(invalid)}"}
+                )
+            member_ids |= direct_ids
+
+        # 2) User.uuid 입력 → GroupMember.id 변환
+        if raw_user_uuids:
+            resolved_ids = set(self.resolve_member_ids_by_user_uuid(schedule, raw_user_uuids))
+            missing = set(raw_user_uuids) - set(
+                GroupMember.objects.filter(study_group=schedule.study_group, user__uuid__in=raw_user_uuids).values_list(
+                    "user__uuid", flat=True
+                )
+            )
+            if missing:
+                raise serializers.ValidationError(
+                    {"participant_user_uuids": f"그룹 멤버가 아닌 사용자 UUID 포함: {sorted(map(str, missing))}"}
+                )
+            member_ids |= resolved_ids
+
+        # 실제 저장
+        if member_ids:
+            try:
+                ScheduleParticipant.objects.bulk_create(
+                    [ScheduleParticipant(schedule=schedule, member_id=m) for m in member_ids],
+                    batch_size=1000,
+                )
+            except IntegrityError as e:
+                raise serializers.ValidationError({"participants": "참여자 설정 중 오류가 발생했습니다."}) from e
 
         return schedule
 
