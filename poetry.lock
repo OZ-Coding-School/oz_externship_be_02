@@ -4045,6 +4045,22 @@ files = [
 ]
 
 [[package]]
+name = "types-channels"
+version = "4.3.0.20250822"
+description = "Typing stubs for channels"
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+files = [
+    {file = "types_channels-4.3.0.20250822-py3-none-any.whl", hash = "sha256:d3fc0a1467c8cc901686826408c8a673822e07aa79cbe1a6d21946e7e55d9ddf"},
+    {file = "types_channels-4.3.0.20250822.tar.gz", hash = "sha256:29a4928fdaed6d444b93b69d44fcdb5a8fe32fa72d6a41016c5d39fa7bd7f474"},
+]
+
+[package.dependencies]
+asgiref = "*"
+django-stubs = ">=4.2,<5.3"
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.20250516"
 description = "Typing stubs for PyYAML"
@@ -4571,4 +4587,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "2265065881410b35d004ad0b56dba40bb562e71668b025c0f59cfb4fdaaaea6b"
+content-hash = "8018e1dd621b543a27f893e517d33779c34e3e629e28790675b9a7281028db87"
